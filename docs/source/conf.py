@@ -6,7 +6,7 @@ project = 'O-CNN'
 copyright = '2021, Peng-Shuai Wang'
 author = 'Peng-Shuai Wang'
 
-release = '0.1'
+release = '2.0'
 version = '0.1.0'
 
 # -- General configuration
