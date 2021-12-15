@@ -1,0 +1,14 @@
+version: 2
+
+build:
+  image: latest
+
+python:
+  # Install the python package before building the docs
+  install:
+    - requirements: docs/requirements.txt
+    # - method: setuptools
+    - method: pip
+      path: .
+
+formats: []
