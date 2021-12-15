@@ -1,0 +1,1 @@
+from .shuffled_key import key2xyz, xyz2key

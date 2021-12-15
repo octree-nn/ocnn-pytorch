@@ -12,11 +12,10 @@ Installation
 
 ..    (.venv) $ pip install lumache
 
-Creating recipes
+APIs
 ----------------
 
-To retrieve a list of random ingredients,
-you can use the ``ocnn.octree.key2xyz`` function:
+Use the ``ocnn.octree.key2xyz`` function:
 
 .. autofunction:: ocnn.octree.key2xyz
 

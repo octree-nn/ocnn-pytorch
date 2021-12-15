@@ -1,2 +1,4 @@
 __pycache__
 build
+docs/source/generated
+ocnn.egg-info
