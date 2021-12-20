@@ -60,7 +60,7 @@ def xyz2key(x, y, z, b=None, depth=16):
     z (torch.tensor): The z coordinate. 
     b (torch.tensor or int): The batch index of the coordinates. If b is a 
         torch.tensor, the size of b must be the same as x, y, and z. 
-    depth (int): The depth of the shuffled key, and must be smaller than 16.
+    depth (int): The depth of the shuffled key, and must be smaller than 17 (< 17).
   '''
 
   EX, EY, EZ = _key_lut.encode_lut(x.device)
@@ -84,7 +84,7 @@ def key2xyz(key, depth=16):
 
   Args: 
     key (torch.tensor): The shuffled key.
-    depth (int): The depth of the shuffled key, and must be smaller than 16.
+    depth (int): The depth of the shuffled key, and must be smaller than 16 (< 16).
   '''
   DX, DY, DZ = _key_lut.decode_lut(key.device)
   x, y, z = torch.zeros_like(key), torch.zeros_like(key), torch.zeros_like(key)
