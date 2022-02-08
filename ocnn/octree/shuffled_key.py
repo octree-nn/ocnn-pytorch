@@ -84,11 +84,14 @@ def key2xyz(key, depth=16):
 
   Args: 
     key (torch.tensor): The shuffled key.
-    depth (int): The depth of the shuffled key, and must be smaller than 16 (< 16).
+    depth (int): The depth of the shuffled key, and must be smaller than 17 (< 17).
   '''
 
   DX, DY, DZ = _key_lut.decode_lut(key.device)
   x, y, z = torch.zeros_like(key), torch.zeros_like(key), torch.zeros_like(key)
+
+  b = key >> 48
+  key = key & ((1 << 48) - 1)
 
   n = (depth + 2) // 3
   for i in range(n):
@@ -96,7 +99,5 @@ def key2xyz(key, depth=16):
     x = x | (DX[k] << (i * 3))
     y = y | (DY[k] << (i * 3))
     z = z | (DZ[k] << (i * 3))
-
-  b = key >> 48
 
   return x, y, z, b
