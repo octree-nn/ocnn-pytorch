@@ -1,8 +1,10 @@
 from setuptools import setup, find_packages
 
+__version__ = '2.0.0'
+
 setup(
     name='ocnn',
-    version='2.0.0',
+    version=__version__,
     author='Peng-Shuai Wang',
     author_email='wangps@hotmail.com',
     packages=find_packages(),
