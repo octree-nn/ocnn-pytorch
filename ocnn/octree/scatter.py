@@ -3,6 +3,10 @@ from typing import Optional
 
 
 def broadcast(src: torch.Tensor, other: torch.Tensor, dim: int):
+  r''' Broadcast :attr:`src` according to :attr:`other`, originally from the 
+  library `pytorch_scatter`.
+  '''
+
   if dim < 0:
     dim = other.dim() + dim
   if src.dim() == 1:
@@ -14,9 +18,28 @@ def broadcast(src: torch.Tensor, other: torch.Tensor, dim: int):
   return src
 
 
-def scatter_add(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
-                out: Optional[torch.Tensor] = None,
-                dim_size: Optional[int] = None) -> torch.Tensor:
+def scatter(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
+            out: Optional[torch.Tensor] = None, dim_size: Optional[int] = None,
+            reduce: str = 'add') -> torch.Tensor:
+  r''' Reduces all values from the :attr:`src` tensor into :attr:`out` at the
+  indices specified in the :attr:`index` tensor along a given axis :attr:`dim`.
+  This is just a wrapper of `torch.Tensor.scatter_()
+  <https://pytorch.org/docs/1.10/generated/torch.Tensor.scatter_.html#torch-tensor-scatter>`_
+  in a boardcasting fashion.
+
+  Args:
+    src (torch.Tensor): The source tensor.
+    index (torch.Tensor): The indices of elements to scatter.
+    dim (torch.Tensor): The axis along which to index, (default: :obj:`-1`).
+    out (torch.Tensor or None): The destination tensor.
+    dim_size (int or None): If :attr:`out` is not given, automatically create
+        output with size :attr:`dim_size` at dimension :attr:`dim`. If
+        :attr:`dim_size` is not given, a minimal sized output tensor according
+        to :obj:`index.max() + 1` is returned.
+    reduce (str): The reduce operation to apply, choose from :obj:`add` and
+        :obj:`mul`, (default: :obj:`add`).
+    '''
+
   index = broadcast(index, src, dim)
 
   if out is None:
@@ -28,6 +51,5 @@ def scatter_add(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
     else:
       size[dim] = int(index.max()) + 1
     out = torch.zeros(size, dtype=src.dtype, device=src.device)
-    return out.scatter_add_(dim, index, src)
-  else:
-    return out.scatter_add_(dim, index, src)
+
+  return out.scatter_(dim, index, src, reduce)

@@ -1,4 +1,5 @@
 import torch
+from typing import Optional, Union
 
 
 class KeyLUT:
@@ -49,17 +50,19 @@ class KeyLUT:
 _key_lut = KeyLUT()
 
 
-def xyz2key(x, y, z, b=None, depth=16):
-  r'''Encode x, y, z coordinates to the shuffled keys based on pre-computed
-  look up tables. The speed of this function is much faster than the method 
-  based on for-loop.
+def xyz2key(x: torch.Tensor, y: torch.Tensor, z: torch.Tensor,
+            b: Optional[Union[torch.Tensor, int]] = None, depth: int = 16):
+  r'''Encode :attr:`x`, :attr:`y`, :attr:`z` coordinates to the shuffled keys
+  based on pre-computed look up tables. The speed of this function is much
+  faster than the method based on for-loop.
 
-  Args: 
-    x (torch.tensor): The x coordinate. 
-    y (torch.tensor): The y coordinate.
-    z (torch.tensor): The z coordinate. 
-    b (torch.tensor or int): The batch index of the coordinates. If b is a 
-        torch.tensor, the size of b must be the same as x, y, and z. 
+  Args:
+    x (torch.Tensor): The x coordinate.
+    y (torch.Tensor): The y coordinate.
+    z (torch.Tensor): The z coordinate.
+    b (torch.Tensor or int): The batch index of the coordinates. If :attr:`b` is
+        a :obj:`torch.Tensor`, the size of :attr:`b` must be the same as
+        :attr:`x`, :attr:`y`, and :attr:`z` .
     depth (int): The depth of the shuffled key, and must be smaller than 17 (< 17).
   '''
 
@@ -78,12 +81,12 @@ def xyz2key(x, y, z, b=None, depth=16):
   return key
 
 
-def key2xyz(key, depth=16):
-  r'''Decode the shuffled key to x, y, z coordinates and the batch index based 
-  on pre-computed look up tables.
+def key2xyz(key: torch.Tensor, depth: int = 16):
+  r'''Decode the shuffled key to :attr:`x`, :attr:`y`, :attr:`z` coordinates and
+  the batch index based on pre-computed look up tables.
 
-  Args: 
-    key (torch.tensor): The shuffled key.
+  Args:
+    key (torch.Tensor): The shuffled key.
     depth (int): The depth of the shuffled key, and must be smaller than 17 (< 17).
   '''
 
