@@ -9,11 +9,13 @@ def broadcast(src: torch.Tensor, other: torch.Tensor, dim: int):
 
   if dim < 0:
     dim = other.dim() + dim
+
   if src.dim() == 1:
     for _ in range(0, dim):
       src = src.unsqueeze(0)
   for _ in range(src.dim(), other.dim()):
     src = src.unsqueeze(-1)
+
   src = src.expand_as(other)
   return src
 
@@ -37,7 +39,7 @@ def scatter(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
         :attr:`dim_size` is not given, a minimal sized output tensor according
         to :obj:`index.max() + 1` is returned.
     reduce (str): The reduce operation to apply, choose from :obj:`add` and
-        :obj:`mul`, (default: :obj:`add`).
+        :obj:`multiply`, (default: :obj:`add`).
     '''
 
   index = broadcast(index, src, dim)
@@ -52,4 +54,4 @@ def scatter(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
       size[dim] = int(index.max()) + 1
     out = torch.zeros(size, dtype=src.dtype, device=src.device)
 
-  return out.scatter_(dim, index, src, reduce)
+  return out.scatter_(dim, index, src, reduce=reduce)
