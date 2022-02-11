@@ -4,7 +4,7 @@ import ocnn
 
 # -- Project information
 
-project = 'O-CNN'
+project = 'ocnn-pytorch'
 author = 'Peng-Shuai Wang'
 copyright = '{}, {}'.format(datetime.datetime.now().year, author)
 release = ocnn.__version__

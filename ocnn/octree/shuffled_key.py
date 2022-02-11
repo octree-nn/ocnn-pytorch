@@ -52,7 +52,7 @@ _key_lut = KeyLUT()
 
 def xyz2key(x: torch.Tensor, y: torch.Tensor, z: torch.Tensor,
             b: Optional[Union[torch.Tensor, int]] = None, depth: int = 16):
-  r'''Encode :attr:`x`, :attr:`y`, :attr:`z` coordinates to the shuffled keys
+  r'''Encodes :attr:`x`, :attr:`y`, :attr:`z` coordinates to the shuffled keys
   based on pre-computed look up tables. The speed of this function is much
   faster than the method based on for-loop.
 
@@ -82,8 +82,8 @@ def xyz2key(x: torch.Tensor, y: torch.Tensor, z: torch.Tensor,
 
 
 def key2xyz(key: torch.Tensor, depth: int = 16):
-  r'''Decode the shuffled key to :attr:`x`, :attr:`y`, :attr:`z` coordinates and
-  the batch index based on pre-computed look up tables.
+  r'''Decodes the shuffled key to :attr:`x`, :attr:`y`, :attr:`z` coordinates
+  and the batch index based on pre-computed look up tables.
 
   Args:
     key (torch.Tensor): The shuffled key.
