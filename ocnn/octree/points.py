@@ -62,7 +62,7 @@ class Points:
       ifactor = 1.0 / factor
       self.normals = self.normals * ifactor
       norm2 = torch.sqrt(torch.sum(self.normals ** 2, dim=1, keepdim=True))
-      self.normals = self.normals / (norm2 + 1.0e-6)
+      self.normals = self.normals / torch.clamp(norm2, min=1.0e-12)
 
   def rotate(self, angle: torch.Tensor):
     r''' Rotates the point cloud. 
@@ -72,12 +72,13 @@ class Points:
     '''
 
     cos, sin = angle.cos(), angle.sin()
-    rotx = torch.Tensor([1, 0, 0, 0, cos[0], sin[0], 0, -sin[0], cos[0]])
-    roty = torch.Tensor([cos[1], 0, -sin[1], 0, 1, 0, sin[1], 0, cos[1]])
-    rotz = torch.Tensor([cos[2], sin[2], 0, -sin[2], cos[2], 0, 0, 0, 1])
+    # rotx, roty, rotz are actually the transpose of the rotation matrices
+    rotx = torch.Tensor([[1, 0, 0], [0, cos[0], sin[0]], [0, -sin[0], cos[0]]])
+    roty = torch.Tensor([[cos[1], 0, -sin[1]], [0, 1, 0], [sin[1], 0, cos[1]]])
+    rotz = torch.Tensor([[cos[2], sin[2], 0], [-sin[2], cos[2], 0], [0, 0, 1]])
     rot = rotx @ roty @ rotz
 
-    rot = rot.to(self.points.device).t()
+    rot = rot.to(self.points.device)
     self.points = self.points @ rot
     if self.normals is not None:
       self.normals = self.normals @ rot
@@ -117,9 +118,10 @@ class Points:
     r''' Returns the bounding box.
     '''
 
-    bbmin = self.points.min(dim=1)
-    bbmax = self.points.max(dim=1)
-    return bbmin, bbmax
+    # torch.min and torch.max return (value, indices)
+    bbmin = self.points.min(dim=0)
+    bbmax = self.points.max(dim=0)
+    return bbmin[0], bbmax[0]
 
   def normalize(self, bbmin: torch.Tensor, bbmax: torch.Tensor):
     r''' Normalizes the point cloud to :obj:`[-1, 1]`.
@@ -128,6 +130,7 @@ class Points:
       bbmin (torch.Tensor): The minimum coordinates of the bounding box.
       bbmax (torch.Tensor): The maximum coordinates of the bounding box.
     '''
+
     box_size = (bbmax - bbmin).max() + 1.0e-6
     self.points = (self.points - bbmin) * (2.0 / box_size) - 1.0
 
@@ -153,18 +156,23 @@ class Points:
       filename (str): The output filename.
     '''
 
-    out = {'points': self.points.cpu().numpy()}
+    name = ['points']
+    out = [self.points.cpu().numpy()]
     if self.normals is not None:
-      out['normals'] = self.normals.cpu().numpy()
+      name.append('normals')
+      out.append(self.normals.cpu().numpy())
     if self.features is not None:
-      out['features'] = self.features.cpu().numpy()
+      name.append('features')
+      out.append(self.features.cpu().numpy())
     if self.labels is not None:
-      out['labels'] = self.labels.cpu().numpy()
+      name.append('labels')
+      out.append(self.labels.cpu().numpy())
 
     if filename.endswith('npz'):
-      np.savez(filename, **out)
+      out_dict = dict(zip(name, out))
+      np.savez(filename, **out_dict)
     elif filename.endswith('xyz'):
-      out = torch.cat(list(out.values()), dim=1)
-      np.savetxt(filename, out, fmt='%.6f')
+      out_array = np.concatenate(out, axis=1)
+      np.savetxt(filename, out_array, fmt='%.6f')
     else:
       raise ValueError
