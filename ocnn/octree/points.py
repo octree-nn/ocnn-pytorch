@@ -25,6 +25,7 @@ class Points:
     self.normals = normals
     self.features = features
     self.labels = labels
+    self.device = points.device
     self.npt = points.shape[0]
 
   def orient_normal(self, axis: str = 'x'):
@@ -56,7 +57,7 @@ class Points:
     torch._assert(non_zero, 'The scale factor must not constain 0.')
     if all_ones: return
 
-    factor = factor.to(self.points.device)
+    factor = factor.to(self.device)
     self.points = self.points * factor
     if self.normals is not None and non_uniform:
       ifactor = 1.0 / factor
@@ -78,7 +79,7 @@ class Points:
     rotz = torch.Tensor([[cos[2], sin[2], 0], [-sin[2], cos[2], 0], [0, 0, 1]])
     rot = rotx @ roty @ rotz
 
-    rot = rot.to(self.points.device)
+    rot = rot.to(self.device)
     self.points = self.points @ rot
     if self.normals is not None:
       self.normals = self.normals @ rot
@@ -90,7 +91,7 @@ class Points:
       dis (torch.Tensor): The displacement with shape :obj:`(3,)`.
     '''
 
-    dis = dis.to(self.points.device)
+    dis = dis.to(self.device)
     self.points = self.points + dis
 
   def clip(self, min: float = -1.0, max: float = 1.0):
@@ -141,6 +142,7 @@ class Points:
       device (torch.device or str): The destination device.
     '''
 
+    self.device = device
     self.points = self.points.to(device)
     if self.normals is not None:
       self.normals = self.normals.to(device)
