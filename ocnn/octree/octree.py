@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from typing import Optional, Union, List
 
 from .points import Points
-from .shuffled_key import xyz2key
+from .shuffled_key import xyz2key, key2xyz
 from .scatter import scatter_add
 
 
@@ -29,6 +29,10 @@ class Octree:
     self.device = device
 
   def reset(self):
+    r''' Resets the Octree status and constructs several lookup tables. 
+    '''
+
+    # octree features in each octree layers
     num = self.depth + 1
     self.keys = [None] * num
     self.children = [None] * num
@@ -37,9 +41,32 @@ class Octree:
     self.normals = [None] * num
     self.points = [None] * num
 
+    # octree node numbers in each octree layers TODO: settle them to 'gpu'?
     self.nnum = torch.zeros(num, dtype=torch.int32)
-    # self.nnum_cum = torch.zeros(num, dtype=torch.int32)
     self.nnum_nempty = torch.zeros(num, dtype=torch.int32)
+    # self.nnum_cum = torch.zeros(num, dtype=torch.int32)
+
+    # construct the look up tables for neighborhood searching
+    center_grid = self.meshgrid(2, 3)    # (8, 3)
+    displacement = self.meshgrid(-1, 1)  # (27, 3)
+    neigh_grid = center_grid.unsqueeze(1) + displacement  # (8, 27, 3)
+    parent_grid = torch.true_div(neigh_grid, 2)
+    child_grid = neigh_grid % 2
+    self.lut_parent = torch.sum(
+        parent_grid * torch.tensor([9, 3, 1]), dim=2).to(self.device)
+    self.lut_child = torch.sum(
+        child_grid * torch.tensor([4, 2, 1]), dim=2).to(self.device)
+
+    # lookup tables for different kernel sizes
+    self.lut_kernel = {
+        '222': torch.tensor([13, 14, 16, 17, 22, 23, 25, 26], device=self.device),
+        '311': torch.tensor([4, 13, 22], device=self.device),
+        '131': torch.tensor([10, 13, 16], device=self.device),
+        '113': torch.tensor([12, 13, 14], device=self.device),
+        '331': torch.tensor([1, 4, 7, 10, 13, 16, 19, 22, 25], device=self.device),
+        '313': torch.tensor([3, 4, 5, 12, 13, 14, 21, 22, 23], device=self.device),
+        '133': torch.tensor([9, 10, 11, 12, 13, 14, 15, 16, 17], device=self.device),
+    }
 
   def build_octree(self, point_cloud: Points):
     r''' Builds an octree from a point cloud.
@@ -112,7 +139,11 @@ class Octree:
       self.features[self.depth] = features / counts.unsqueeze(1)
 
   def merge_octrees(self, octrees: List['Octree']):
-    r''' Merges a list of octrees into one batch. '''
+    r''' Merges a list of octrees into one batch. 
+
+    Args:
+      octrees (List[Octree]): A list of octrees to merge.
+    '''
 
     # init and check
     self.batch_size = len(octrees)
@@ -168,24 +199,71 @@ class Octree:
         points = [octrees[i].points[d] for i in range(self.batch_size)]
         self.points[d] = torch.cat(points, dim=0)
 
-  def compute_neigh(self, depth: int):
+  def construct_neigh(self, depth: int):
+    r''' Constructs the :obj:`3x3x3` neighbors for each octree node.
 
-    # init
-    if depth < 1: return
-    nnum = self.nnum[depth]
-    self.neighs[depth] = - torch.ones(
-        nnum // 8, 64, dtype=torch.int32, device=self.device)
+    Args: 
+      depth (int): The octree depth with a value larger than 0 (:obj:`>0`).
+    '''
 
-    # construct neigh when depth == 1
-    if depth == 1:
-      # x = [0,0,0,0,1,1,1,1], y = [0,0,1,1,0,0,1,1], z = [0,1,0,1,0,1,0,1]
-      # addr = ((x+1) << 4) | ((y+1) << 2) | (z+1)
-      addr = torch.tensor([21, 22, 25, 26, 37, 38, 41, 42], device=self.device)
-      neigh = - torch.ones(64, dtype=torch.int64, device=self.device)
-      neigh[addr] = torch.arange(8, dtype=torch.int64, device=self.device)
+    if depth <= self.full_depth:
+      nnum = 1 << (3 * depth)
+      key = torch.arange(nnum, dtype=torch.long, device=self.device)
+      x, y, z, _ = key2xyz(key, depth)
+      xyz = torch.stack([x, y, z], dim=-1)  # (N,  3)
+      grid = self.meshgrid(min=-1, max=1)   # (27, 3)
+      xyz = xyz.unsqueeze(1) + grid         # (N, 27, 3)
+      xyz = xyz.view(-1, 3)                 # (N*27, 3)
+      neigh = xyz2key(xyz[:, 0], xyz[:, 1], xyz[:, 2], depth=depth)
+
+      bs = torch.arange(self.batch_size, dtype=torch.int32, device=self.device)
+      neigh = neigh + bs.unsqueeze(1) * nnum  # (N*27,) + (B, 1) -> (B, N*27)
+
+      bound = 1 << depth
+      invalid = torch.logical_any((xyz < 0).any(1), (xyz >= bound).any(1))
+      neigh[:, invalid] = -1
+      self.neighs[depth] = neigh.view(-1, 27)  # (B*N, 27)
+
+    else:
+      child_p = self.children[depth-1]
+      mask = child_p >= 0
+      neigh_p = self.neighs[depth-1][mask]   # (N, 27)
+      neigh_p = neigh_p[:, self.lut_parent]  # (N, 8, 27)
+      child_p = child_p[neigh_p]  # (N, 8, 27)
+      invalid = child_p < 0       # (N, 8, 27)
+      neigh = child_p * 8 + self.lut_child
+      neigh[invalid] = -1
       self.neighs[depth] = neigh
-      return
-    
-    # construct other neighs
-    neigh_parent = self.neighs[depth-1]
-    
+
+  def construct_all_neigh(self):
+    r''' A convenient handler for constructing all neighbors.
+    '''
+
+    for depth in range(1, self.depth+1):
+      self.construct_neigh(depth)
+
+  def get_neigh(self, depth: int, kernel: str = '333'):
+    r''' Returns the neighborhoods given the depth and a kernel shape.
+
+    Args: 
+      depth (int): The octree depth with a value larger than 0 (:obj:`>0`).
+      kernel (str): The kernel shape from :obj:`333`, :obj:`311`, :obj:`131`,
+          :obj:`113`, :obj:`222`, :obj:`331`, :obj:`133`, and :obj:`313`.
+    '''
+
+    if kernel == '333':
+      return self.neighs[depth]
+    elif kernel in self.lut_kernel:
+      lut = self.lut_kernel[kernel]
+      return self.neighs[depth][:, lut]
+    else:
+      raise ValueError('Unsupported kernel {}'.format(kernel))
+
+  def meshgrid(self, min, max):
+    r''' Builds a mesh grid in :obj:`[min, max]` (:attr:`max` included).
+    '''
+
+    rng = torch.arange(min, max+1, dtype=torch.long, device=self.device)
+    grid = torch.meshgrid(rng, rng, rng, indexing='ij')
+    grid = torch.stack(grid, dim=-1).view(-1, 3)  # (27, 3)
+    return grid
