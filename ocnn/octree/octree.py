@@ -14,13 +14,15 @@ class Octree:
     depth (int): The octree depth.
     full_depth (int): The octree layers with a depth small than
         :attr:`full_depth` are forced to be full.
-    device (str): Choose from :obj:`cpu` and :obj:`gpu`. (default: :obj:`cpu`)
+    device (torch.device or str): Choose from :obj:`cpu` and :obj:`gpu`. 
+        (default: :obj:`cpu`)
 
   .. note::
     The point cloud must be in range :obj:`[-1, 1]`.
   '''
 
-  def __init__(self, depth: int, full_depth: int = 2, device: str = 'cpu', **kwargs):
+  def __init__(self, depth: int, full_depth: int = 2,
+               device: Union[torch.device, str] = 'cpu', **kwargs):
     self.depth = depth
     self.full_depth = full_depth
 
@@ -258,6 +260,30 @@ class Octree:
       return self.neighs[depth][:, lut]
     else:
       raise ValueError('Unsupported kernel {}'.format(kernel))
+
+  def to(self, device: Union[torch.device, str]):
+    r''' Moves the octree to a specified device. 
+
+    Args:
+      device (torch.device or str): The destination device.
+    '''
+
+    def to_device(prop):
+      for i in range(len(prop)):
+        if prop[i] is not None:
+          prop[i] = prop[i].to(device)
+
+    self.device = device
+    self.keys = to_device(self.keys)
+    self.children = to_device(self.children)
+    self.neighs = to_device(self.neighs)
+    self.features = to_device(self.features)
+    self.normals = to_device(self.normals)
+    self.points = to_device(self.points)
+
+    self.lut_parent = self.lut_parent.to(device)
+    self.lut_child = self.lut_child.to(device)
+    self.lut_kernel = self.lut_kernel.to(device)
 
   def meshgrid(self, min, max):
     r''' Builds a mesh grid in :obj:`[min, max]` (:attr:`max` included).
