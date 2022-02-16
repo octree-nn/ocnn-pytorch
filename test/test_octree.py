@@ -63,39 +63,63 @@ class TesOctree(unittest.TestCase):
     self.assertTrue((octree.normals[5] == normals).all())
     self.assertTrue((octree.features[5] == features).all())
 
+  def build_octree(self, data):
+    points, normals = data['points'], data['normals']
+    point_cloud = ocnn.octree.Points(
+        torch.from_numpy(points), torch.from_numpy(normals))
+
+    octree = ocnn.octree.Octree(
+        data['depth'].item(), full_depth=data['full_depth'].item())
+    octree.build_octree(point_cloud)
+    return octree
+
+  def check_octree(self, octree, data):
+    # check node numbers
+    self.assertTrue(
+        np.array_equal(octree.nnum.numpy(), data['nnum']))
+    self.assertTrue(
+        np.array_equal(octree.nnum_nempty.numpy(), data['nnum_nempty']))
+
+    # check key
+    self.assertTrue(
+        np.array_equal(torch.cat(octree.keys).numpy(), data['key']))
+    self.assertTrue(
+        np.array_equal(torch.cat(octree.children).numpy(), data['child']))
+
+    # check normals
+    normals = octree.normals[octree.depth].numpy()
+    self.assertTrue(
+        np.array_equal(normals, data['feature'][:, :3]))
+
   def test_octree_with_data(self):
     folder = os.path.dirname(__file__)
     data_folder = os.path.join(folder, 'data/octree')
     filenames = os.listdir(data_folder)
     for filename in filenames:
       data = np.load(os.path.join(data_folder, filename))
+      octree = self.build_octree(data)
+      self.check_octree(octree, data)
 
-      # point cloud
-      points, normals = data['points'], data['normals']
-      point_cloud = ocnn.octree.Points(
-          torch.from_numpy(points), torch.from_numpy(normals))
+  def test_merge_octree_with_data(self):
+    folder = os.path.dirname(__file__)
+    data_folder = os.path.join(folder, 'data/octree')
 
-      # octree
-      octree = ocnn.octree.Octree(
-          data['depth'].item(), full_depth=data['full_depth'].item())
-      octree.build_octree(point_cloud)
+    data1 = np.load(os.path.join(data_folder, 'test_004.npz'))
+    data2 = np.load(os.path.join(data_folder, 'test_005.npz'))
+    octree1 = self.build_octree(data1)
+    octree2 = self.build_octree(data2)
 
-      # check node numbers
-      self.assertTrue(
-          np.array_equal(octree.nnum.numpy(), data['nnum']))
-      self.assertTrue(
-          np.array_equal(octree.nnum_nempty.numpy(), data['nnum_nempty']))
+    octree = ocnn.octree.Octree(
+        data1['depth'].item(), full_depth=data1['full_depth'].item())
+    octree.merge_octrees([octree1, octree2])
 
-      # check key
-      self.assertTrue(
-          np.array_equal(torch.cat(octree.keys).numpy(), data['key']))
-      self.assertTrue(
-          np.array_equal(torch.cat(octree.children).numpy(), data['child']))
+    data = np.load(os.path.join(folder, 'data/batch_45.npz'))
+    self.check_octree(octree, data)
 
-      # check normals
-      normals = octree.normals[octree.depth].numpy()
-      self.assertTrue(
-          np.array_equal(normals, data['feature'][:, :3]))
+    # check neigh
+    octree.construct_all_neigh()
+    self.assertTrue(
+        np.array_equal(torch.cat(octree.neighs[1:], dim=0).numpy(), data['neigh']))
 
 
 if __name__ == "__main__":

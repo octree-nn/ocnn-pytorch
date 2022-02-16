@@ -169,7 +169,10 @@ class Octree:
         [octrees[i].nnum_nempty for i in range(self.batch_size)], dim=1)
     self.nnum = torch.sum(nnum, dim=1)
     self.nnum_nempty = torch.sum(nnum_nempty, dim=1)
-    nnum_cum = torch.cumsum(nnum_nempty, dim=1) - nnum_nempty[:, :1]
+
+    nnum_cum = torch.cumsum(nnum_nempty, dim=1)
+    pad = torch.zeros_like(octrees[0].nnum).unsqueeze(1)
+    nnum_cum = torch.cat([pad, nnum_cum], dim=1)
 
     # merge octre properties
     for d in range(self.depth+1):
@@ -177,7 +180,7 @@ class Octree:
       keys = [None] * self.batch_size
       for i in range(self.batch_size):
         key = octrees[i].keys[d] & ((1 << 48) - 1)  # clear the highest bits
-        keys[i] = key | d << 48
+        keys[i] = key | (i << 48)
       self.keys[d] = torch.cat(keys, dim=0)
 
       # children
@@ -225,7 +228,7 @@ class Octree:
       neigh = neigh + bs.unsqueeze(1) * nnum  # (N*27,) + (B, 1) -> (B, N*27)
 
       bound = 1 << depth
-      invalid = torch.logical_any((xyz < 0).any(1), (xyz >= bound).any(1))
+      invalid = torch.logical_or((xyz < 0).any(1), (xyz >= bound).any(1))
       neigh[:, invalid] = -1
       self.neighs[depth] = neigh.view(-1, 27)  # (B*N, 27)
 
@@ -238,7 +241,7 @@ class Octree:
       invalid = child_p < 0       # (N, 8, 27)
       neigh = child_p * 8 + self.lut_child
       neigh[invalid] = -1
-      self.neighs[depth] = neigh
+      self.neighs[depth] = neigh.view(-1, 27)
 
   def construct_all_neigh(self):
     r''' A convenient handler for constructing all neighbors.
