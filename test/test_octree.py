@@ -1,8 +1,7 @@
 import os
 import torch
-import torch.nn.functional as F
+import numpy as np
 import unittest
-import math
 
 import ocnn
 
@@ -32,11 +31,11 @@ class TesOctree(unittest.TestCase):
         torch.Tensor([0]),
         torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7]),
         torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 48,
-                     49, 50, 51, 52, 53, 54, 55, ]),
+                      49, 50, 51, 52, 53, 54, 55, ]),
         torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 384, 385,
-                     386, 387, 388, 389, 390, 391, ]),
+                      386, 387, 388, 389, 390, 391, ]),
         torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 3072, 3073,
-                     3074, 3075, 3076, 3077, 3078, 3079, ]),
+                      3074, 3075, 3076, 3077, 3078, 3079, ]),
         torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 24576, 24577,
                       24578, 24579, 24580, 24581, 24582, 24583]), ]
     for d in range(0, 6):
@@ -63,6 +62,40 @@ class TesOctree(unittest.TestCase):
     features = torch.Tensor([[1, -1], [2, -2], [3, -3]])
     self.assertTrue((octree.normals[5] == normals).all())
     self.assertTrue((octree.features[5] == features).all())
+
+  def test_octree_with_data(self):
+    folder = os.path.dirname(__file__)
+    data_folder = os.path.join(folder, 'data/octree')
+    filenames = os.listdir(data_folder)
+    for filename in filenames:
+      data = np.load(os.path.join(data_folder, filename))
+
+      # point cloud
+      points, normals = data['points'], data['normals']
+      point_cloud = ocnn.octree.Points(
+          torch.from_numpy(points), torch.from_numpy(normals))
+
+      # octree
+      octree = ocnn.octree.Octree(
+          data['depth'].item(), full_depth=data['full_depth'].item())
+      octree.build_octree(point_cloud)
+
+      # check node numbers
+      self.assertTrue(
+          np.array_equal(octree.nnum.numpy(), data['nnum']))
+      self.assertTrue(
+          np.array_equal(octree.nnum_nempty.numpy(), data['nnum_nempty']))
+
+      # check key
+      self.assertTrue(
+          np.array_equal(torch.cat(octree.keys).numpy(), data['key']))
+      self.assertTrue(
+          np.array_equal(torch.cat(octree.children).numpy(), data['child']))
+
+      # check normals
+      normals = octree.normals[octree.depth].numpy()
+      self.assertTrue(
+          np.array_equal(normals, data['feature'][:, :3]))
 
 
 if __name__ == "__main__":

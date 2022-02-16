@@ -131,14 +131,17 @@ class Octree:
     self.nnum_nempty[d] = node_key.numel()
 
     # average the signal for the last octree layer
-    points = scatter_add(point_cloud.points, idx, dim=0)
-    self.points[self.depth] = points / counts.unsqueeze(1)
+    d = self.depth
+    points = scatter_add(points, idx, dim=0)  # here points is rescaled in L84
+    self.points[d] = points / counts.unsqueeze(1)
     if point_cloud.normals is not None:
       normals = scatter_add(point_cloud.normals, idx, dim=0)
-      self.normals[self.depth] = F.normalize(normals)
+      self.normals[d] = F.normalize(normals)
     if point_cloud.features is not None:
       features = scatter_add(point_cloud.features, idx, dim=0)
-      self.features[self.depth] = features / counts.unsqueeze(1)
+      self.features[d] = features / counts.unsqueeze(1)
+
+    return idx
 
   def merge_octrees(self, octrees: List['Octree']):
     r''' Merges a list of octrees into one batch. 
@@ -261,6 +264,15 @@ class Octree:
     else:
       raise ValueError('Unsupported kernel {}'.format(kernel))
 
+  def to_points(self):
+    r''' Converts averaged points in the octree to a point cloud.
+    '''
+
+    d = self.depth
+    scale = 2 ** (1-d)
+    points = self.points[d] * scale - 1.0
+    return Points(points, self.normals[d], self.features[d])
+
   def to(self, device: Union[torch.device, str]):
     r''' Moves the octree to a specified device. 
 
@@ -270,7 +282,7 @@ class Octree:
 
     def to_device(prop):
       for i in range(len(prop)):
-        if prop[i] is not None:
+        if isinstance(prop[i], torch.Tensor):
           prop[i] = prop[i].to(device)
 
     self.device = device
@@ -283,7 +295,8 @@ class Octree:
 
     self.lut_parent = self.lut_parent.to(device)
     self.lut_child = self.lut_child.to(device)
-    self.lut_kernel = self.lut_kernel.to(device)
+    for key, val in self.lut_kernel.items():
+      self.lut_kernel[key] = val.to(device)
 
   def meshgrid(self, min, max):
     r''' Builds a mesh grid in :obj:`[min, max]` (:attr:`max` included).
