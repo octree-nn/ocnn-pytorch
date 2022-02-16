@@ -11,6 +11,7 @@ ocnn-pytorch is a pure-PyTorch-based implementation of O-CNN.
   :caption: Package Reference
 
   modules/octree
+  modules/nn
 
 Indices and Tables
 ==================

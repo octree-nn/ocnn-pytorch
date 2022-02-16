@@ -14,7 +14,7 @@ class Octree:
     depth (int): The octree depth.
     full_depth (int): The octree layers with a depth small than
         :attr:`full_depth` are forced to be full.
-    device (torch.device or str): Choose from :obj:`cpu` and :obj:`gpu`. 
+    device (torch.device or str): Choose from :obj:`cpu` and :obj:`gpu`.
         (default: :obj:`cpu`)
 
   .. note::
@@ -31,7 +31,7 @@ class Octree:
     self.reset()
 
   def reset(self):
-    r''' Resets the Octree status and constructs several lookup tables. 
+    r''' Resets the Octree status and constructs several lookup tables.
     '''
 
     # octree features in each octree layers
@@ -144,7 +144,7 @@ class Octree:
     return idx
 
   def merge_octrees(self, octrees: List['Octree']):
-    r''' Merges a list of octrees into one batch. 
+    r''' Merges a list of octrees into one batch.
 
     Args:
       octrees (List[Octree]): A list of octrees to merge.
@@ -210,7 +210,7 @@ class Octree:
   def construct_neigh(self, depth: int):
     r''' Constructs the :obj:`3x3x3` neighbors for each octree node.
 
-    Args: 
+    Args:
       depth (int): The octree depth with a value larger than 0 (:obj:`>0`).
     '''
 
@@ -250,20 +250,37 @@ class Octree:
     for depth in range(1, self.depth+1):
       self.construct_neigh(depth)
 
-  def get_neigh(self, depth: int, kernel: str = '333'):
+  def get_neigh(self, depth: int, kernel: str = '333', stride: int = 1,
+                nempty: bool = False):
     r''' Returns the neighborhoods given the depth and a kernel shape.
 
-    Args: 
+    Args:
       depth (int): The octree depth with a value larger than 0 (:obj:`>0`).
       kernel (str): The kernel shape from :obj:`333`, :obj:`311`, :obj:`131`,
           :obj:`113`, :obj:`222`, :obj:`331`, :obj:`133`, and :obj:`313`.
+      stride (int): The stride of neighborhoods (:obj:`1` or :obj:`2`). If the
+          stride is :obj:`2`, always returns the neighborhood of the first
+          siblings.
+      nempty (bool): If True, only returns the neighborhoods of the non-empty
+          octree nodes.
     '''
 
+    if stride == 1:
+      neigh = self.neighs[depth]
+    elif stride == 2:
+      neigh = self.neighs[depth][::8]
+    else:
+      raise ValueError('Unsupported stride {}'.format(stride))
+
+    if nempty and stride == 1:
+      mask = self.children[depth] >= 0
+      neigh = neigh[mask]
+
     if kernel == '333':
-      return self.neighs[depth]
+      return neigh
     elif kernel in self.lut_kernel:
       lut = self.lut_kernel[kernel]
-      return self.neighs[depth][:, lut]
+      return neigh[:, lut]
     else:
       raise ValueError('Unsupported kernel {}'.format(kernel))
 
@@ -277,7 +294,7 @@ class Octree:
     return Points(points, self.normals[d], self.features[d])
 
   def to(self, device: Union[torch.device, str]):
-    r''' Moves the octree to a specified device. 
+    r''' Moves the octree to a specified device.
 
     Args:
       device (torch.device or str): The destination device.
