@@ -25,10 +25,10 @@ class Octree:
                device: Union[torch.device, str] = 'cpu', **kwargs):
     self.depth = depth
     self.full_depth = full_depth
+    self.device = device
+    self.batch_size = 1
 
     self.reset()
-    self.batch_size = 1
-    self.device = device
 
   def reset(self):
     r''' Resets the Octree status and constructs several lookup tables. 
@@ -52,7 +52,7 @@ class Octree:
     center_grid = self.meshgrid(2, 3)    # (8, 3)
     displacement = self.meshgrid(-1, 1)  # (27, 3)
     neigh_grid = center_grid.unsqueeze(1) + displacement  # (8, 27, 3)
-    parent_grid = torch.true_div(neigh_grid, 2)
+    parent_grid = torch.div(neigh_grid, 2, rounding_mode='trunc')
     child_grid = neigh_grid % 2
     self.lut_parent = torch.sum(
         parent_grid * torch.tensor([9, 3, 1]), dim=2).to(self.device)
