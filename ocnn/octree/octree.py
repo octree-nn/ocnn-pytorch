@@ -268,13 +268,18 @@ class Octree:
     if stride == 1:
       neigh = self.neighs[depth]
     elif stride == 2:
-      neigh = self.neighs[depth][::8]
+      # clone neigh to avoid self.neigh[depth] being modified (such as in L282)
+      neigh = self.neighs[depth][::8].clone()
     else:
       raise ValueError('Unsupported stride {}'.format(stride))
 
-    if nempty and stride == 1:
-      mask = self.children[depth] >= 0
-      neigh = neigh[mask]
+    if nempty:
+      child = self.children[depth]
+      if stride == 1:
+        nempty_node = child >= 0
+        neigh = neigh[nempty_node]
+      valid = neigh >= 0
+      neigh[valid] = child[neigh[valid]].long()  # remap the index
 
     if kernel == '333':
       return neigh
