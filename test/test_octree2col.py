@@ -28,11 +28,16 @@ class TesOctree2Col(unittest.TestCase):
           kernel = '{}{}{}'.format(
               kernel_size[j][0], kernel_size[j][1], kernel_size[j][2])
           octree2col = ocnn.nn.Octree2Col(kernel, stride[i], e)
-          out = octree2col.forward(data_in[e], octree, depth)
-
-          gt = data['out_%d' % counter]
+          o2c = octree2col.forward(data_in[e], octree, depth)
+          gt = data['o2c_%d' % counter]
           self.assertTrue(
-              np.array_equal(out.numpy(), gt), 'counter: %d' % counter)
+              np.array_equal(o2c.numpy(), gt), 'counter: %d' % counter)
+
+          col2octree = ocnn.nn.Col2Octree(kernel, stride[i], e)
+          c2o = col2octree.forward(o2c, octree, depth)
+          gt = data['c2o_%d' % counter]
+          self.assertTrue(
+              np.array_equal(c2o.numpy(), gt), 'counter: %d' % counter)
 
           counter = counter + 1
 

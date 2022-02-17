@@ -1,7 +1,7 @@
 import torch
 import torch.nn
 
-from ocnn.octree import Octree
+from ocnn.octree import Octree, scatter_add
 
 
 class Octree2Col(torch.nn.Module):
@@ -11,8 +11,8 @@ class Octree2Col(torch.nn.Module):
     kernel_size (str): The kernel shape from :obj:`333`, :obj:`311`, :obj:`131`,
         :obj:`113`, :obj:`222`, :obj:`331`, :obj:`133`, and :obj:`313`.
     stride (int): The stride of neighborhoods (:obj:`1` or :obj:`2`). If the
-        stride is :obj:`2`, always returns the neighborhood of the first
-        siblings.
+        stride is :obj:`2`, it always returns the neighborhood of the first
+        siblings, and the number of elements is :obj:`octree.nnum[depth] / 8`.
     nempty (bool): If True, only returns the neighborhoods of the non-empty
         octree nodes.
     '''
@@ -46,3 +46,17 @@ class Octree2Col(torch.nn.Module):
 
     return 'kernel_size={}, stride={}, nempty={}'.format(
         self.kernel_size, self.stride, self.nempty)
+
+
+class Col2Octree(Octree2Col):
+  r''' Scatters the convolution features to an octree. Please refer to 
+  :class:`Octree2Col` for the usage of function parameters.
+  '''
+
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+
+    neigh = octree.get_neigh(depth, self.kernel_size, self.stride, self.nempty)
+    valid = neigh >= 0
+    dim_size = octree.nnum_nempty[depth] if self.nempty else octree.nnum[depth]
+    out = scatter_add(data[valid], neigh[valid], dim=0, dim_size=dim_size)
+    return out
