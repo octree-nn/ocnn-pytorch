@@ -4,6 +4,7 @@ import numpy as np
 import unittest
 
 import ocnn
+from .utils import get_octree, get_batch_octree
 
 
 class TesOctree(unittest.TestCase):
@@ -63,16 +64,6 @@ class TesOctree(unittest.TestCase):
     self.assertTrue((octree.normals[5] == normals).all())
     self.assertTrue((octree.features[5] == features).all())
 
-  def build_octree(self, data):
-    points, normals = data['points'], data['normals']
-    point_cloud = ocnn.octree.Points(
-        torch.from_numpy(points), torch.from_numpy(normals))
-
-    octree = ocnn.octree.Octree(
-        data['depth'].item(), full_depth=data['full_depth'].item())
-    octree.build_octree(point_cloud)
-    return octree
-
   def check_octree(self, octree, data):
     # check node numbers
     self.assertTrue(
@@ -92,34 +83,21 @@ class TesOctree(unittest.TestCase):
         np.array_equal(normals, data['feature'][:, :3]))
 
   def test_octree_with_data(self):
-    folder = os.path.dirname(__file__)
-    data_folder = os.path.join(folder, 'data/octree')
-    filenames = os.listdir(data_folder)
-    for filename in filenames:
-      data = np.load(os.path.join(data_folder, filename))
-      octree = self.build_octree(data)
+    for i in range(1, 6):
+      octree, data = get_octree(i, return_data=True)
       self.check_octree(octree, data)
 
   def test_merge_octree_with_data(self):
+
     folder = os.path.dirname(__file__)
-    data_folder = os.path.join(folder, 'data/octree')
-
-    data1 = np.load(os.path.join(data_folder, 'test_004.npz'))
-    data2 = np.load(os.path.join(data_folder, 'test_005.npz'))
-    octree1 = self.build_octree(data1)
-    octree2 = self.build_octree(data2)
-
-    octree = ocnn.octree.Octree(
-        data1['depth'].item(), full_depth=data1['full_depth'].item())
-    octree.merge_octrees([octree1, octree2])
-
     data = np.load(os.path.join(folder, 'data/batch_45.npz'))
+    octree = get_batch_octree()
     self.check_octree(octree, data)
 
     # check neigh
-    octree.construct_all_neigh()
     self.assertTrue(
         np.array_equal(torch.cat(octree.neighs[1:], dim=0).numpy(), data['neigh']))
+
 
 
 if __name__ == "__main__":
