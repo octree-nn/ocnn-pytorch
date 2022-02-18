@@ -41,7 +41,7 @@ class OctreeConv(torch.nn.Module):
         octree nodes.
 
   .. note::
-    There is no bias term in the convolution for simplicity.
+    There is no bias term in the convolution for simplicity. (TODO)
   '''
 
   def __init__(self, in_channels: int, out_channels: int,
@@ -78,7 +78,7 @@ class OctreeConv(torch.nn.Module):
     with torch.no_grad():
       return self.weights.uniform_(-a, a)
 
-  def is_conv_layer():
+  def is_conv_layer(self):
     r''' Returns :obj:`True` to indicate this is a convolution layer.
     '''
 
@@ -127,8 +127,9 @@ class OctreeDeconv(OctreeConv):
     Please refer to :meth:`OctreeConv.forward` for the meaning of the arguments.
     '''
 
-    if self.stride == 2 and not self.nempty:
-      data = octree_depad(data, octree, depth)
+    if self.stride == 2:
+      if not self.nempty:
+        data = octree_depad(data, octree, depth)
       depth = depth + 1
 
     col = torch.mm(data, self.weights.flatten(0, 1).t())
