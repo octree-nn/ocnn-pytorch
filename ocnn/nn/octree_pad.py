@@ -3,21 +3,22 @@ import torch
 from ocnn.octree import Octree
 
 
-def octree_pad(data: torch.Tensor, octree: Octree, depth: int):
-  r''' Pads zeros to make the number of elements of :attr:`data` equal to the
-  octree node number.
+def octree_pad(data: torch.Tensor, octree: Octree, depth: int, val: float = 0.0):
+  r''' Pads :attr:`val` to make the number of elements of :attr:`data` equal to
+  the octree node number.
 
   Args:
     data (torch.Tensor): The input tensor with its number of elements equal to the
         non-empty octree node number.
     octree (Octree): The corresponding octree.
     depth (int): The depth of current octree.
+    val (float): The padding value. (Default: :obj:`0.0`)
   '''
 
   child = octree.children[depth]
   mask = child >= 0
   size = (octree.nnum[depth], data.shape[1])  # (N, C)
-  out = torch.zeros(size, dtype=data.dtype, device=data.device)
+  out = torch.full(size, val, dtype=data.dtype, device=data.device)
   out[mask] = data
   return out
 

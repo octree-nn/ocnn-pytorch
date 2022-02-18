@@ -20,7 +20,7 @@ def octree_max_pool(data: torch.Tensor, octree: Octree, depth: int,
   '''
 
   if nempty:
-    data = octree_pad(data, octree, depth)
+    data = octree_pad(data, octree, depth, float('-inf'))
   data = data.view(-1, 8, data.shape[1])
   out, indices = data.max(dim=1)
   if not nempty:
