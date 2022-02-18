@@ -1,7 +1,7 @@
-from .octree2col import Octree2Col, Col2Octree
+from .octree2col import octree2col, col2octree
 
 __all__ = [
-    'Octree2Col', 'Col2Octree'
+    'octree2col', 'col2octree'
 ]
 
 classes = __all__

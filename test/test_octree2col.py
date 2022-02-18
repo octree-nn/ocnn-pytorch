@@ -4,7 +4,7 @@ import numpy as np
 import unittest
 
 import ocnn
-from .utils import get_octree, get_batch_octree
+from .utils import get_batch_octree
 
 
 class TesOctree2Col(unittest.TestCase):
@@ -27,14 +27,13 @@ class TesOctree2Col(unittest.TestCase):
         for e in [True, False]:
           kernel = '{}{}{}'.format(
               kernel_size[j][0], kernel_size[j][1], kernel_size[j][2])
-          octree2col = ocnn.nn.Octree2Col(kernel, stride[i], e)
-          o2c = octree2col.forward(data_in[e], octree, depth)
+          o2c = ocnn.nn.octree2col(
+              data_in[e], octree, depth, kernel, stride[i], e)
           gt = data['o2c_%d' % counter]
           self.assertTrue(
               np.array_equal(o2c.numpy(), gt), 'counter: %d' % counter)
 
-          col2octree = ocnn.nn.Col2Octree(kernel, stride[i], e)
-          c2o = col2octree.forward(o2c, octree, depth)
+          c2o = ocnn.nn.col2octree(o2c, octree, depth, kernel, stride[i], e)
           gt = data['c2o_%d' % counter]
           self.assertTrue(
               np.array_equal(c2o.numpy(), gt), 'counter: %d' % counter)
