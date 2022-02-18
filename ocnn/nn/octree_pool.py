@@ -42,9 +42,13 @@ def octree_max_unpool(data: torch.Tensor, indices: torch.Tensor, octree: Octree,
 
   if not nempty:
     data = octree_depad(data, octree, depth)
-  size = (octree.nnum[depth+1], data.shape[1])
-  out = torch.zeros(size, dtype=data.dtype, device=data.device)
-  out[indices] = data
+  num, channel = data.shape
+  out = torch.zeros(num, 8, channel, dtype=data.dtype, device=data.device)
+  i = torch.arange(num, dtype=indices.dtype, device=indices.device)
+  k = torch.arange(channel, dtype=indices.dtype, device=indices.device)
+  i, k = torch.meshgrid(i, k, indexing='ij')
+  out[i, indices, k] = data
+  out = out.view(-1, channel)
   if nempty:
     out = octree_depad(out, octree, depth+1)
   return out

@@ -64,6 +64,13 @@ class TesOctreeNN(unittest.TestCase):
 
           counter = counter + 1
 
+    # max pool
+    pool, idx = ocnn.nn.octree_max_pool(
+        data_in[0], octree, depth, return_indices=True)
+    self.assertTrue(np.array_equal(pool.numpy(), data['pool']))
+    upool = ocnn.nn.octree_max_unpool(pool, idx, octree, depth-1)
+    self.assertTrue(np.array_equal(upool.numpy(), data['upool']))
+
 
 if __name__ == "__main__":
   os.environ['CUDA_VISIBLE_DEVICES'] = '0'
