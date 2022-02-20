@@ -1,6 +1,7 @@
 import torch
+import torch.nn
 
-from ocnn.octree import Octree
+from ..octree import Octree
 from .octree_pad import octree_pad, octree_depad
 
 
@@ -72,3 +73,36 @@ def octree_global_pool(data: torch.Tensor, octree: Octree, depth: int):
   nnum = octree.nnum[depth]
   out = data.view(-1, nnum, data.shape[1])
   return out.mean(dim=1)
+
+
+class OctreeMaxPool(torch.nn.Module):
+  r''' Performs octree max pooling.
+
+  Please refer to :func:`octree_max_pool` for details.
+  '''
+
+  def __init__(self, nempty: bool = False, return_indices: bool = False):
+    super().__init__()
+    self.nempty = nempty
+    self.return_indices = return_indices
+
+  def forward(self, data, octree, depth):
+    r''''''
+
+    return octree_max_pool(data, octree, depth, self.nempty, self.return_indices)
+
+
+class OctreeMaxUnpool(torch.nn.Module):
+  r''' Performs octree max unpooling.
+
+  Please refer to :func:`octree_max_unpool` for details.
+  '''
+
+  def __init__(self, nempty: bool = False):
+    super().__init__()
+    self.nempty = nempty
+
+  def forward(self, data, indices, octree, depth):
+    r''''''
+
+    return octree_max_unpool(data, indices, octree, depth, self.nempty)

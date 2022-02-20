@@ -1,7 +1,7 @@
 import torch
 import torch.nn
 
-from ocnn.octree import Octree, scatter_add
+from ..octree import Octree, scatter_add
 
 
 def octree2col(data: torch.Tensor, octree: Octree, depth: int,

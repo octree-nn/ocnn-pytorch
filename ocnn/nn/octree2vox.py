@@ -1,7 +1,7 @@
 import torch
 
-from ocnn.octree import Octree, key2xyz
-from ocnn.nn import octree_depad
+from ..octree import Octree, key2xyz
+from .octree_pad import octree_depad
 
 
 def octree2voxel(data: torch.Tensor, octree: Octree, depth: int,
