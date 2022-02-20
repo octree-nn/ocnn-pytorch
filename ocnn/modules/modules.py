@@ -157,6 +157,8 @@ class FcBnRelu(torch.nn.Module):
     self.relu = torch.nn.ReLU(inplace=True)
 
   def forward(self, data):
+    r''''''
+
     out = self.flatten(data)
     out = self.fc(out)
     out = self.bn(out)

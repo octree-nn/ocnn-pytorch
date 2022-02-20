@@ -7,6 +7,18 @@ from ocnn.modules import Conv1x1BnRelu, OctreeConvBnRelu, Conv1x1Bn, OctreeConvB
 
 
 class OctreeResBlock(torch.nn.Module):
+  r''' Octree-based ResNet block in a bottleneck style. The block is composed of
+  a series of :obj:`Conv1x1`, :obj:`Conv3x3`, and :obj:`Conv1x1`.
+
+  Args:
+    in_channels (int): Number of input channels.
+    out_channels (int): Number of output channels.
+    stride (int): The stride of the block (:obj:`1` or :obj:`2`).
+    bottleneck (int): The input and output channels of the :obj:`Conv3x3` is
+        equal to the input channel divided by :attr:`bottleneck`.
+    nempty (bool): If True, only performs the convolution on non-empty
+        octree nodes.
+  '''
 
   def __init__(self, in_channels: int, out_channels: int, stride: int = 1,
                bottleneck: int = 4, nempty: bool = False):
@@ -27,6 +39,8 @@ class OctreeResBlock(torch.nn.Module):
     self.relu = torch.nn.ReLU(inplace=True)
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''''''
+
     if self.stride == 2:
       data = self.max_pool(data, octree, depth)
       depth = depth - 1
@@ -40,6 +54,11 @@ class OctreeResBlock(torch.nn.Module):
 
 
 class OctreeResBlock2(torch.nn.Module):
+  r''' Basic Octree-based ResNet block. The block is composed of
+  a series of :obj:`Conv3x3` and :obj:`Conv3x3`.
+
+  Refer to :class:`OctreeResBlock` for the details of arguments.
+  '''
 
   def __init__(self, in_channels, out_channels, stride=1, bottleneck=1,
                nempty=False):
@@ -58,6 +77,8 @@ class OctreeResBlock2(torch.nn.Module):
     self.relu = torch.nn.ReLU(inplace=True)
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''''''
+
     if self.stride == 2:
       data = self.maxpool(data, octree, depth)
       depth = depth - 1
@@ -70,6 +91,8 @@ class OctreeResBlock2(torch.nn.Module):
 
 
 class OctreeResBlocks(torch.nn.Module):
+  r''' A sequence of :attr:`resblk_num` ResNet blocks.
+  '''
 
   def __init__(self, in_channels, out_channels, resblk_num, bottleneck=4,
                nempty=False, resblk=OctreeResBlock, use_checkpoint=False):
@@ -83,6 +106,8 @@ class OctreeResBlocks(torch.nn.Module):
          for i in range(self.resblk_num)])
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''''''
+
     for i in range(self.resblk_num):
       if self.use_checkpoint:
         data = torch.utils.checkpoint.checkpoint(
