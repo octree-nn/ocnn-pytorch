@@ -289,6 +289,31 @@ class Octree:
     else:
       raise ValueError('Unsupported kernel {}'.format(kernel))
 
+  def get_input_feature(self):
+    r''' Gets the initial input features.
+    '''
+
+    # normals
+    features = list()
+    depth = self.depth
+    has_normal = self.normals[depth] is not None
+    if has_normal:
+      features.append(self.normals[depth])
+
+    # local points
+    points = self.points[depth].frac() - 0.5
+    if has_normal:
+      dis = torch.sum(points * self.normals[depth], dim=1, keepdim=True)
+      features.append(dis)
+    else:
+      features.append(points)
+
+    # features
+    if self.features[depth] is not None:
+      features.append(self.features[depth])
+
+    return torch.cat(features, dim=0)
+
   def to_points(self):
     r''' Converts averaged points in the octree to a point cloud.
     '''
