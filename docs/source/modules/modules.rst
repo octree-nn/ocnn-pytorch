@@ -1,15 +1,15 @@
-ocnn.nn
+ocnn.modules
 =================
 
-.. currentmodule:: ocnn.nn
+.. currentmodule:: ocnn.modules
 
 .. autosummary::
   :nosignatures:
-  {% for cls in ocnn.nn.classes %}
+  {% for cls in ocnn.modules.classes %}
     {{ cls }}
   {% endfor %}
 
-.. automodule:: ocnn.nn
+.. automodule:: ocnn.modules
   :members:
   :undoc-members:
   :exclude-members: training, extra_repr
