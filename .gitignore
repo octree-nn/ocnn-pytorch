@@ -5,3 +5,4 @@ docs/source/generated
 ocnn.egg-info
 dist
 *.xyz
+data
