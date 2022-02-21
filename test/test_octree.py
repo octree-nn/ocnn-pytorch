@@ -80,7 +80,7 @@ class TesOctree(unittest.TestCase):
     # check normals
     normals = octree.normals[octree.depth].numpy()
     self.assertTrue(
-        np.array_equal(normals, data['feature'][:, :3]))
+        np.allclose(normals, data['feature'][:, :3]))
 
   def test_octree_with_data(self):
     for i in range(1, 6):

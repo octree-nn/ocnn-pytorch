@@ -41,8 +41,8 @@ class TestPoints(unittest.TestCase):
     normals = point_cloud.normals.clone()
     points = point_cloud.points.clone()
     point_cloud.scale(factor)
-    self.assertTrue((point_cloud.normals == F.normalize(normals/factor)).all() &
-                    (point_cloud.points == points * factor).all())
+    self.assertTrue(torch.allclose(point_cloud.normals, F.normalize(normals/factor)) &
+                    torch.equal(point_cloud.points, points * factor))
 
   def test_rotation(self):
     point_cloud = self.init_points()
