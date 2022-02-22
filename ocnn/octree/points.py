@@ -125,16 +125,18 @@ class Points:
     bbmax = self.points.max(dim=0)
     return bbmin[0], bbmax[0]
 
-  def normalize(self, bbmin: torch.Tensor, bbmax: torch.Tensor):
-    r''' Normalizes the point cloud to :obj:`[-1, 1]`.
+  def normalize(self, bbmin: torch.Tensor, bbmax: torch.Tensor, scale: float = 1.0):
+    r''' Normalizes the point cloud to :obj:`[-scale, scale]`.
 
     Args:
       bbmin (torch.Tensor): The minimum coordinates of the bounding box.
       bbmax (torch.Tensor): The maximum coordinates of the bounding box.
+      scale (float): The scale factor
     '''
 
+    center = (bbmin + bbmax) * 0.5
     box_size = (bbmax - bbmin).max() + 1.0e-6
-    self.points = (self.points - bbmin) * (2.0 / box_size) - 1.0
+    self.points = (self.points - center) * (2.0 * scale / box_size)
 
   def to(self, device: Union[torch.device, str]):
     r''' Moves the Points to a specified device. 
