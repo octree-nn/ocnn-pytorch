@@ -142,14 +142,34 @@ class Points:
       device (torch.device or str): The destination device.
     '''
 
-    self.device = device
-    self.points = self.points.to(device)
+    if isinstance(device, str):
+      device = torch.device(device)
+
+    #  If on the save device, directly retrun self
+    if self.device == device:
+      return self
+
+    # Construct a new Points on the specified device
+    points = Points(torch.zeros(1, 3))
+    points.device = device
+    points.points = self.points.to(device)
     if self.normals is not None:
-      self.normals = self.normals.to(device)
+      points.normals = self.normals.to(device)
     if self.features is not None:
-      self.features = self.features.to(device)
+      points.features = self.features.to(device)
     if self.labels is not None:
-      self.labels = self.labels.to(device)
+      points.labels = self.labels.to(device)
+    return points
+
+  def cuda(self):
+    r''' Moves the Points to the GPU. '''
+
+    return self.to('cuda')
+
+  def cpu(self):
+    r''' Moves the Points to the CPU. '''
+
+    return self.to('cpu')
 
   def save(self, filename: str):
     r''' Save the Points into npz or xyz files.
