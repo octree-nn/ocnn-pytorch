@@ -69,9 +69,11 @@ def xyz2key(x: torch.Tensor, y: torch.Tensor, z: torch.Tensor,
   EX, EY, EZ = _key_lut.encode_lut(x.device)
   x, y, z = x.long(), y.long(), z.long()
 
-  key = EX[x & 255] | EY[y & 255] | EZ[z & 255]
+  mask = 255 if depth > 8 else (1 << depth) - 1
+  key = EX[x & mask] | EY[y & mask] | EZ[z & mask]
   if depth > 8:
-    key16 = EX[x >> 8 & 255] | EY[y >> 8 & 255] | EZ[z >> 8 & 255]
+    mask = (1 << (depth-8)) - 1
+    key16 = EX[(x >> 8) & mask] | EY[(y >> 8) & mask] | EZ[(z >> 8) & mask]
     key = key16 << 24 | key
 
   if b is not None:
