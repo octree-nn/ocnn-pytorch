@@ -6,3 +6,4 @@ ocnn.egg-info
 dist
 *.xyz
 data
+logs

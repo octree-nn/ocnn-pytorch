@@ -1,0 +1,60 @@
+SOLVER:
+  gpu: 0,
+  run: train
+  type: sgd
+
+  logdir: logs/m40/m40
+  max_epoch: 300
+  test_every_epoch: 5
+
+  # lr: 0.001           # default value of adamw
+  # weight_decay: 0.01  # default value of adamw
+  step_size: (120,180,240)
+  ckpt_num: 20
+
+DATA:
+  train:
+    # octree building
+    depth: 5
+    full_depth: 2
+
+    # data augmentations
+    distort: True
+    angle: (0, 0, 5)      # small rotation along z axis
+    interval: (1, 1, 1)
+    scale: 0.25
+    jitter: 0.125
+
+    # data loading
+    location: data/ModelNet40/ModelNet40.points.10k
+    filelist: data/ModelNet40/filelist/m40_train.txt
+    batch_size: 32
+    shuffle: True
+    # num_workers: 0
+
+  test:
+    # octree building
+    depth: 5
+    full_depth: 2
+
+    # data augmentations
+    distort: False
+    angle: (0, 0, 5)      # small rotation along z axis
+    interval: (1, 1, 1)
+    scale: 0.25
+    jitter: 0.125
+
+    # data loading
+    location: data/ModelNet40/ModelNet40.points.10k
+    filelist: data/ModelNet40/filelist/m40_test.txt
+    batch_size: 32
+    shuffle: False
+    # num_workers: 0
+
+MODEL:
+  name: lenet
+  channel: 4
+  nout: 40
+
+LOSS:
+  num_class: 40
