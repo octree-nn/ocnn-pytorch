@@ -36,13 +36,17 @@ class Points:
           :obj:`z`. (default: :obj:`x`)
     '''
 
-    if self.normals is None: return
-    axis_map = {'x': 0, 'y': 1, 'z': 2}
-    idx = axis_map[axis]
+    if self.normals is None:
+      return
 
-    flags = self.normals[:, idx] > 0
-    flags = flags.float() * 2.0 - 1.0  # [0, 1] -> [-1, 1]
-    self.normals = self.normals * flags.unsqueeze(1)
+    axis_map = {'x': 0, 'y': 1, 'z': 2, 'xyz': 3}
+    idx = axis_map[axis]
+    if idx < 3:
+      flags = self.normals[:, idx] > 0
+      flags = flags.float() * 2.0 - 1.0  # [0, 1] -> [-1, 1]
+      self.normals = self.normals * flags.unsqueeze(1)
+    else:
+      self.normals.abs_()
 
   def scale(self, factor: torch.Tensor):
     r''' Rescales the point cloud. 
