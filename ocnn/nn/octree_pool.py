@@ -86,7 +86,7 @@ class OctreeMaxPool(torch.nn.Module):
     self.nempty = nempty
     self.return_indices = return_indices
 
-  def forward(self, data, octree, depth):
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
     r''''''
 
     return octree_max_pool(data, octree, depth, self.nempty, self.return_indices)
@@ -102,7 +102,8 @@ class OctreeMaxUnpool(torch.nn.Module):
     super().__init__()
     self.nempty = nempty
 
-  def forward(self, data, indices, octree, depth):
+  def forward(self, data: torch.Tensor, indices: torch.Tensor, octree: Octree,
+              depth: int):
     r''''''
 
     return octree_max_unpool(data, indices, octree, depth, self.nempty)

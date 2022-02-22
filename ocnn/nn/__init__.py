@@ -1,4 +1,4 @@
-from .octree2vox import octree2voxel
+from .octree2vox import octree2voxel, Octree2Voxel
 from .octree2col import octree2col, col2octree
 from .octree_pad import octree_pad, octree_depad
 from .octree_pool import (octree_max_pool, OctreeMaxPool,
@@ -13,6 +13,7 @@ __all__ = [
     'octree_pad', 'octree_depad',
     'octree_max_pool', 'octree_max_unpool', 
     'octree_global_pool',
+    'Octree2Voxel',
     'OctreeMaxPool', 'OctreeMaxUnpool',
     'OctreeConv', 'OctreeDeconv',
 ]

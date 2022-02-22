@@ -28,3 +28,19 @@ def octree2voxel(data: torch.Tensor, octree: Octree, depth: int,
   vox = torch.zeros(size, dtype=data.dtype, device=data.device)
   vox[b, x, y, z] = data
   return vox
+
+
+class Octree2Voxel(torch.nn.Module):
+  r''' Converts the input feature to full-voxel-based representation
+
+  Please refer to :func:`octree2voxel` for details.
+  '''
+
+  def __init__(self, nempty: bool = False):
+    super().__init__()
+    self.nempty = nempty
+
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''''''
+
+    return octree2voxel(data, octree, depth, self.nempty)

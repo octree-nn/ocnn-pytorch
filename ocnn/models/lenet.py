@@ -20,6 +20,7 @@ class LeNet(torch.nn.Module):
          for i in range(stages)])
     self.pools = torch.nn.ModuleList(
         [ocnn.nn.OctreeMaxPool(nempty) for i in range(stages)])
+    self.octree2voxel = ocnn.nn.Octree2Voxel(self.nempty)
     self.header = torch.nn.Sequential(
         torch.nn.Dropout(p=0.5),                     # drop1
         ocnn.modules.FcBnRelu(64 * 64, 128),         # fc1
@@ -39,6 +40,6 @@ class LeNet(torch.nn.Module):
       d = depth - i
       data = self.convs[i](data, octree, d)
       data = self.pools[i](data, octree, d)
-    data = ocnn.nn.octree2voxel(data, octree, depth-self.stages, self.nempty)
+    data = self.octree2voxel(data, octree, depth-self.stages)
     data = self.header(data)
     return data
