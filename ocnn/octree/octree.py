@@ -249,7 +249,7 @@ class Octree:
     if self.features[depth] is not None:
       features.append(self.features[depth])
 
-    return torch.cat(features, dim=0)
+    return torch.cat(features, dim=1)
 
   def to_points(self):
     r''' Converts averaged points in the octree to a point cloud.
@@ -257,6 +257,7 @@ class Octree:
 
     d = self.depth
     scale = 2 ** (1-d)
+    # the average points are in range [0, 2^d]
     points = self.points[d] * scale - 1.0
     return Points(points, self.normals[d], self.features[d])
 
@@ -267,23 +268,37 @@ class Octree:
       device (torch.device or str): The destination device.
     '''
 
-    def to_device(prop):
-      for i in range(len(prop)):
-        if isinstance(prop[i], torch.Tensor):
-          prop[i] = prop[i].to(device)
+    if isinstance(device, str):
+      device = torch.device(device)
 
-    self.device = device
-    self.keys = to_device(self.keys)
-    self.children = to_device(self.children)
-    self.neighs = to_device(self.neighs)
-    self.features = to_device(self.features)
-    self.normals = to_device(self.normals)
-    self.points = to_device(self.points)
+    #  If on the save device, directly retrun self
+    if self.device == device:
+      return self
 
-    self.lut_parent = self.lut_parent.to(device)
-    self.lut_child = self.lut_child.to(device)
-    for key, val in self.lut_kernel.items():
-      self.lut_kernel[key] = val.to(device)
+    def list_to_device(prop):
+      return [p.to(device) if isinstance(p, torch.Tensor) else None for p in prop]
+
+    # Construct a new Octree on the specified device
+    octree = Octree(self.depth, self.full_depth, self.batch_size, self.device)
+    octree.keys = list_to_device(self.keys)
+    octree.children = list_to_device(self.children)
+    octree.neighs = list_to_device(self.neighs)
+    octree.features = list_to_device(self.features)
+    octree.normals = list_to_device(self.normals)
+    octree.points = list_to_device(self.points)
+    octree.nnum = self.nnum.clone()  # TODO: whether to move nnum to the self.device?
+    octree.nnum_nempty = self.nnum_nempty.clone()
+    return octree
+
+  def cuda(self):
+    r''' Moves the octree to the GPU. '''
+
+    return self.to('cuda')
+
+  def cpu(self):
+    r''' Moves the octree to the CPU. '''
+
+    return self.to('cpu')
 
   def meshgrid(self, min, max):
     r''' Builds a mesh grid in :obj:`[min, max]` (:attr:`max` included).
