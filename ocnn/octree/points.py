@@ -94,16 +94,17 @@ class Points:
     dis = dis.to(self.device)
     self.points = self.points + dis
 
-  def clip(self, min: float = -1.0, max: float = 1.0):
-    r''' Clips the point cloud to :obj:`[min, max]` and returns the mask.
+  def clip(self, min: float = -1.0, max: float = 1.0, esp: float = 0.01):
+    r''' Clips the point cloud to :obj:`[min+esp, max-esp]` and returns the mask.
 
     Args:
       min (float): The minimum value to clip.
       max (float): The maximum value to clip.
+      esp (float): The margin.
     '''
 
-    mask_min = torch.all(self.points > min, dim=1)
-    mask_max = torch.all(self.points < max, dim=1)
+    mask_min = torch.all(self.points > min + esp, dim=1)
+    mask_max = torch.all(self.points < max - esp, dim=1)
     mask = torch.logical_and(mask_min, mask_max)
 
     self.points = self.points[mask]
