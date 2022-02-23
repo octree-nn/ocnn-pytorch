@@ -15,8 +15,7 @@ class TransformModelNet:
   def __call__(self, points: Points, idx: int):
     # Normalize the points into one unit sphere in [-1, 1]
     bbmin, bbmax = points.bbox()
-    points.normalize(bbmin, bbmax)
-    points.orient_normal('z')
+    points.normalize(bbmin, bbmax, scale=1.0)
 
     # Apply the general transformations provided by ocnn.
     # The augmentations including rotation, scaling, and jittering.
@@ -26,8 +25,12 @@ class TransformModelNet:
       points.scale(rng_scale)
       points.translate(rng_jitter)
 
+    # Orient normals since the original meshes contains flipped triangles
+    points.orient_normal('xyz')
+    # !!! Clip to [-1, 1] before octree building
+    points.clip(min=-1, max=1)
+
     # Convert the points to an octree
-    points.clip(min=-1, max=1)  # clip to [-1, 1] before octree building
     octree = Octree(self.flags.depth, self.flags.full_depth)
     octree.build_octree(points)
 
