@@ -9,11 +9,12 @@ from datasets import get_modelnet40_dataset
 class ClsSolver(Solver):
 
   def get_model(self, flags):
+    stages = flags.depth - 2
     if flags.name.lower() == 'lenet':
-      model = ocnn.models.LeNet(flags.channel, flags.nout, stages=3)
-    # elif flags.name.lower() == 'resnet':
-    #   model = ocnn.ResNet(flags.depth, flags.channel, flags.nout,
-    #                       flags.resblock_num)
+      model = ocnn.models.LeNet(flags.channel, flags.nout, stages=stages)
+    elif flags.name.lower() == 'resnet':
+      model = ocnn.models.ResNet(flags.channel, flags.nout, stages=stages,
+                                 resblock_num=flags.resblock_num)
     else:
       raise ValueError
     return model
