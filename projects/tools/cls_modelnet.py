@@ -125,8 +125,7 @@ def convert_mesh_to_points():
 
     # save to disk
     filename_ply = os.path.join(ply_folder, filename[:-3] + 'ply')
-    point_cloud = np.concatenate((points, normals), axis=1)
-    utils.save_points_to_ply(point_cloud, filename_ply)
+    utils.save_points_to_ply(filename_ply, points, normals)
     print('Save:', filename_ply)
 
 

@@ -1,28 +1,33 @@
 import os
 import numpy as np
+from typing import Optional
 from plyfile import PlyData, PlyElement
 
 
-def save_points_to_ply(point_cloud, filename):
+def save_points_to_ply(filename: str, points: np.ndarray,
+                       normals: Optional[np.ndarray] = None,
+                       colors: Optional[np.ndarray] = None,
+                       labels: Optional[np.ndarray] = None,
+                       text: bool = False):
 
-  ncols = point_cloud.shape[1]
-  py_types = (float, float, float, float, float, float,
-              int, int, int, int)[:ncols]
-  npy_types = [('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
-               ('nx', 'f4'), ('ny', 'f4'), ('nz', 'f4'),
-               ('red', 'u1'), ('green', 'u1'), ('blue', 'u1'),
-               ('label', 'u1')][:ncols]
+  point_cloud = [points]
+  point_cloud_types = [('x', 'f4'), ('y', 'f4'), ('z', 'f4')]
+  if normals is not None:
+    point_cloud.append(normals)
+    point_cloud_types += [('nx', 'f4'), ('ny', 'f4'), ('nz', 'f4')]
+  if colors is not None:
+    point_cloud.append(colors)
+    point_cloud_types += [('red', 'u1'), ('green', 'u1'), ('blue', 'u1')]
+  if labels is not None:
+    point_cloud.append(labels)
+    point_cloud_types += [('label', 'u1')]
+  point_cloud = np.concatenate(point_cloud, axis=1)
 
-  # format into NumPy structured array
-  vertices = []
-  for row_idx in range(point_cloud.shape[0]):
-    point = point_cloud[row_idx]
-    vertices.append(tuple(dtype(val) for dtype, val in zip(py_types, point)))
-  structured_array = np.array(vertices, dtype=npy_types)
+  vertices = [tuple(p) for p in point_cloud]
+  structured_array = np.array(vertices, dtype=point_cloud_types)
   el = PlyElement.describe(structured_array, 'vertex')
 
-  # write ply
   folder = os.path.dirname(filename)
   if not os.path.exists(folder):
     os.makedirs(folder)
-  PlyData([el]).write(filename)
+  PlyData([el], text).write(filename)
