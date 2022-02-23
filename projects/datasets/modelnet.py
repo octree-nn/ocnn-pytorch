@@ -25,9 +25,9 @@ class TransformModelNet:
       points.rotate(rng_angle)
       points.scale(rng_scale)
       points.translate(rng_jitter)
-      points.clip(min=-1, max=1)
 
     # Convert the points to an octree
+    points.clip(min=-1, max=1)  # clip to [-1, 1] before octree building
     octree = Octree(self.flags.depth, self.flags.full_depth)
     octree.build_octree(points)
 

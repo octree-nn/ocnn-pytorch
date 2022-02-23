@@ -159,6 +159,7 @@ class Points:
     # Construct a new Points on the specified device
     points = Points(torch.zeros(1, 3))
     points.device = device
+    points.npt = self.npt
     points.points = self.points.to(device)
     if self.normals is not None:
       points.normals = self.normals.to(device)
