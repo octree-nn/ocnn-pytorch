@@ -14,8 +14,10 @@ class ResNet(torch.nn.Module):
     self.resblk_num = resblock_num
     self.stages = stages
     self.nempty = nempty
-    channels = [2 ** max(i+8-stages, 2) for i in range(stages+1)]
+    channels = [2 ** max(i+9-stages, 2) for i in range(stages)]
+    channels = [channels[0]] + channels
 
+    self.input_feature = ocnn.modules.InputFeature(in_channels, nempty)
     self.conv1 = ocnn.modules.OctreeConvBnRelu(
         in_channels, channels[0], nempty=nempty)
     self.resblocks = torch.nn.ModuleList([
@@ -30,10 +32,7 @@ class ResNet(torch.nn.Module):
     r''''''
 
     depth = octree.depth
-    data = octree.get_input_feature()
-    if not self.nempty:
-      data = ocnn.nn.octree_pad(data, octree, depth)
-    assert data.size(1) == self.in_channels
+    data = self.input_feature(octree)
 
     data = self.conv1(data, octree, depth)
     for i in range(self.stages):

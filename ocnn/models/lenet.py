@@ -15,6 +15,7 @@ class LeNet(torch.nn.Module):
     self.nempty = nempty
     channels = [in_channels] + [2 ** max(i+7-stages, 2) for i in range(stages)]
 
+    self.input_feature = ocnn.modules.InputFeature(in_channels, nempty)
     self.convs = torch.nn.ModuleList(
         [ocnn.modules.OctreeConvBnRelu(channels[i], channels[i+1], nempty=nempty)
          for i in range(stages)])
@@ -31,10 +32,7 @@ class LeNet(torch.nn.Module):
     r''''''
 
     depth = octree.depth
-    data = octree.get_input_feature()
-    if not self.nempty:
-      data = ocnn.nn.octree_pad(data, octree, depth)
-    assert data.size(1) == self.in_channels
+    data = self.input_feature(octree)
 
     for i in range(self.stages):
       d = depth - i

@@ -2,6 +2,7 @@ import torch
 import torch.utils.checkpoint
 from typing import List
 
+import ocnn
 from ocnn.nn import OctreeConv, OctreeDeconv
 from ocnn.octree import Octree
 
@@ -164,3 +165,26 @@ class FcBnRelu(torch.nn.Module):
     out = self.bn(out)
     out = self.relu(out)
     return out
+
+
+class InputFeature(torch.nn.Module):
+  r''' Returns the initial input feature stored in octree.
+
+  Args:
+    channels (int): Number of input channels.
+    nempty (bool): If false, gets the features of all octree nodes. 
+  '''
+
+  def __init__(self, channels: int, nempty: bool = False):
+    super().__init__()
+    self.channels = channels
+    self.nempty = nempty
+
+  def forward(self, octree: Octree):
+    r''''''
+
+    data = octree.get_input_feature()
+    data = data[:, :self.channels]
+    if not self.nempty:
+      data = ocnn.nn.octree_pad(data, octree, octree.depth)
+    return data
