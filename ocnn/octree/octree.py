@@ -187,6 +187,23 @@ class Octree:
     for depth in range(1, self.depth+1):
       self.construct_neigh(depth)
 
+  def search_key(self, query: torch.Tensor, depth: int, nempty: bool = False):
+
+    key = self.keys[depth]
+    idx = torch.bucketize(query, key)
+
+    valid = idx < key.shape[0]
+    found = key[idx[valid]] == query[valid]
+    valid[valid] = found
+    idx[valid.logical_not()] = -1
+
+    if nempty:
+      child = self.children[depth]
+      mask = idx >= 0
+      idx[mask] = child[idx[mask]]
+
+    return idx
+
   def get_neigh(self, depth: int, kernel: str = '333', stride: int = 1,
                 nempty: bool = False):
     r''' Returns the neighborhoods given the depth and a kernel shape.
