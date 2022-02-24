@@ -39,6 +39,7 @@ dis = [0, 4, 6, 8, 12, 16, 19, 22, 24, 28, 30, 36, 38, 41, 44, 47]
 def download_shapenet_segmentation():
 
   # download via wget
+  print('-> Download the dataset')
   if not os.path.exists(root_folder):
     os.makedirs(root_folder)
   url = 'https://shapenet.cs.stanford.edu/media/' + zip_name + '.zip'
@@ -52,7 +53,7 @@ def download_shapenet_segmentation():
 
 def txt_to_ply():
 
-  print('Convert txt files to ply files ...')
+  print('-> Convert txt files to ply files')
   for i, c in enumerate(categories):
     src_folder = os.path.join(txt_folder, c)
     des_folder = os.path.join(ply_folder, c)
@@ -76,7 +77,7 @@ def txt_to_ply():
 
 def generate_filelist():
 
-  print('Generate filelists ...')
+  print('-> Generate filelists')
   list_folder = os.path.join(txt_folder, 'train_test_split')
   train_list_name = os.path.join(list_folder, 'shuffled_train_file_list.json')
   val_list_name = os.path.join(list_folder, 'shuffled_val_file_list.json')
