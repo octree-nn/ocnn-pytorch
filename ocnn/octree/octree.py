@@ -188,6 +188,16 @@ class Octree:
       self.construct_neigh(depth)
 
   def search_key(self, query: torch.Tensor, depth: int, nempty: bool = False):
+    r''' Searches the octree nodes given the query points.
+
+    Args:
+      query (torch.Tensor): The query points with shape :obj:`(N, 4)`, where the
+          first 3 channels are :obj:`x`, :obj:`y`, and :obj:`z`, and the last 
+          channel is the batch index. Note that the coordinates must be in range
+          :obj:`[0, 2^depth)`.
+      depth (int): The depth of the octree layer.
+      nemtpy (bool): If true, only searches the non-empty octree nodes.
+    '''
 
     key = self.keys[depth]
     idx = torch.bucketize(query, key)
