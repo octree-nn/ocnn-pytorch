@@ -194,13 +194,13 @@ class Octree:
 
     valid = idx < key.shape[0]
     found = key[idx[valid]] == query[valid]
-    valid[valid] = found
+    valid[valid.clone()] = found
     idx[valid.logical_not()] = -1
 
     if nempty:
       child = self.children[depth]
       mask = idx >= 0
-      idx[mask] = child[idx[mask]]
+      idx[mask] = child[idx[mask]].long()
 
     return idx
 

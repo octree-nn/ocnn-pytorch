@@ -98,6 +98,20 @@ class TesOctree(unittest.TestCase):
     self.assertTrue(
         np.array_equal(torch.cat(octree.neighs[1:], dim=0).numpy(), data['neigh']))
 
+  def test_search_key(self):
+
+    folder = os.path.dirname(__file__)
+    data = np.load(os.path.join(folder, 'data/search_key.npz'))
+    octree = get_batch_octree()
+
+    depth = 5
+    xyzb = torch.from_numpy(data['xyzb'])
+    key = ocnn.octree.xyz2key(xyzb[:, 0], xyzb[:, 1], xyzb[:, 2], xyzb[:, 3], depth)
+    idx = octree.search_key(key, depth, nempty=False)
+    idx_ne = octree.search_key(key, depth, nempty=True)
+
+    self.assertTrue(np.array_equal(idx.numpy(), data['idx']))
+    self.assertTrue(np.array_equal(idx_ne.numpy(), data['idx_ne']))
 
 
 if __name__ == "__main__":
