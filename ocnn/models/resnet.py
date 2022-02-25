@@ -26,7 +26,11 @@ class ResNet(torch.nn.Module):
     self.pools = torch.nn.ModuleList(
         [ocnn.nn.OctreeMaxPool(nempty) for i in range(stages)])
     self.global_pool = ocnn.nn.OctreeGlobalPool()
-    self.header = torch.nn.Linear(channels[-1], out_channels, bias=True)
+    # self.header = torch.nn.Linear(channels[-1], out_channels, bias=True)
+    self.header = torch.nn.Sequential(
+        ocnn.modules.FcBnRelu(channels[-1], 512),
+        torch.nn.Dropout(p=0.5),
+        torch.nn.Linear(512, out_channels))
 
   def forward(self, octree: ocnn.octree.Octree):
     r''''''

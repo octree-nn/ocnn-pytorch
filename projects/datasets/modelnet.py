@@ -13,9 +13,9 @@ class TransformModelNet:
     self.flags = flags
 
   def __call__(self, points: Points, idx: int):
-    # Normalize the points into one unit sphere in [-1, 1]
+    # Normalize the points into one unit sphere in [-0.75, 0.75]
     bbmin, bbmax = points.bbox()
-    points.normalize(bbmin, bbmax, scale=1.0)
+    points.normalize(bbmin, bbmax, scale=0.75)
 
     # Apply the general transformations provided by ocnn.
     # The augmentations including rotation, scaling, and jittering.
