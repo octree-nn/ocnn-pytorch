@@ -39,9 +39,9 @@ def octree_nearest_pts(data: torch.Tensor, octree: Octree, depth: int,
   return out
 
 
-def octree_trilinear_pts(data: torch.Tensor, octree: Octree, depth: int,
-                         pts: torch.Tensor, nempty: bool = False,
-                         bound_check: bool = False):
+def octree_linear_pts(data: torch.Tensor, octree: Octree, depth: int,
+                      pts: torch.Tensor, nempty: bool = False,
+                      bound_check: bool = False):
   ''' Linear interpolatation with input points.
 
   Refer to :func:`octree_nearest_pts` for the meaning of the arguments.
@@ -87,6 +87,27 @@ def octree_trilinear_pts(data: torch.Tensor, octree: Octree, depth: int,
   norm = torch.sparse.mm(mat, ones)
   output = torch.div(output, norm + 1e-12)
   return output
+
+
+class OctreeInterp(torch.nn.Module):
+  r''' Interpolates the points with an octree feature.
+
+  Refer to :func:`octree_nearest_pts` for a description of arguments.
+  '''
+
+  def __init__(self, method: str = 'linear', nempty: bool = False,
+               bound_check: bool = False):
+    super().__init__()
+    self.method = method
+    self.nempty = nempty
+    self.bound_check = bound_check
+    self.func = octree_linear_pts if method == 'linear' else octree_nearest_pts
+
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int,
+              pts: torch.Tensor):
+    r''''''
+
+    return self.func(data, octree, depth, pts, self.nempty, self.bound_check)
 
 
 class OctreeUpsample(torch.nn.Module):

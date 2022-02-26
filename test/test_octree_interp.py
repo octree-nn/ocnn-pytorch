@@ -20,9 +20,9 @@ class TesOctreeInterp(unittest.TestCase):
     pts = torch.from_numpy(test['pts'])
     data_ne = ocnn.nn.octree_depad(data, octree, depth)
 
-    linear = ocnn.nn.octree_trilinear_pts(
+    linear = ocnn.nn.octree_linear_pts(
         data, octree, depth, pts, nempty=False)
-    linear_ne = ocnn.nn.octree_trilinear_pts(
+    linear_ne = ocnn.nn.octree_linear_pts(
         data_ne, octree, depth, pts, nempty=True)
     near = ocnn.nn.octree_nearest_pts(
         data, octree, depth, pts, nempty=False)
