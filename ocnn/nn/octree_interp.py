@@ -7,7 +7,8 @@ from ocnn.octree import Octree
 
 
 def octree_nearest_pts(data: torch.Tensor, octree: Octree, depth: int,
-                       pts: torch.Tensor, nempty: bool = False):
+                       pts: torch.Tensor, nempty: bool = False,
+                       bound_check: bool = False):
   ''' The nearest-neighbor interpolatation with input points.
 
   Args:
@@ -18,15 +19,19 @@ def octree_nearest_pts(data: torch.Tensor, octree: Octree, depth: int,
         i.e. :obj:`N x (x, y, z, batch)`.
     nempty (bool): If true, the :attr:`data` only contains features of non-empty 
         octree nodes
+    bound_check (bool): If true, check whether the point is in :obj:`[0, 2^depth)`.
 
     .. note::
-    The :attr:`pts` MUST be scaled into :obj:`[0, 2^depth]`.
+    The :attr:`pts` MUST be scaled into :obj:`[0, 2^depth)`.
   '''
 
   # pts: (x, y, z, id)
   key = ocnn.octree.xyz2key(pts[:, 0], pts[:, 1], pts[:, 2], pts[:, 3], depth)
   idx = octree.search_key(key, depth, nempty)
   valid = idx > -1   # valid indices
+  if bound_check:
+    bound = torch.logical_and(pts[:, :3] >= 0, pts[:, :3] < 2**depth).all(1)
+    valid = torch.logical_and(valid, bound)
 
   size = (pts.shape[0], data.shape[1])
   out = torch.zeros(size, device=data.device, dtype=data.dtype)
@@ -35,7 +40,8 @@ def octree_nearest_pts(data: torch.Tensor, octree: Octree, depth: int,
 
 
 def octree_trilinear_pts(data: torch.Tensor, octree: Octree, depth: int,
-                         pts: torch.Tensor, nempty: bool = False):
+                         pts: torch.Tensor, nempty: bool = False,
+                         bound_check: bool = False):
   ''' Linear interpolatation with input points.
 
   Refer to :func:`octree_nearest_pts` for the meaning of the arguments.
@@ -56,6 +62,9 @@ def octree_trilinear_pts(data: torch.Tensor, octree: Octree, depth: int,
   key = ocnn.octree.xyz2key(xyzn[:, 0], xyzn[:, 1], xyzn[:, 2], batch, depth)
   idx = octree.search_key(key, depth, nempty)
   valid = idx > -1  # valid indices
+  if bound_check:
+    bound = torch.logical_and(xyzn >= 0, xyzn < 2**depth).all(1)
+    valid = torch.logical_and(valid, bound)
   idx = idx[valid]
 
   # 2. Build the sparse matrix
