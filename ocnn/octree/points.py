@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 
 class Points:
@@ -15,18 +15,23 @@ class Points:
         :obj:`(N, C)`, where :obj:`C` is the channel of features.
     labels (torch.Tensor or None): The point labels with a shape of
         :obj:`(N, K)`, where :obj:`K` is the channel of labels.
+    batch_size (int): The batch size.
   '''
 
   def __init__(self, points: torch.Tensor,
                normals: Optional[torch.Tensor] = None,
                features: Optional[torch.Tensor] = None,
-               labels: Optional[torch.Tensor] = None):
+               labels: Optional[torch.Tensor] = None,
+               batch_size: int = 1):
     self.points = points
     self.normals = normals
     self.features = features
     self.labels = labels
     self.device = points.device
     self.npt = points.shape[0]
+    self.batch_size = batch_size
+    self.batch_npt = None
+    self.batch_id = None
 
   def orient_normal(self, axis: str = 'x'):
     r''' Orients the point normals along a given axis.
@@ -118,6 +123,8 @@ class Points:
       self.features = self.features[mask]
     if self.labels is not None:
       self.labels = self.labels[mask]
+    if self.batch_id is not None:
+      self.batch_id = self.batch_id[mask]
     return mask
 
   def bbox(self):
@@ -167,6 +174,8 @@ class Points:
       points.features = self.features.to(device)
     if self.labels is not None:
       points.labels = self.labels.to(device)
+    if self.batch_id is not None:
+      points.batch_id = self.batch_id.to(device)
     return points
 
   def cuda(self):
@@ -197,6 +206,9 @@ class Points:
     if self.labels is not None:
       name.append('labels')
       out.append(self.labels.cpu().numpy())
+    if self.batch_id is not None:
+      name.append('batch_id')
+      out.append(self.batch_id.cpu().numpy())
 
     if filename.endswith('npz'):
       out_dict = dict(zip(name, out))
@@ -206,3 +218,27 @@ class Points:
       np.savetxt(filename, out_array, fmt='%.6f')
     else:
       raise ValueError
+
+
+def merge_points(points: List['Points']):
+  r''' Merges a list of points into one batch.
+
+  Args:
+    points (List[Octree]): A list of points to merge.
+  '''
+
+  out = Points(torch.zeros(1, 3))
+  out.points = torch.cat([p.points for p in points], dim=0)
+  if points[0].normals is not None:
+    out.normals = torch.cat([p.normals for p in points], dim=0)
+  if points[0].features is not None:
+    out.features = torch.cat([p.features for p in points], dim=0)
+  if points[0].labels is not None:
+    out.labels = torch.cat([p.labels for p in points], dim=0)
+  out.device = points[0].device
+  out.npt = out.points.shape[0]
+  out.batch_size = len(points)
+  out.batch_npt = torch.Tensor([p.npt for p in points])
+  out.batch_id = torch.cat([torch.full(p.npt, fill_value=i, dtype=p.points.dtype,
+      device=p.points.device) for i, p in enumerate(points)], dim=0)   # noqa
+  return out
