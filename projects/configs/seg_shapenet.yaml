@@ -1,0 +1,65 @@
+SOLVER:
+  gpu: 0,
+  run: train
+  type: sgd
+
+  logdir: logs/seg/02691156_airplane
+  max_epoch: 300
+  test_every_epoch: 5
+
+  # lr_type: cos
+  step_size: (120,180,240)
+  ckpt_num: 20
+
+DATA:
+  train:
+    # octree building
+    depth: 5
+    full_depth: 2
+
+    # data augmentations
+    distort: True
+    angle: (0, 5, 0)
+    interval: (1, 1, 1)
+    scale: 0.25
+    jitter: 0.25
+    uniform: True
+
+    # data loading
+    location: data/shapenet_segmentation/points
+    filelist: data/shapenet_segmentation/filelist/02691156_train_val.txt
+    batch_size: 32
+    shuffle: True
+    # num_workers: 0
+
+  test: 
+    # octree building
+    depth: 5
+    full_depth: 2
+
+    # data augmentations
+    distort: False
+    angle: (0, 5, 0)
+    interval: (1, 1, 1)
+    scale: 0.25
+    jitter: 0.25
+    uniform: True
+
+    # data loading
+    location: data/shapenet_segmentation/points
+    filelist: data/shapenet_segmentation/filelist/02691156_test.txt
+    batch_size: 1
+    shuffle: False
+    # num_workers: 0
+
+MODEL:
+  name: segnet
+  channel: 4
+  nout: 4
+  depth: 5
+
+
+LOSS:
+  mask: -1
+  point_wise: True  
+  num_class: 4
