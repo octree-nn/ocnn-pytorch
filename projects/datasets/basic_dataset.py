@@ -25,8 +25,9 @@ class Transform:
       points.scale(rng_scale)
       points.translate(rng_jitter)
 
-    # Orient normals since the original meshes contains flipped triangles
-    points.orient_normal('xyz')
+    if self.flags.orient_normal:
+      # Orient normals since the original meshes contains flipped triangles
+      points.orient_normal(self.flags.orient_normal)
     # !!! NOTE: Clip to [-1, 1] before octree building
     points.clip(min=-1, max=1)
 
