@@ -13,9 +13,14 @@ SOLVER:
 
 DATA:
   train:
+    name: shapenet
+
     # octree building
     depth: 5
     full_depth: 2
+
+    # transformation
+    orient_normal: xyz
 
     # data augmentations
     distort: True
@@ -28,14 +33,19 @@ DATA:
     # data loading
     location: data/shapenet_segmentation/points
     filelist: data/shapenet_segmentation/filelist/02691156_train_val.txt
-    batch_size: 32
+    batch_size: 16
     shuffle: True
-    # num_workers: 0
+    num_workers: 0
 
-  test: 
+  test:
+    name: shapenet
+
     # octree building
     depth: 5
     full_depth: 2
+
+    # transformation
+    orient_normal: xyz
 
     # data augmentations
     distort: False
@@ -50,7 +60,7 @@ DATA:
     filelist: data/shapenet_segmentation/filelist/02691156_test.txt
     batch_size: 1
     shuffle: False
-    # num_workers: 0
+    num_workers: 0
 
 MODEL:
   name: segnet
@@ -61,5 +71,4 @@ MODEL:
 
 LOSS:
   mask: -1
-  point_wise: True  
   num_class: 4

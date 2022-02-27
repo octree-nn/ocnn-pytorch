@@ -5,15 +5,17 @@ from tqdm import tqdm
 
 import ocnn
 from solver import Solver, get_config
-# from datasets import get_scannet_dataset, get_kitti_dataset
+# get_scannet_dataset, get_kitti_dataset
+from datasets import get_seg_shapenet_dataset
 
 
 class SegSolver(Solver):
 
   def get_model(self, flags):
+    stages = flags.depth - 2
     if flags.name.lower() == 'segnet':
       model = ocnn.models.SegNet(
-          flags.channel, flags.nout, interp=flags.interp, nempty=False)
+          flags.channel, flags.nout, stages=stages, interp=flags.interp, nempty=False)
     # elif flags.name.lower() == 'unet':
       # model = ocnn.UNet(flags.depth, flags.channel, flags.nout, flags.nempty,
       #                   flags.interp, flags.use_checkpoint)
@@ -23,7 +25,7 @@ class SegSolver(Solver):
 
   def get_dataset(self, flags):
     if flags.name.lower() == 'shapenet':
-      pass
+      return get_seg_shapenet_dataset(flags)
       # if flags.name.lower() == 'scannet':
       #   return get_scannet_dataset(flags)
       # elif flags.name.lower() == 'kitti':
@@ -34,8 +36,9 @@ class SegSolver(Solver):
   def model_forward(self, batch):
     octree = batch['octree'].cuda()
     points = batch['points'].cuda()
+    pts = torch.cat([points.points, points.batch_id.unsqueeze(1)], dim=1)
 
-    logit = self.model(octree, points.points)
+    logit = self.model(octree, pts)
     label_mask = points.labels > self.FLAGS.LOSS.mask  # filter labels
     return logit[label_mask], points.labels[label_mask]
 
