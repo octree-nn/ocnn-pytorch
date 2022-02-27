@@ -80,7 +80,7 @@ class ReadPly:
       kwargs['colors'] = torch.from_numpy(color.astype(np.float32))
     if self.has_label:
       label = vtx['label']
-      kwargs['labels'] = torch.from_numpy(label)
+      kwargs['labels'] = torch.from_numpy(label.astype(np.int32))
 
     return Points(**kwargs)
 

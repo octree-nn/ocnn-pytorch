@@ -33,9 +33,9 @@ DATA:
     # data loading
     location: data/shapenet_segmentation/points
     filelist: data/shapenet_segmentation/filelist/02691156_train_val.txt
-    batch_size: 16
+    batch_size: 32
     shuffle: True
-    num_workers: 0
+    # num_workers: 0
 
   test:
     name: shapenet
@@ -60,7 +60,7 @@ DATA:
     filelist: data/shapenet_segmentation/filelist/02691156_test.txt
     batch_size: 1
     shuffle: False
-    num_workers: 0
+    # num_workers: 0
 
 MODEL:
   name: segnet
