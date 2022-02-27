@@ -28,7 +28,6 @@ class Points:
     self.features = features
     self.labels = labels
     self.device = points.device
-    self.npt = points.shape[0]
     self.batch_size = batch_size
     self.batch_npt = None
     self.batch_id = None
@@ -125,6 +124,7 @@ class Points:
       self.labels = self.labels[mask]
     if self.batch_id is not None:
       self.batch_id = self.batch_id[mask]
+      self.batch_npt = None  # TODO: Update batch_npt
     return mask
 
   def bbox(self):
@@ -166,7 +166,7 @@ class Points:
     # Construct a new Points on the specified device
     points = Points(torch.zeros(1, 3))
     points.device = device
-    points.npt = self.npt
+    points.batch_npt = self.batch_npt
     points.points = self.points.to(device)
     if self.normals is not None:
       points.normals = self.normals.to(device)
@@ -236,9 +236,8 @@ def merge_points(points: List['Points']):
   if points[0].labels is not None:
     out.labels = torch.cat([p.labels for p in points], dim=0)
   out.device = points[0].device
-  out.npt = out.points.shape[0]
   out.batch_size = len(points)
-  out.batch_npt = torch.Tensor([p.npt for p in points])
-  out.batch_id = torch.cat([torch.full(p.npt, fill_value=i, dtype=p.points.dtype,
-      device=p.points.device) for i, p in enumerate(points)], dim=0)   # noqa
+  out.batch_npt = torch.Tensor([p.points.shape[0] for p in points])
+  out.batch_id = torch.cat([p.points.new_full((p.points.shape[0],), i)
+                            for i, p in enumerate(points)], dim=0)
   return out
