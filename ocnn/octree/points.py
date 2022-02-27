@@ -188,11 +188,12 @@ class Points:
 
     return self.to('cpu')
 
-  def save(self, filename: str):
+  def save(self, filename: str, save_batch: bool = False):
     r''' Save the Points into npz or xyz files.
 
     Args:
       filename (str): The output filename.
+      save_batch (bool): Whether to save the batch index.
     '''
 
     name = ['points']
@@ -205,10 +206,16 @@ class Points:
       out.append(self.features.cpu().numpy())
     if self.labels is not None:
       name.append('labels')
-      out.append(self.labels.cpu().numpy())
-    if self.batch_id is not None:
+      labels = self.labels
+      if labels.dim() == 1:
+        labels = labels.unsqueeze(1)
+      out.append(labels.cpu().numpy())
+    if self.batch_id is not None and save_batch:
       name.append('batch_id')
-      out.append(self.batch_id.cpu().numpy())
+      batch_id = self.batch_id
+      if batch_id.dim() == 1:
+        batch_id = batch_id.unsqueeze(1)
+      out.append(batch_id.cpu().numpy())
 
     if filename.endswith('npz'):
       out_dict = dict(zip(name, out))
