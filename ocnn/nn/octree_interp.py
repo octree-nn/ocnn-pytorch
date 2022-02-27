@@ -48,7 +48,7 @@ def octree_linear_pts(data: torch.Tensor, octree: Octree, depth: int,
   '''
 
   device = data.device
-  grid = torch.Tensor(
+  grid = torch.tensor(
       [[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1],
        [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1]], device=device)
 
@@ -74,8 +74,8 @@ def octree_linear_pts(data: torch.Tensor, octree: Octree, depth: int,
   ids = ids[valid]
   indices = torch.stack([ids, idx], dim=0).long()
 
-  frac = (1 - grid) - frac.unsqueeze(dim=1)  # (8, 3) - (N, 1, 3) -> (N, 8, 3)
-  weight = frac.prod(dim=2).abs().view(-1)   # (8*N,)
+  frac = (1.0 - grid) - frac.unsqueeze(dim=1)  # (8, 3) - (N, 1, 3) -> (N, 8, 3)
+  weight = frac.prod(dim=2).abs().view(-1)     # (8*N,)
   weight = weight[valid]
 
   h = data.shape[0]
@@ -96,16 +96,22 @@ class OctreeInterp(torch.nn.Module):
   '''
 
   def __init__(self, method: str = 'linear', nempty: bool = False,
-               bound_check: bool = False):
+               bound_check: bool = False, rescale_pts: bool = True):
     super().__init__()
     self.method = method
     self.nempty = nempty
     self.bound_check = bound_check
+    self.rescale_pts = rescale_pts
     self.func = octree_linear_pts if method == 'linear' else octree_nearest_pts
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int,
               pts: torch.Tensor):
     r''''''
+
+    # rescale points from [-1, 1] to [0, 2^depth]
+    if self.rescale_pts:
+      scale = 2 ** (depth - 1)
+      pts[:, :3] = (pts[:, :3] + 1.0) * scale
 
     return self.func(data, octree, depth, pts, self.nempty, self.bound_check)
 
