@@ -29,13 +29,13 @@ class Transform:
       # Orient normals since the original meshes contains flipped triangles
       points.orient_normal(self.flags.orient_normal)
     # !!! NOTE: Clip to [-1, 1] before octree building
-    points.clip(min=-1, max=1)
+    inbox_mask = points.clip(min=-1, max=1)
 
     # Convert the points to an octree
     octree = Octree(self.flags.depth, self.flags.full_depth)
     octree.build_octree(points)
 
-    return {'octree': octree, 'points': points}
+    return {'octree': octree, 'points': points, 'inbox_mask': inbox_mask}
 
   def rnd_parameters(self):
     flags = self.flags

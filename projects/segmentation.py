@@ -63,7 +63,9 @@ class SegSolver(Solver):
 
   def eval_step(self, batch):
     octree = batch['octree'].cuda()
-    pts = ocnn.points_batch_property(batch['points'], 'xyzi').cuda()
+    points = batch['points'].cuda()
+    pts = torch.cat([points.points, points.batch_id.unsqueeze(1)], dim=1)
+
     logit = self.model(octree, pts)
     prob = torch.nn.functional.softmax(logit, dim=1)
     label = prob.argmax(dim=1)
@@ -91,8 +93,8 @@ class SegSolver(Solver):
     iou_part = iou_part / (num_class - mask)
 
     tqdm.write('=> Epoch: %d, test/mIoU_part: %f' % (epoch, iou_part))
-    if self.summry_writer:
-      self.summry_writer.add_scalar('test/mIoU_part', iou_part, epoch)
+    if self.summary_writer:
+      self.summary_writer.add_scalar('test/mIoU_part', iou_part, epoch)
 
   def loss_function(self, logit, label):
     criterion = torch.nn.CrossEntropyLoss()

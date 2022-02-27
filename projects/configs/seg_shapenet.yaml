@@ -64,7 +64,7 @@ DATA:
 
 MODEL:
   name: segnet
-  channel: 4
+  channel: 3
   nout: 4
   depth: 5
 
