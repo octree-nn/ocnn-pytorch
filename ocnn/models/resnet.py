@@ -15,16 +15,16 @@ class ResNet(torch.nn.Module):
     self.stages = stages
     self.nempty = nempty
     channels = [2 ** max(i+9-stages, 2) for i in range(stages)]
-    channels = [channels[0]] + channels
 
     self.input_feature = ocnn.modules.InputFeature(in_channels, nempty)
     self.conv1 = ocnn.modules.OctreeConvBnRelu(
         in_channels, channels[0], nempty=nempty)
+    self.pool1 = ocnn.nn.OctreeMaxPool(nempty)
     self.resblocks = torch.nn.ModuleList([
         ocnn.modules.OctreeResBlocks(channels[i], channels[i+1], resblock_num,
-        nempty=nempty) for i in range(stages)])  # noqa
+        nempty=nempty) for i in range(stages-1)])  # noqa
     self.pools = torch.nn.ModuleList(
-        [ocnn.nn.OctreeMaxPool(nempty) for i in range(stages)])
+        [ocnn.nn.OctreeMaxPool(nempty) for i in range(stages-1)])
     self.global_pool = ocnn.nn.OctreeGlobalPool()
     # self.header = torch.nn.Linear(channels[-1], out_channels, bias=True)
     self.header = torch.nn.Sequential(
@@ -39,8 +39,9 @@ class ResNet(torch.nn.Module):
     data = self.input_feature(octree)
 
     data = self.conv1(data, octree, depth)
-    for i in range(self.stages):
-      d = depth - i
+    data = self.pool1(data, octree, depth)
+    for i in range(self.stages-1):
+      d = depth - i - 1
       data = self.resblocks[i](data, octree, d)
       data = self.pools[i](data, octree, d)
     data = self.global_pool(data, octree, depth-self.stages)
