@@ -60,29 +60,36 @@ class Transform:
 class ReadPly:
 
   def __init__(self, has_normal: bool = True, has_color: bool = False,
-               has_label: bool = False):
+               has_label: bool = False, return_points: bool = True):
     self.has_normal = has_normal
     self.has_color = has_color
     self.has_label = has_label
+    self.return_points = return_points
 
   def __call__(self, filename: str):
     plydata = PlyData.read(filename)
     vtx = plydata['vertex']
 
-    kwargs = dict()
+    output = dict()
     points = np.stack([vtx['x'], vtx['y'], vtx['z']], axis=1)
-    kwargs['points'] = torch.from_numpy(points.astype(np.float32))
+    output['points'] = points.astype(np.float32)
     if self.has_normal:
       normal = np.stack([vtx['nx'], vtx['ny'], vtx['nz']], axis=1)
-      kwargs['normals'] = torch.from_numpy(normal.astype(np.float32))
+      output['normals'] = normal.astype(np.float32)
     if self.has_color:
       color = np.stack([vtx['red'], vtx['green'], vtx['blue']], axis=1)
-      kwargs['colors'] = torch.from_numpy(color.astype(np.float32))
+      output['colors'] = color.astype(np.float32)
     if self.has_label:
       label = vtx['label']
-      kwargs['labels'] = torch.from_numpy(label.astype(np.int32))
+      output['labels'] = label.astype(np.int32)
 
-    return Points(**kwargs)
+    # convert output to
+    if self.return_points:
+      for key, value in output.items():
+        output[key] = torch.from_numpy(value)
+      output = Points(**output)
+
+    return output
 
 
 class CollateBatch:
