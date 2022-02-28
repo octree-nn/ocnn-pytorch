@@ -3,7 +3,7 @@ import ocnn
 
 
 class SegNet(torch.nn.Module):
-  r''' SegNet for segmentation based on pooling-unpooling operations.
+  r''' Octree-based SegNet for segmentation.
   '''
 
   def __init__(self, in_channels: int, out_channels: int, stages: int,
