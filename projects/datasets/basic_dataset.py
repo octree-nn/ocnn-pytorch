@@ -119,8 +119,8 @@ def get_modelnet40_dataset(flags):
   collate_batch = CollateBatch()
 
   dataset = Dataset(flags.location, flags.filelist, transform,
-                    read_file=read_ply,
-                    in_memory=flags.in_memory)
+                    read_file=read_ply, in_memory=flags.in_memory,
+                    take=flags.take)
   return dataset, collate_batch
 
 
@@ -130,6 +130,6 @@ def get_seg_shapenet_dataset(flags):
   collate_batch = CollateBatch(merge_points=True)
 
   dataset = Dataset(flags.location, flags.filelist, transform,
-                    read_file=read_ply,
-                    in_memory=flags.in_memory)
+                    read_file=read_ply, in_memory=flags.in_memory,
+                    take=flags.take)
   return dataset, collate_batch
