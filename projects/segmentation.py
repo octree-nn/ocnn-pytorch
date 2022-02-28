@@ -5,8 +5,7 @@ from tqdm import tqdm
 
 import ocnn
 from solver import Solver, get_config
-# get_scannet_dataset, get_kitti_dataset
-from datasets import get_seg_shapenet_dataset
+from datasets import get_seg_shapenet_dataset, get_scannet_dataset
 
 
 class SegSolver(Solver):
@@ -15,10 +14,10 @@ class SegSolver(Solver):
     stages = flags.depth - 2
     if flags.name.lower() == 'segnet':
       model = ocnn.models.SegNet(
-          flags.channel, flags.nout, stages=stages, interp=flags.interp, nempty=False)
-    # elif flags.name.lower() == 'unet':
-      # model = ocnn.UNet(flags.depth, flags.channel, flags.nout, flags.nempty,
-      #                   flags.interp, flags.use_checkpoint)
+          flags.channel, flags.nout, stages, flags.interp, flags.nempty)
+    elif flags.name.lower() == 'unet':
+      model = ocnn.models.UNet(
+          flags.channel, flags.nout, flags.interp, flags.nempty)
     else:
       raise ValueError
     return model
@@ -26,8 +25,8 @@ class SegSolver(Solver):
   def get_dataset(self, flags):
     if flags.name.lower() == 'shapenet':
       return get_seg_shapenet_dataset(flags)
-      # if flags.name.lower() == 'scannet':
-      #   return get_scannet_dataset(flags)
+    elif flags.name.lower() == 'scannet':
+      return get_scannet_dataset(flags)
       # elif flags.name.lower() == 'kitti':
       #   return get_kitti_dataset(flags)
     else:

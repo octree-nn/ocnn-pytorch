@@ -1,0 +1,143 @@
+import torch
+import numpy as np
+import scipy.interpolate
+import scipy.ndimage
+import random
+
+from ocnn.octree import Octree, Points
+from solver import Dataset
+from . import basic_dataset
+
+
+def color_distort(color, trans_range_ratio, jitter_std):
+
+  def _color_autocontrast(color, rand_blend_factor=True, blend_factor=0.5):
+    assert color.shape[1] >= 3
+    lo = color[:, :3].min(0, keepdims=True)
+    hi = color[:, :3].max(0, keepdims=True)
+    assert hi.max() > 1
+
+    scale = 255 / (hi - lo)
+    contrast_feats = (color[:, :3] - lo) * scale
+
+    blend_factor = random.random() if rand_blend_factor else blend_factor
+    color[:, :3] = (1 - blend_factor) * color + blend_factor * contrast_feats
+    return color
+
+  def _color_translation(color, trans_range_ratio=0.1):
+    assert color.shape[1] >= 3
+    if random.random() < 0.95:
+      tr = (np.random.rand(1, 3) - 0.5) * 255 * 2 * trans_range_ratio
+      color[:, :3] = np.clip(tr + color[:, :3], 0, 255)
+    return color
+
+  def _color_jiter(color, std=0.01):
+    if random.random() < 0.95:
+      noise = np.random.randn(color.shape[0], 3)
+      noise *= std * 255
+      color[:, :3] = np.clip(noise + color[:, :3], 0, 255)
+    return color
+
+  color = color * 255.0
+  color = _color_autocontrast(color)
+  color = _color_translation(color, trans_range_ratio)
+  color = _color_jiter(color, jitter_std)
+  color = color / 255.0
+  return color
+
+
+def elastic_distort(points, distortion_params):
+
+  def _elastic_distort(coords, granularity, magnitude):
+    blurx = np.ones((3, 1, 1, 1)).astype('float32') / 3
+    blury = np.ones((1, 3, 1, 1)).astype('float32') / 3
+    blurz = np.ones((1, 1, 3, 1)).astype('float32') / 3
+    coords_min = coords.min(0)
+
+    noise_dim = ((coords - coords_min).max(0) // granularity).astype(int) + 3
+    noise = np.random.randn(*noise_dim, 3).astype(np.float32)
+
+    # Smoothing.
+    convolve = scipy.ndimage.filters.convolve
+    for _ in range(2):
+      noise = convolve(noise, blurx, mode='constant', cval=0)
+      noise = convolve(noise, blury, mode='constant', cval=0)
+      noise = convolve(noise, blurz, mode='constant', cval=0)
+
+    # Trilinear interpolate noise filters for each spatial dimensions.
+    ax = [np.linspace(d_min, d_max, d)
+          for d_min, d_max, d in zip(coords_min - granularity,
+                                     coords_min + granularity*(noise_dim - 2),
+                                     noise_dim)]
+
+    interp = scipy.interpolate.RegularGridInterpolator(
+        ax, noise, bounds_error=0, fill_value=0)
+    coords += interp(coords) * magnitude
+    return coords
+
+  assert distortion_params.shape[1] == 2
+  if random.random() < 0.95:
+    for granularity, magnitude in distortion_params:
+      points = _elastic_distort(points, granularity, magnitude)
+  return points
+
+
+class TransformScanNet(basic_dataset.Transform):
+
+  def __init__(self, flags):
+    super().__init__(flags)
+
+    self.scale_factor = 5.12
+    self.color_trans_ratio = 0.10
+    self.color_jit_std = 0.05
+    self.elastic_params = np.array([[0.2, 0.4], [0.8, 1.6]], np.float32)
+
+  def transform_scannet(self, sample):
+
+    # normalize points
+    xyz = sample['points']
+    center = (xyz.min(axis=0) + xyz.max(axis=0)) / 2.0
+    xyz = (xyz - center) / self.scale_factor  # xyz in [-1, 1]
+
+    # normalize color
+    color = sample['colors'] / 255.0
+
+    # data augmentation
+    if self.flags.distort:
+      color = color_distort(color, self.color_trans_ratio, self.color_jit_std)
+      xyz = elastic_distort(xyz, self.elastic_params)
+
+    return Points(torch.from_numpy(xyz), torch.from_numpy(sample['normals']),
+                  torch.from_numpy(color), torch.from_numpy(sample['labels']))
+
+  def __call__(self, sample, idx=None):
+
+    # transformation specified for scannet
+    points = self.transform_scannet(sample)
+
+    # Apply the general transformations provided by ocnn.
+    # The augmentations including rotation, scaling, and jittering.
+    if self.flags.distort:
+      rng_angle, rng_scale, rng_jitter = self.rnd_parameters()
+      points.rotate(rng_angle)
+      points.scale(rng_scale)
+      points.translate(rng_jitter)
+
+    # !!! NOTE: Clip to [-1, 1] before octree building
+    inbox_mask = points.clip(min=-1, max=1)
+
+    # Convert the points to an octree
+    octree = Octree(self.flags.depth, self.flags.full_depth)
+    octree.build_octree(points)
+
+    return {'octree': octree, 'points': points, 'inbox_mask': inbox_mask}
+
+
+def get_scannet_dataset(flags):
+  transform = TransformScanNet(flags)
+  collate_batch = basic_dataset.CollateBatch(merge_points=True)
+  read_ply = basic_dataset.ReadPly(has_normal=True, has_color=True,
+                                   has_label=True, return_points=False)
+  dataset = Dataset(flags.location, flags.filelist, transform,
+                    read_file=read_ply, in_memory=False)
+  return dataset, collate_batch
