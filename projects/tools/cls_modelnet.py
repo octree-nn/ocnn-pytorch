@@ -13,7 +13,7 @@ import utils
 parser = argparse.ArgumentParser()
 parser.add_argument('--run', type=str, required=False, default='prepare_dataset',
                     help='The command to run.')
-parser.add_argument('--sample_num', type=float, default=10000,
+parser.add_argument('--sample_num', type=int, default=5000,
                     help='The sample number')
 parser.add_argument('--align_y', type=str, required=False, default='false',
                     help='Align the points with y axis')

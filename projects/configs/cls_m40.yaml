@@ -29,7 +29,7 @@ DATA:
     jitter: 0.125
 
     # data loading
-    location: data/ModelNet40/ModelNet40.ply.10k
+    location: data/ModelNet40/ModelNet40.ply.5k
     filelist: data/ModelNet40/filelist/m40_train.txt
     batch_size: 32
     shuffle: True
@@ -51,7 +51,7 @@ DATA:
     jitter: 0.125
 
     # data loading
-    location: data/ModelNet40/ModelNet40.ply.10k
+    location: data/ModelNet40/ModelNet40.ply.5k
     filelist: data/ModelNet40/filelist/m40_test.txt
     batch_size: 32
     shuffle: False
