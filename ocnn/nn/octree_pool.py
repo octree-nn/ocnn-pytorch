@@ -35,9 +35,10 @@ def octree_max_unpool(data: torch.Tensor, indices: torch.Tensor, octree: Octree,
 
   Args:
     data (torch.Tensor): The input tensor.
-    indices (torch.Tensor): The indices returned by :func:`octree_max_pool`.
+    indices (torch.Tensor): The indices returned by :func:`octree_max_pool`. The
+        depth of :attr:`indices` is larger by 1 than :attr:`data`.
     octree (Octree): The corresponding octree.
-    depth (int): The depth of current octree. After unpooling, the corresponding
+    depth (int): The depth of current data. After unpooling, the corresponding
         depth increases by 1.
   '''
 

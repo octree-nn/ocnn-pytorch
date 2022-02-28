@@ -3,6 +3,8 @@ import ocnn
 
 
 class SegNet(torch.nn.Module):
+  r''' SegNet for segmentation based on pooling-unpooling operations.
+  '''
 
   def __init__(self, in_channels: int, out_channels: int, stages: int,
                interp: str = 'linear', nempty: bool = False):
@@ -22,14 +24,15 @@ class SegNet(torch.nn.Module):
     self.pools = torch.nn.ModuleList(
         [ocnn.nn.OctreeMaxPool(nempty, return_indices) for i in range(stages)])
 
-    channels = channels_stages[-1:] + channels_stages[::-1]
+    self.bottleneck = ocnn.modules.OctreeConvBnRelu(channels[-1], channels[-1])
+
+    channels = channels_stages[::-1] + [channels_stages[0]]
     self.deconvs = torch.nn.ModuleList(
         [ocnn.modules.OctreeConvBnRelu(channels[i], channels[i+1], nempty=nempty)
          for i in range(0, stages)])
     self.unpools = torch.nn.ModuleList(
         [ocnn.nn.OctreeMaxUnpool(nempty) for i in range(stages)])
 
-    self.deconv = ocnn.modules.OctreeConvBnRelu(channels[-1], channels[-1])
     self.octree_interp = ocnn.nn.OctreeInterp(interp, nempty)
     self.header = torch.nn.Sequential(
         ocnn.modules.Conv1x1BnRelu(channels[-1], 64),
@@ -48,16 +51,17 @@ class SegNet(torch.nn.Module):
       data = self.convs[i](data, octree, d)
       data, indices[d] = self.pools[i](data, octree, d)
 
+    # bottleneck
+    data = self.bottleneck(data, octree, 2)
+
     # decoder
     for i in range(self.stages):
-      d = i + 2
+      d = i + 3
+      data = self.unpools[i](data, indices[d], octree, d-1)
       data = self.deconvs[i](data, octree, d)
-      data = self.unpools[i](data, indices[d+1], octree, d)
-
-    # point feature
-    feature = self.deconv(data, octree, depth)
-    feature = self.octree_interp(feature, octree, depth, pts)
 
     # header
+    feature = self.octree_interp(data, octree, depth, pts)
     logits = self.header(feature)
+
     return logits
