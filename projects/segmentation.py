@@ -35,7 +35,7 @@ class SegSolver(Solver):
   def model_forward(self, batch):
     octree = batch['octree'].cuda()
     points = batch['points'].cuda()
-    pts = torch.cat([points.points, points.batch_id.unsqueeze(1)], dim=1)
+    pts = torch.cat([points.points, points.batch_id], dim=1)
 
     logit = self.model(octree, pts)
     label_mask = points.labels > self.FLAGS.LOSS.mask  # filter labels
@@ -63,7 +63,7 @@ class SegSolver(Solver):
   def eval_step(self, batch):
     octree = batch['octree'].cuda()
     points = batch['points'].cuda()
-    pts = torch.cat([points.points, points.batch_id.unsqueeze(1)], dim=1)
+    pts = torch.cat([points.points, points.batch_id], dim=1)
 
     logit = self.model(octree, pts)
     prob = torch.nn.functional.softmax(logit, dim=1)
@@ -75,6 +75,7 @@ class SegSolver(Solver):
              prob=prob.cpu().numpy(),
              label=label.cpu().numpy(),
              inbox_mask=batch['inbox_mask'][0].numpy().astype(bool))
+    # points.save(os.path.join(self.logdir, filename[:-4] + '.xyz'))
 
   def result_callback(self, avg_tracker, epoch):
     ''' Calculate the part mIoU for PartNet and ScanNet'''

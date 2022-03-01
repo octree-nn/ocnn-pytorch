@@ -245,6 +245,6 @@ def merge_points(points: List['Points']):
   out.device = points[0].device
   out.batch_size = len(points)
   out.batch_npt = torch.Tensor([p.points.shape[0] for p in points])
-  out.batch_id = torch.cat([p.points.new_full((p.points.shape[0],), i)
+  out.batch_id = torch.cat([p.points.new_full((p.points.shape[0], 1), i)
                             for i, p in enumerate(points)], dim=0)
   return out
