@@ -54,6 +54,8 @@ class OctreeConvBase:
 
   def setup(self, octree: Octree, depth: int):
     r''' Setup the shapes of each tensor. 
+    This function MUST be called before :obj:`forward_gemm`, :obj:`backward_gemm`
+    and :obj:`weight_gemm`.
     '''
 
     # The depth of tensors:
@@ -77,10 +79,14 @@ class OctreeConvBase:
       self.out_h = octree.nnum_nempty[self.out_depth]
     else:
       self.in_h = octree.nnum[self.in_depth]
-      if self.stride == 2 and self.is_conv_layer:
-        self.out_h = octree.nnum_nempty[self.out_depth]
-      else:
-        self.out_h = octree.nnum[self.out_depth]
+      self.out_h = octree.nnum[self.out_depth]
+      if self.stride == 2:
+        if self.is_conv_layer():
+          self.out_h = octree.nnum_nempty[self.out_depth]
+        else:
+          self.in_h = octree.nnum_nempty[self.in_depth]
+    self.in_shape = (self.in_h, self.in_channels)
+    self.out_shape = (self.out_h, self.out_channels)
 
     # The neighborhood indices
     self.neigh = octree.get_neigh(
@@ -91,21 +97,29 @@ class OctreeConvBase:
     self.buffer_h = self.neigh.shape[0]
     ideal_size = self.buffer_h * self.neigh.shape[1] * self.in_conv
     if ideal_size > self.max_buffer:
-      buffer_n = (ideal_size + self.max_buffer - 1) // self.max_buffer
-      self.buffer_n = buffer_n // 64 * 64  # make buffer_n a multiple of 64
-      self.buffer_h = (self.buffer_h + self.buffer_n - 1) // self.buffer_h
+      self.buffer_n = (ideal_size + self.max_buffer - 1) // self.max_buffer
+      self.buffer_h = (self.buffer_h + self.buffer_n - 1) // self.buffer_n
+    self.buffer_shape = (self.buffer_h, self.kdim, self.in_conv)
 
-  def forward_gemm(self, data: torch.Tensor, weights: torch.Tensor):
+  def check_and_init(self, data: torch.Tensor):
+    r''' Checks the input data and initializes the shape of output data.
+    '''
+
+    # Check the shape of input data
+    check = tuple(data.shape) == self.in_shape
+    torch._assert(check, 'The shape of input data is wrong.')
+
+    # Init the output data
+    out = data.new_zeros(self.out_shape)
+    return out
+
+  def forward_gemm(self, out: torch.Tensor, data: torch.Tensor,
+                   weights: torch.Tensor):
     r''' Peforms the forward pass of octree-based convolution.
     '''
 
-    # Check the shape
-    check = data.shape[0] == self.in_h and data.shape[1] == self.in_channels
-    torch._assert(check, 'The shape of input data is wrong.')
-
-    # Initialize the buffer and output
-    buffer = data.new_empty(self.buffer_h, self.kdim, self.in_channels)
-    out = data.new_empty(self.out_h, self.out_channels)
+    # Initialize the buffer
+    buffer = data.new_empty(self.buffer_shape)
 
     # Loop over each sub-matrix
     for i in range(self.buffer_n):
@@ -129,16 +143,10 @@ class OctreeConvBase:
 
     return out
 
-  def backward_gemm(self, grad: torch.Tensor, weights: torch.Tensor):
+  def backward_gemm(self, out: torch.Tensor, grad: torch.Tensor,
+                    weights: torch.Tensor):
     r''' Performs the backward pass of octree-based convolution. 
     '''
-
-    # Check the shape
-    check = grad.shape[0] == self.out_h and grad.shape[1] == self.out_channels
-    torch._assert(check, 'The shape of input grad is wrong.')
-
-    # Initialize the output gradient
-    out = torch.zeros_like(self.in_h, self.in_channels)
 
     # Loop over each sub-matrix
     for i in range(self.buffer_n):
@@ -151,6 +159,7 @@ class OctreeConvBase:
 
       # The sub-matrix gemm
       buffer = torch.mm(grad[start:end], weights.flatten(0, 1).t())
+      buffer = buffer.view(-1, self.buffer_shape[1], self.buffer_shape[2])
 
       # Performs col2octree
       neigh_i = self.neigh[start:end]
@@ -159,13 +168,16 @@ class OctreeConvBase:
 
     return out
 
-  def weight_gemm(self, data: torch.Tensor, grad: torch.Tensor):
+  def weight_gemm(self, out: torch.Tensor, data: torch.Tensor, grad: torch.Tensor):
     r''' Computes the gradient of the weight matrix.
     '''
 
-    # Initialize
-    buffer = data.new_empty(self.buffer_h, self.kdim, self.in_channels)
-    out = data.new_zeros(self.weights_shape)
+    # Record the shape of out
+    out_shape = out.shape
+    out = out.flatten(0, 1)
+
+    # Initialize the buffer
+    buffer = data.new_empty(self.buffer_shape)
 
     # Loop over each sub-matrix
     for i in range(self.buffer_n):
@@ -187,7 +199,7 @@ class OctreeConvBase:
       # Accumulate the gradient via gemm
       out.addmm_(buffer.flatten(1, 2).t(), grad[start:end])
 
-    return out
+    return out.view(out_shape)
 
 
 class _OctreeConv(OctreeConvBase):
@@ -216,7 +228,8 @@ class OctreeConvFunction(Function):
     octree_conv = _OctreeConv(
         in_channels, out_channels, kernel_size, stride, nempty)
     octree_conv.setup(octree, depth)
-    out = octree_conv.forward_gemm(data, weights)
+    out = octree_conv.check_and_init(data)
+    out = octree_conv.forward_gemm(out, data, weights)
 
     ctx.save_for_backward(data, weights)
     ctx.octree_conv = octree_conv
@@ -229,11 +242,13 @@ class OctreeConvFunction(Function):
 
     grad_out = None
     if ctx.needs_input_grad[0]:
-      grad_out = octree_conv.backward_gemm(grad, weights)
+      grad_out = torch.zeros_like(data)
+      grad_out = octree_conv.backward_gemm(grad_out, grad, weights)
 
     grad_w = None
     if ctx.needs_input_grad[1]:
-      grad_w = octree_conv.weight_gemm(data, grad)
+      grad_w = torch.zeros_like(weights)
+      grad_w = octree_conv.weight_gemm(grad_w, data, grad)
 
     return (grad_out, grad_w) + (None,) * 7
 
@@ -250,7 +265,8 @@ class OctreeDeconvFunction(Function):
     octree_deconv = _OctreeDeconv(
         in_channels, out_channels, kernel_size, stride, nempty)
     octree_deconv.setup(octree, depth)
-    out = octree_deconv.backward_gemm(data, weights)
+    out = octree_deconv.check_and_init(data)
+    out = octree_deconv.backward_gemm(out, data, weights)
 
     ctx.save_for_backward(data, weights)
     ctx.octree_deconv = octree_deconv
@@ -263,11 +279,13 @@ class OctreeDeconvFunction(Function):
 
     grad_out = None
     if ctx.needs_input_grad[0]:
-      grad_out = octree_deconv.forward_gemm(grad, weights)
+      grad_out = torch.zeros_like(data)
+      grad_out = octree_deconv.forward_gemm(grad_out, grad, weights)
 
     grad_w = None
     if ctx.needs_input_grad[1]:
-      grad_w = octree_deconv.weight_gemm(grad, data)
+      grad_w = torch.zeros_like(weights)
+      grad_w = octree_deconv.weight_gemm(grad_w, grad, data)
 
     return (grad_out, grad_w) + (None,) * 7
 
@@ -371,17 +389,17 @@ class OctreeDeconv(OctreeConv):
     Please refer to :meth:`OctreeConv.forward` for the meaning of the arguments.
     '''
 
-    depth_out = depth
+    depth_col = depth
     if self.stride == 2:
+      depth_col = depth + 1
       if not self.nempty:
         data = octree_depad(data, octree, depth)
-      depth_out = depth + 1
 
     if self.direct_method:
       col = torch.mm(data, self.weights.flatten(0, 1).t())
       col = col.view(col.shape[0], self.kdim, -1)
       out = col2octree(
-          col, octree, depth_out, self.kernel, self.stride, self.nempty)
+          col, octree, depth_col, self.kernel, self.stride, self.nempty)
     else:
       out = octree_deconv(
           data, self.weights, octree, depth, self.in_channels,
