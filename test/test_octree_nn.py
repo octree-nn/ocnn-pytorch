@@ -53,7 +53,7 @@ class TesOctreeNN(unittest.TestCase):
             # test octree_conv
             conv = ocnn.nn.OctreeConv(
                 in_channels, out_channels, kernel_size[j].tolist(), stride[i],
-                nempty=ne, direct_method=m)
+                nempty=ne, direct_method=m, max_buffer=int(2e4))
             weight = torch.from_numpy(data['cw_%d' % counter])
             conv.weights.data.copy_(weight)
             out = conv.forward(data_in[ne], octree, depth)
@@ -63,7 +63,7 @@ class TesOctreeNN(unittest.TestCase):
             # test octree_deconv
             deconv = ocnn.nn.OctreeDeconv(
                 in_channels, out_channels, kernel_size[j].tolist(), stride[i],
-                nempty=ne, direct_method=m)
+                nempty=ne, direct_method=m, max_buffer=int(2e4))
             weight = torch.from_numpy(data['dw_%d' % counter])
             deconv.weights.data.copy_(weight)
             out = deconv.forward(data_in[ne], octree, depth)
@@ -112,7 +112,7 @@ class TesOctreeNN(unittest.TestCase):
 
           conv = ocnn.nn.OctreeConv(
               in_channels, out_channels, kernel_size[j].tolist(), stride[i],
-              nempty=ne, direct_method=False)
+              nempty=ne, direct_method=False, max_buffer=int(2e4))
           weight = torch.from_numpy(data['cw_%d' % counter])
           conv.weights.data.copy_(weight)
           data_ = data_in[ne].clone().requires_grad_()
@@ -141,7 +141,7 @@ class TesOctreeNN(unittest.TestCase):
 
           deconv = ocnn.nn.OctreeDeconv(
               in_channels, out_channels, kernel_size[j].tolist(), stride[i],
-              nempty=ne, direct_method=False)
+              nempty=ne, direct_method=False, max_buffer=int(2e4))
           weight = torch.from_numpy(data['dw_%d' % counter])
           deconv.weights.data.copy_(weight)
           data_ = data_in[ne].clone().requires_grad_()

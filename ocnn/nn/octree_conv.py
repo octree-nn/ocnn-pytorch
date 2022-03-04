@@ -224,9 +224,9 @@ class OctreeConvFunction(Function):
   def forward(ctx, data: torch.Tensor, weights: torch.Tensor, octree: Octree,
               depth: int, in_channels: int, out_channels: int,
               kernel_size: List[int] = [3, 3, 3], stride: int = 1,
-              nempty: bool = False):
+              nempty: bool = False, max_buffer: int = int(2e8)):
     octree_conv = _OctreeConv(
-        in_channels, out_channels, kernel_size, stride, nempty)
+        in_channels, out_channels, kernel_size, stride, nempty, max_buffer)
     octree_conv.setup(octree, depth)
     out = octree_conv.check_and_init(data)
     out = octree_conv.forward_gemm(out, data, weights)
@@ -250,7 +250,7 @@ class OctreeConvFunction(Function):
       grad_w = torch.zeros_like(weights)
       grad_w = octree_conv.weight_gemm(grad_w, data, grad)
 
-    return (grad_out, grad_w) + (None,) * 7
+    return (grad_out, grad_w) + (None,) * 8
 
 
 class OctreeDeconvFunction(Function):
@@ -261,9 +261,9 @@ class OctreeDeconvFunction(Function):
   def forward(ctx, data: torch.Tensor, weights: torch.Tensor, octree: Octree,
               depth: int, in_channels: int, out_channels: int,
               kernel_size: List[int] = [3, 3, 3], stride: int = 1,
-              nempty: bool = False):
+              nempty: bool = False, max_buffer: int = int(2e8)):
     octree_deconv = _OctreeDeconv(
-        in_channels, out_channels, kernel_size, stride, nempty)
+        in_channels, out_channels, kernel_size, stride, nempty, max_buffer)
     octree_deconv.setup(octree, depth)
     out = octree_deconv.check_and_init(data)
     out = octree_deconv.backward_gemm(out, data, weights)
@@ -287,7 +287,7 @@ class OctreeDeconvFunction(Function):
       grad_w = torch.zeros_like(weights)
       grad_w = octree_deconv.weight_gemm(grad_w, grad, data)
 
-    return (grad_out, grad_w) + (None,) * 7
+    return (grad_out, grad_w) + (None,) * 8
 
 
 # alias
@@ -312,6 +312,8 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
         construct a large matrix, which may consume a lot of memory. If False,
         performs the convolution in a sub-matrix manner, which can save the 
         requied runtime memory.
+    max_buffer (int): The maximum number of elements in the buffer, used when 
+        :attr:`direct_method` is False.
 
   .. note::
     There is no bias term in the convolution for simplicity. (TODO)
@@ -319,9 +321,12 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
 
   def __init__(self, in_channels: int, out_channels: int,
                kernel_size: List[int] = [3], stride: int = 1,
-               nempty: bool = False, direct_method: bool = True):
-    super().__init__(in_channels, out_channels, kernel_size, stride, nempty)
+               nempty: bool = False, direct_method: bool = False,
+               max_buffer: int = int(2e8)):
+    super().__init__(
+        in_channels, out_channels, kernel_size, stride, nempty, max_buffer)
     self.direct_method = direct_method
+    self.max_buffer = max_buffer
     self.weights = torch.nn.Parameter(torch.Tensor(*self.weights_shape))
     self.reset_parameters()
 
@@ -360,7 +365,8 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
     else:
       out = octree_conv(
           data, self.weights, octree, depth, self.in_channels,
-          self.out_channels, self.kernel_size, self.stride, self.nempty)
+          self.out_channels, self.kernel_size, self.stride, self.nempty,
+          self.max_buffer)
 
     if self.stride == 2 and not self.nempty:
       out = octree_pad(out, octree, depth-1)
@@ -403,5 +409,7 @@ class OctreeDeconv(OctreeConv):
     else:
       out = octree_deconv(
           data, self.weights, octree, depth, self.in_channels,
-          self.out_channels, self.kernel_size, self.stride, self.nempty)
+          self.out_channels, self.kernel_size, self.stride, self.nempty,
+          self.max_buffer)
+
     return out
