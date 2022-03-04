@@ -332,7 +332,7 @@ class Octree:
     '''
 
     rng = torch.arange(min, max+1, dtype=torch.long, device=self.device)
-    grid = torch.meshgrid(rng, rng, rng, indexing='ij')
+    grid = torch.meshgrid(rng, rng, rng)  # , indexing='ij')
     grid = torch.stack(grid, dim=-1).view(-1, 3)  # (27, 3)
     return grid
 
