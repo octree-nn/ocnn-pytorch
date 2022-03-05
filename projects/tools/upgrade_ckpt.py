@@ -8,7 +8,8 @@ for key, val in weights.items():
   print(key, val.shape)
 
   if 'conv.weight' in key:
-    upgrade[key] = val.permute(2, 1, 0)
+    last_dim = 8 if 'downsample' in key or 'upsample' in key else 27
+    upgrade[key] = val.view(val.shape[0], -1, last_dim).permute(2, 1, 0)
 
   elif 'conv1x1.weight' in key:
     if 'conv1x1.conv1x1' in key:
