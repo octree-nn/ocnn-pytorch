@@ -21,7 +21,7 @@ def octree_nearest_pts(data: torch.Tensor, octree: Octree, depth: int,
         octree nodes
     bound_check (bool): If true, check whether the point is in :obj:`[0, 2^depth)`.
 
-    .. note::
+  .. note::
     The :attr:`pts` MUST be scaled into :obj:`[0, 2^depth)`.
   '''
 
