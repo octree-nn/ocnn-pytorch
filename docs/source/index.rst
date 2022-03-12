@@ -5,6 +5,15 @@ ocnn-pytorch
 
 ocnn-pytorch is a pure-PyTorch-based implementation of O-CNN.
 
+
+.. toctree::
+  :glob:
+  :maxdepth: 1
+  :caption: Notes
+
+  notes/installation
+
+
 .. toctree::
   :glob:
   :maxdepth: 1
@@ -14,6 +23,7 @@ ocnn-pytorch is a pure-PyTorch-based implementation of O-CNN.
   modules/nn
   modules/modules
   modules/models
+
 
 Indices and Tables
 ==================
