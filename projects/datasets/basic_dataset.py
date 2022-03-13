@@ -1,10 +1,10 @@
 import torch
 import numpy as np
 from plyfile import PlyData
-from typing import List
 
 from solver import Dataset
-from ocnn.octree import Points, Octree, merge_octrees, merge_points
+from ocnn.octree import Points, Octree
+from ocnn.utils import CollateBatch
 
 
 class Transform:
@@ -90,34 +90,6 @@ class ReadPly:
       output = Points(**output)
 
     return output
-
-
-class CollateBatch:
-
-  def __init__(self, merge_points: bool = False):
-    self.merge_points = merge_points
-
-  def __call__(self, batch: List):
-    assert type(batch) == list
-
-    outputs = {}
-    for key in batch[0].keys():
-      outputs[key] = [b[key] for b in batch]
-
-      # Merge a batch of octrees into one super octree
-      if 'octree' in key:
-        octree = merge_octrees(outputs[key])
-        octree.construct_all_neigh()
-        outputs[key] = octree
-
-      if 'points' in key and self.merge_points:
-        outputs[key] = merge_points(outputs[key])
-
-      # Convert the labels to a Tensor
-      if 'label' in key:
-        outputs['label'] = torch.tensor(outputs[key])
-
-    return outputs
 
 
 def get_modelnet40_dataset(flags):
