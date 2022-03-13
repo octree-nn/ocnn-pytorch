@@ -325,8 +325,8 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
                max_buffer: int = int(2e8)):
     super().__init__(
         in_channels, out_channels, kernel_size, stride, nempty, max_buffer)
+
     self.direct_method = direct_method
-    self.max_buffer = max_buffer
     self.weights = torch.nn.Parameter(torch.Tensor(*self.weights_shape))
     self.reset_parameters()
 
