@@ -116,8 +116,32 @@ class OctreeInterp(torch.nn.Module):
     return self.func(data, octree, depth, pts, self.nempty, self.bound_check)
 
 
+def octree_upsample(data: torch.Tensor, octree: Octree, depth: int,
+                    nempty: bool = False):
+  r''' Upsamples the octree node features from :attr:`depth` to :attr:`(depth+1)`
+  with the nearest-neighbor interpolation.
+
+  Args:
+    data (torch.Tensor): The input data.
+    octree (Octree): The octree to interpolate.
+    depth (int): The depth of the data.
+    nempty (bool): If true, the :attr:`data` only contains features of non-empty 
+        octree nodes
+  '''
+
+  out = data
+  if not nempty:
+    out = ocnn.nn.octree_depad(out, octree, depth)
+  out = out.unsqueeze(1).repeat(1, 8, 1).flatten(end_dim=1)
+  if nempty:
+    out = ocnn.nn.octree_depad(out, octree, depth+1)  # !!! depth+1
+  return out
+
+
 class OctreeUpsample(torch.nn.Module):
-  r''' Upsamples the octree node features with the nearest-neighbor interpolation.
+  r''' Upsamples the octree node features.
+
+  Refer to :func:`octree_upsample` for details.
   '''
 
   def __init__(self, nempty):
@@ -127,9 +151,4 @@ class OctreeUpsample(torch.nn.Module):
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
     r''''''
 
-    if not self.nempty:
-      data = ocnn.nn.octree_depad(data, octree, depth)
-    out = out.unsqueeze(1).repeat(1, 8, 1).flatten(end_dim=1)
-    if self.nempty:
-      out = ocnn.nn.octree_depad(out, octree, depth+1)  # !!! depth+1
-    return out
+    return octree_upsample(data, octree, depth, self.nempty)
