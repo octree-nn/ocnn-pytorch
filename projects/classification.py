@@ -15,6 +15,8 @@ class ClsSolver(Solver):
     elif flags.name.lower() == 'resnet':
       model = ocnn.models.ResNet(flags.channel, flags.nout, stages=stages,
                                  resblock_num=flags.resblock_num)
+    elif flags.name.lower() == 'hrnet':
+      model = ocnn.models.HRNet(flags.channel, flags.nout, stages=3)
     else:
       raise ValueError
     return model
