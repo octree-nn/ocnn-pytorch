@@ -13,10 +13,12 @@ import utils
 parser = argparse.ArgumentParser()
 parser.add_argument('--run', type=str, required=False, default='prepare_dataset',
                     help='The command to run.')
-parser.add_argument('--sample_num', type=int, default=5000,
+parser.add_argument('--sample_num', type=int, default=4096,
                     help='The sample number')
 parser.add_argument('--align_y', type=str, required=False, default='false',
                     help='Align the points with y axis')
+parser.add_argument('--normalize', type=str, required=False, default='false',
+                    help='Normalize the points or not.')
 
 args = parser.parse_args()
 abs_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -26,16 +28,22 @@ root_folder = os.path.join(abs_path, 'data/ModelNet40')
 def download_m40():
 
   # download via wget
-  print('-> Download the dataset.')
   if not os.path.exists(root_folder):
     os.makedirs(root_folder)
   url = 'http://modelnet.cs.princeton.edu/ModelNet40.zip'
   filename = os.path.join(root_folder, 'ModelNet40.zip')
-  wget.download(url, filename)
+  if not os.path.exists(filename):
+    print('-> Download the dataset.')
+    wget.download(url, filename)
 
   # unzip
-  with zipfile.ZipFile(filename, 'r') as zip_ref:
-    zip_ref.extractall(root_folder)
+  flag_file = os.path.join(root_folder, 'flags/unzip_succ')
+  if not os.path.exists(flag_file):
+    print('-> Unzip the dataset.')
+    with zipfile.ZipFile(filename, 'r') as zip_ref:
+      zip_ref.extractall(root_folder)
+    with open(flag_file, 'w') as fid:
+      fid.write('unzip the data.')
 
 
 def _clean_off_file(filename):
@@ -93,13 +101,14 @@ def move_files(src_folder, des_folder, suffix):
 
 def convert_mesh_to_points():
 
-  print('-> Sample points on meshes')
+  print('-> Sample points on meshes.')
   # Delete the following 3 files from training set since the scale of these
   # meshes is too large and the virtualscanner can not deal with them.
   mesh_folder = os.path.join(root_folder, 'ModelNet40')
   filelist = ['cone/train/cone_0117.off',
               'curtain/train/curtain_0066.off',
-              'car/train/car_0021.off.off']
+              'car/train/car_0021.off.off',
+              'laptop/train/laptop_0104.off']
   for filename in filelist:
     filename = os.path.join(mesh_folder, filename)
     if os.path.exists(filename):
@@ -109,12 +118,18 @@ def convert_mesh_to_points():
   train_list, _ = get_filelist(mesh_folder, train=True, suffix='off')
   test_list, _ = get_filelist(mesh_folder, train=False, suffix='off')
   filelist = train_list + test_list
-  for filename in filelist:
-    _clean_off_file(os.path.join(mesh_folder, filename))
+  flag_file = os.path.join(root_folder, 'flags/clean_off_files')
+  if not os.path.exists(flag_file):
+    print('-  Clean off file.')
+    for filename in filelist:
+      _clean_off_file(os.path.join(mesh_folder, filename))
+    with open(flag_file, 'w') as fid:
+      fid.write('clean off files.')
 
   # run mesh sampling
   sample_num = args.sample_num
   ply_folder = _get_point_folder()
+  print('-  Sample points.')
   for filename in filelist:
     filename_off = os.path.join(mesh_folder, filename)
     mesh = trimesh.load(filename_off, force='mesh')
@@ -124,8 +139,21 @@ def convert_mesh_to_points():
       mat = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
       mesh.vertices = mesh.vertices @ mat
 
+    # sample points
     points, idx = trimesh.sample.sample_surface(mesh, sample_num)
     normals = mesh.face_normals[idx]
+
+    # normalize points to [-1, 1]
+    if args.normalize.lower() == 'true':
+      bbmin = points.min(axis=0)
+      bbmax = points.max(axis=0)
+      center = (bbmin + bbmax) / 2
+      size = (bbmax - bbmin).max() + 1.0e-6
+      points = (points - center) * (2.0 / size)
+
+      # center, radius = miniball.get_bounding_ball(arr)
+      # radius = radius ** 0.5
+      # points = (points - center) / radius ** 0.5
 
     # save to disk
     filename_ply = os.path.join(ply_folder, filename[:-3] + 'ply')
