@@ -4,9 +4,11 @@ import scipy.interpolate
 import scipy.ndimage
 import random
 
-from ocnn.octree import Octree, Points
 from solver import Dataset
-from . import basic_dataset
+from ocnn.octree import Points
+from ocnn.utils import CollateBatch
+
+from .utils import ReadPly, Transform
 
 
 def color_distort(color, trans_range_ratio, jitter_std):
@@ -82,7 +84,7 @@ def elastic_distort(points, distortion_params):
   return points
 
 
-class TransformScanNet(basic_dataset.Transform):
+class ScanNetTransform(Transform):
 
   def __init__(self, flags):
     super().__init__(flags)
@@ -92,7 +94,7 @@ class TransformScanNet(basic_dataset.Transform):
     self.color_jit_std = 0.05
     self.elastic_params = np.array([[0.2, 0.4], [0.8, 1.6]], np.float32)
 
-  def transform_scannet(self, sample):
+  def preprocess(self, sample, idx=None):
 
     # normalize points
     xyz = sample['points']
@@ -102,7 +104,7 @@ class TransformScanNet(basic_dataset.Transform):
     # normalize color
     color = sample['colors'] / 255.0
 
-    # data augmentation
+    # data augmentation specific to scannet
     if self.flags.distort:
       color = color_distort(color, self.color_trans_ratio, self.color_jit_std)
       xyz = elastic_distort(xyz, self.elastic_params)
@@ -110,34 +112,12 @@ class TransformScanNet(basic_dataset.Transform):
     return Points(torch.from_numpy(xyz), torch.from_numpy(sample['normals']),
                   torch.from_numpy(color), torch.from_numpy(sample['labels']))
 
-  def __call__(self, sample, idx=None):
-
-    # transformation specified for scannet
-    points = self.transform_scannet(sample)
-
-    # Apply the general transformations provided by ocnn.
-    # The augmentations including rotation, scaling, and jittering.
-    if self.flags.distort:
-      rng_angle, rng_scale, rng_jitter = self.rnd_parameters()
-      points.rotate(rng_angle)
-      points.scale(rng_scale)
-      points.translate(rng_jitter)
-
-    # !!! NOTE: Clip to [-1, 1] before octree building
-    inbox_mask = points.clip(min=-1, max=1)
-
-    # Convert the points to an octree
-    octree = Octree(self.flags.depth, self.flags.full_depth)
-    octree.build_octree(points)
-
-    return {'octree': octree, 'points': points, 'inbox_mask': inbox_mask}
-
 
 def get_scannet_dataset(flags):
-  transform = TransformScanNet(flags)
-  collate_batch = basic_dataset.CollateBatch(merge_points=True)
-  read_ply = basic_dataset.ReadPly(has_normal=True, has_color=True,
-                                   has_label=True, return_points=False)
+  transform = ScanNetTransform(flags)
+  read_ply = ReadPly(has_normal=True, has_color=True, has_label=True)
+  collate_batch = CollateBatch(merge_points=True)
+
   dataset = Dataset(flags.location, flags.filelist, transform,
-                    read_file=read_ply, in_memory=False)
+                    read_file=read_ply)
   return dataset, collate_batch

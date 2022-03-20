@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 import ocnn
 from solver import Solver, get_config
-from datasets import get_seg_shapenet_dataset, get_scannet_dataset
+from datasets import get_shapenet_seg_dataset, get_scannet_dataset
 
 
 class SegSolver(Solver):
@@ -24,7 +24,7 @@ class SegSolver(Solver):
 
   def get_dataset(self, flags):
     if flags.name.lower() == 'shapenet':
-      return get_seg_shapenet_dataset(flags)
+      return get_shapenet_seg_dataset(flags)
     elif flags.name.lower() == 'scannet':
       return get_scannet_dataset(flags)
       # elif flags.name.lower() == 'kitti':
