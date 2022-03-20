@@ -6,6 +6,8 @@ import trimesh
 import argparse
 import trimesh.sample
 import numpy as np
+import cyminiball
+from tqdm import tqdm
 
 import utils
 
@@ -13,11 +15,11 @@ import utils
 parser = argparse.ArgumentParser()
 parser.add_argument('--run', type=str, required=False, default='prepare_dataset',
                     help='The command to run.')
-parser.add_argument('--sample_num', type=int, default=4096,
+parser.add_argument('--sample_num', type=int, default=8000,
                     help='The sample number')
 parser.add_argument('--align_y', type=str, required=False, default='false',
                     help='Align the points with y axis')
-parser.add_argument('--normalize', type=str, required=False, default='false',
+parser.add_argument('--normalize', type=str, required=False, default='true',
                     help='Normalize the points or not.')
 
 args = parser.parse_args()
@@ -61,9 +63,10 @@ def _clean_off_file(filename):
 
 
 def _get_point_folder():
-  sample_num = args.sample_num
-  align_y = args.align_y.lower() == 'true'
-  suffix = '.ply.{}k'.format(sample_num // 1000) + ('.y' if align_y else '')
+  align_y = '.y' if args.align_y.lower() == 'true' else ''
+  normalize = '.normalize' if args.normalize.lower() == 'true' else ''
+  point_num = ''  # '.ply.{}k'.format(args.sample_num // 1000)
+  suffix = '.ply' + point_num + align_y + normalize
   points_folder = os.path.join(root_folder, 'ModelNet40' + suffix)
   return points_folder
 
@@ -130,7 +133,7 @@ def convert_mesh_to_points():
   sample_num = args.sample_num
   ply_folder = _get_point_folder()
   print('-  Sample points.')
-  for filename in filelist:
+  for filename in tqdm(filelist, ncols=80):
     filename_off = os.path.join(mesh_folder, filename)
     mesh = trimesh.load(filename_off, force='mesh')
 
@@ -145,20 +148,25 @@ def convert_mesh_to_points():
 
     # normalize points to [-1, 1]
     if args.normalize.lower() == 'true':
+      # normalize with the bounding box first, otherwise miniball may fail
       bbmin = points.min(axis=0)
       bbmax = points.max(axis=0)
       center = (bbmin + bbmax) / 2
-      size = (bbmax - bbmin).max() + 1.0e-6
-      points = (points - center) * (2.0 / size)
+      radius = (bbmax - bbmin).max() * 0.5 + 1.0e-6
+      points = (points - center) * (1.0 / radius)
 
-      # center, radius = miniball.get_bounding_ball(arr)
-      # radius = radius ** 0.5
-      # points = (points - center) / radius ** 0.5
+      # normalize with miniball
+      center, radius2, info = cyminiball.compute(points, details=True)
+      radius = np.sqrt(radius2)
+      if info['is_valid']:
+        points = (points - center) * (1.0 / radius)
+      else:
+        tqdm.write('WARNING: The miniball fails - ' + filename)
 
     # save to disk
     filename_ply = os.path.join(ply_folder, filename[:-3] + 'ply')
     utils.save_points_to_ply(filename_ply, points, normals)
-    print('Save:', filename_ply)
+    # print('Save:', filename_ply)
 
 
 def generate_points_filelist():

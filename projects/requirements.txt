@@ -8,3 +8,4 @@ tensorboard
 scikit-image
 trimesh
 wget
+cyminiball
