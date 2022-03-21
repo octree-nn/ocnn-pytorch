@@ -2,6 +2,7 @@ import os
 import torch
 import numpy as np
 from tqdm import tqdm
+# torch.multiprocessing.set_sharing_strategy('file_system')
 
 import ocnn
 from solver import Solver, get_config
@@ -11,10 +12,9 @@ from datasets import get_shapenet_seg_dataset, get_scannet_dataset
 class SegSolver(Solver):
 
   def get_model(self, flags):
-    stages = flags.depth - 2
     if flags.name.lower() == 'segnet':
       model = ocnn.models.SegNet(
-          flags.channel, flags.nout, stages, flags.interp, flags.nempty)
+          flags.channel, flags.nout, flags.stages, flags.interp, flags.nempty)
     elif flags.name.lower() == 'unet':
       model = ocnn.models.UNet(
           flags.channel, flags.nout, flags.interp, flags.nempty)
@@ -32,12 +32,19 @@ class SegSolver(Solver):
     else:
       raise ValueError
 
+  def get_input_feature(self, octree):
+    flags = self.FLAGS.MODEL
+    octree_feature = ocnn.modules.InputFeature(flags.feature, flags.nempty)
+    data = octree_feature(octree)
+    return data
+
   def model_forward(self, batch):
     octree = batch['octree'].cuda()
     points = batch['points'].cuda()
-    pts = torch.cat([points.points, points.batch_id], dim=1)
+    data = self.get_input_feature(octree)
+    query_pts = torch.cat([points.points, points.batch_id], dim=1)
 
-    logit = self.model(octree, pts)
+    logit = self.model(data, octree, octree.depth, query_pts)
     label_mask = points.labels > self.FLAGS.LOSS.mask  # filter labels
     return logit[label_mask], points.labels[label_mask]
 
@@ -75,7 +82,6 @@ class SegSolver(Solver):
              prob=prob.cpu().numpy(),
              label=label.cpu().numpy(),
              inbox_mask=batch['inbox_mask'][0].numpy().astype(bool))
-    # points.save(os.path.join(self.logdir, filename[:-4] + '.xyz'))
 
   def result_callback(self, avg_tracker, epoch):
     ''' Calculate the part mIoU for PartNet and ScanNet'''

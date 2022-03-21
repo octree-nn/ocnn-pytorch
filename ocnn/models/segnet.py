@@ -1,5 +1,6 @@
 import torch
 import ocnn
+from ocnn.octree import Octree
 
 
 class SegNet(torch.nn.Module):
@@ -17,7 +18,6 @@ class SegNet(torch.nn.Module):
 
     channels_stages = [2 ** max(i+8-stages, 2) for i in range(stages)]
     channels = [in_channels] + channels_stages
-    self.input_feature = ocnn.modules.InputFeature(in_channels, nempty)
     self.convs = torch.nn.ModuleList(
         [ocnn.modules.OctreeConvBnRelu(channels[i], channels[i+1], nempty=nempty)
          for i in range(stages)])
@@ -38,11 +38,9 @@ class SegNet(torch.nn.Module):
         ocnn.modules.Conv1x1BnRelu(channels[-1], 64),
         ocnn.modules.Conv1x1(64, out_channels, use_bias=True))
 
-  def forward(self, octree: ocnn.octree.Octree, pts: torch.Tensor):
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int,
+              query_pts: torch.Tensor):
     r''''''
-
-    depth = octree.depth
-    data = self.input_feature(octree)
 
     # encoder
     indices = dict()
@@ -52,16 +50,16 @@ class SegNet(torch.nn.Module):
       data, indices[d] = self.pools[i](data, octree, d)
 
     # bottleneck
-    data = self.bottleneck(data, octree, 2)
+    data = self.bottleneck(data, octree, depth-self.stages)
 
     # decoder
     for i in range(self.stages):
-      d = i + 3
-      data = self.unpools[i](data, indices[d], octree, d-1)
-      data = self.deconvs[i](data, octree, d)
+      d = depth - self.stages + i
+      data = self.unpools[i](data, indices[d + 1], octree, d)
+      data = self.deconvs[i](data, octree, d + 1)
 
     # header
-    feature = self.octree_interp(data, octree, depth, pts)
+    feature = self.octree_interp(data, octree, depth, query_pts)
     logits = self.header(feature)
 
     return logits

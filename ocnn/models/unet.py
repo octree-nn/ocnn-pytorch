@@ -21,7 +21,6 @@ class UNet(torch.nn.Module):
     self.decoder_stages = len(self.decoder_blocks)
 
     # encoder
-    self.input_feature = ocnn.modules.InputFeature(in_channels, nempty)
     self.conv1 = ocnn.modules.OctreeConvBnRelu(
         in_channels, self.encoder_channel[0], nempty=nempty)
     self.downsample = torch.nn.ModuleList(
@@ -63,12 +62,9 @@ class UNet(torch.nn.Module):
     self.bottleneck = 1
     self.resblk = ocnn.modules.OctreeResBlock2
 
-  def unet_encoder(self, octree: Octree):
+  def unet_encoder(self, data: torch.Tensor, octree: Octree, depth: int):
     r''' The encoder of the U-Net. 
     '''
-
-    depth = octree.depth
-    data = self.input_feature(octree)
 
     convd = dict()
     convd[depth] = self.conv1(data, octree, depth)
@@ -78,13 +74,11 @@ class UNet(torch.nn.Module):
       convd[d-1] = self.encoder[i](conv, octree, d-1)
     return convd
 
-  def unet_decoder(self, octree: Octree, convd: Dict[int, torch.Tensor]):
+  def unet_decoder(self, convd: Dict[int, torch.Tensor], octree: Octree, depth: int):
     r''' The decoder of the U-Net. 
     '''
 
-    depth = octree.depth - self.encoder_stages
     deconv = convd[depth]
-
     for i in range(self.decoder_stages):
       d = depth + i
       deconv = self.upsample[i](deconv, octree, d)
@@ -92,13 +86,14 @@ class UNet(torch.nn.Module):
       deconv = self.decoder[i](deconv, octree, d+1)
     return deconv
 
-  def forward(self, octree: Octree, pts: torch.Tensor):
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int,
+              query_pts: torch.Tensor):
     r''''''
 
-    convd = self.unet_encoder(octree)
-    deconv = self.unet_decoder(octree, convd)
+    convd = self.unet_encoder(data, octree, depth)
+    deconv = self.unet_decoder(convd, octree, depth - self.encoder_stages)
 
-    d = octree.depth - self.encoder_stages + self.decoder_stages
-    feature = self.octree_interp(deconv, octree, d, pts)
+    d = depth - self.encoder_stages + self.decoder_stages
+    feature = self.octree_interp(deconv, octree, d, query_pts)
     logits = self.header(feature)
     return logits

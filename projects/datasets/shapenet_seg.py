@@ -13,7 +13,8 @@ class ShapeNetTransform(Transform):
 
     xyz = torch.from_numpy(sample['points']).float()
     normal = torch.from_numpy(sample['normals']).float()
-    points = Points(xyz, normal)
+    labels = torch.from_numpy(sample['labels']).float()
+    points = Points(xyz, normal, labels=labels)
 
     # !NOTE: Normalize the points into one unit sphere in [-0.8, 0.8]
     bbmin, bbmax = points.bbox()
