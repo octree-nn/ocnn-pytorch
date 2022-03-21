@@ -36,7 +36,7 @@ DATA:
     # octree building
     depth: 5
     full_depth: 2
-  
+
     # data augmentations
     distort: False
     angle: (0, 0, 5)      # small rotation along z axis
@@ -53,7 +53,8 @@ DATA:
 
 MODEL:
   name: lenet
-  feature: ND   # N -> Normal (3 channels); D -> Local displacement (1 channel)
+  feature: ND   # N -> Normal (3 channels);
+                # D -> Local displacement (1 channel)
   stages: 3
   channel: 4
   nout: 40

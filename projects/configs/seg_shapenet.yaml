@@ -58,7 +58,8 @@ DATA:
 
 MODEL:
   name: segnet
-  feature: ND   # N -> Normal(3 channels); D -> Local displacement(1 channel)
+  feature: ND   # N -> Normal(3 channels);
+                # D -> Local displacement(1 channel)
   stages: 3
   channel: 4
   nout: 4

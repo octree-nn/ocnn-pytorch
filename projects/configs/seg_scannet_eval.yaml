@@ -29,8 +29,10 @@ DATA:
 
 MODEL:
   name: unet
+  feature: NDF # N -> Normal (3 channels);
+               # D -> Displacement (1 channel);
+               # F -> Color (3 channels)
   channel: 7
   nout: 21
-  depth: 9
   nempty: True
   interp: nearest
