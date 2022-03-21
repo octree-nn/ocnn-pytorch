@@ -1,5 +1,6 @@
 import torch
 import ocnn
+from ocnn.octree import Octree
 
 
 class ResNet(torch.nn.Module):
@@ -16,7 +17,6 @@ class ResNet(torch.nn.Module):
     self.nempty = nempty
     channels = [2 ** max(i+9-stages, 2) for i in range(stages)]
 
-    self.input_feature = ocnn.modules.InputFeature(in_channels, nempty)
     self.conv1 = ocnn.modules.OctreeConvBnRelu(
         in_channels, channels[0], nempty=nempty)
     self.pool1 = ocnn.nn.OctreeMaxPool(nempty)
@@ -32,11 +32,8 @@ class ResNet(torch.nn.Module):
         torch.nn.Dropout(p=0.5),
         torch.nn.Linear(512, out_channels))
 
-  def forward(self, octree: ocnn.octree.Octree):
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
     r''''''
-
-    depth = octree.depth
-    data = self.input_feature(octree)
 
     data = self.conv1(data, octree, depth)
     data = self.pool1(data, octree, depth)

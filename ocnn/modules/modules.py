@@ -171,20 +171,49 @@ class InputFeature(torch.nn.Module):
   r''' Returns the initial input feature stored in octree.
 
   Args:
-    channels (int): Number of input channels.
+    feature (str): A string used to indicate which features to extract in octree. 
+        If the character :obj:`N` is in :attr:`feature`, the normal signal is
+        extracted (3 channels). Similarly, if :obj:`D` is in :attr:`feature`,
+        the local displacement is extracted (1 channels). If :obj:`L` is in
+        :attr:`feature`, the local coordinates of the averaged points in each
+        octree node is extracted (3 channels). If :attr:`P` is in :attr:`feature`, 
+        the global coordinates are extracted (3 channels). If :attr:`F` is in 
+        :attr:`feature`, other features (like colors) are extracted (k channels).
     nempty (bool): If false, gets the features of all octree nodes. 
   '''
 
-  def __init__(self, channels: int, nempty: bool = False):
+  def __init__(self, feature: str = 'NDF', nempty: bool = False):
     super().__init__()
-    self.channels = channels
     self.nempty = nempty
+    self.feature = feature.upper()
 
   def forward(self, octree: Octree):
     r''''''
 
-    data = octree.get_input_feature()
-    data = data[:, :self.channels]
+    features = list()
+    depth = octree.depth
+    if 'N' in self.feature:
+      features.append(octree.normals[depth])
+
+    if 'L' in self.feature or 'D' in self.feature:
+      local_points = octree.points[depth].frac() - 0.5
+
+    if 'D' in self.feature:
+      dis = torch.sum(local_points * octree.normals[depth], dim=1, keepdim=True)
+      features.append(dis)
+
+    if 'L' in self.feature:
+      features.append(local_points)
+
+    if 'P' in self.feature:
+      scale = 2 ** (1 - depth)   # normalize [0, 2^depth] -> [-1, 1]
+      global_points = octree.points[depth] * scale - 1.0
+      features.append(global_points)
+
+    if 'F' in self.feature:
+      features.append(octree.features[depth])
+
+    out = torch.cat(features, dim=1)
     if not self.nempty:
-      data = ocnn.nn.octree_pad(data, octree, octree.depth)
-    return data
+      out = ocnn.nn.octree_pad(out, octree, depth)
+    return out

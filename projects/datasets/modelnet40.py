@@ -17,9 +17,14 @@ class ModelNetTransform(Transform):
     normal = torch.from_numpy(sample['normals']).float()
     points = Points(xyz, normal)
 
-    # # !NOTE: Normalize the points into one unit sphere in [-0.8, 0.8]
+    # Comment out the following lines since the shapes have been normalized
+    # in the pre-processing stage.
+    #
+    # Normalize the points into one unit sphere in [-0.8, 0.8]
     # bbmin, bbmax = points.bbox()
     # points.normalize(bbmin, bbmax, scale=0.8)
+    # 
+    # points.scale(torch.Tensor([0.8, 0.8, 0.8]))
 
     return points
 

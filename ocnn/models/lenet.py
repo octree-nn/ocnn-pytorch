@@ -1,5 +1,6 @@
 import torch
 import ocnn
+from ocnn.octree import Octree
 
 
 class LeNet(torch.nn.Module):
@@ -15,7 +16,6 @@ class LeNet(torch.nn.Module):
     self.nempty = nempty
     channels = [in_channels] + [2 ** max(i+7-stages, 2) for i in range(stages)]
 
-    self.input_feature = ocnn.modules.InputFeature(in_channels, nempty)
     self.convs = torch.nn.ModuleList(
         [ocnn.modules.OctreeConvBnRelu(channels[i], channels[i+1], nempty=nempty)
          for i in range(stages)])
@@ -28,11 +28,8 @@ class LeNet(torch.nn.Module):
         torch.nn.Dropout(p=0.5),                     # drop2
         torch.nn.Linear(128, out_channels))          # fc2
 
-  def forward(self, octree: ocnn.octree.Octree):
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
     r''''''
-
-    depth = octree.depth
-    data = self.input_feature(octree)
 
     for i in range(self.stages):
       d = depth - i
