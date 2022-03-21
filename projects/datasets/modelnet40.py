@@ -23,8 +23,11 @@ class ModelNetTransform(Transform):
     # Normalize the points into one unit sphere in [-0.8, 0.8]
     # bbmin, bbmax = points.bbox()
     # points.normalize(bbmin, bbmax, scale=0.8)
-    # 
+    #
     # points.scale(torch.Tensor([0.8, 0.8, 0.8]))
+
+    # Take the absolute values of normals to make normals oriented
+    points.orient_normal('xyz')
 
     return points
 

@@ -20,6 +20,9 @@ class ShapeNetTransform(Transform):
     bbmin, bbmax = points.bbox()
     points.normalize(bbmin, bbmax, scale=0.8)
 
+    # Take the absolute values of normals to make normals oriented
+    points.orient_normal('xyz')
+
     return points
 
 
