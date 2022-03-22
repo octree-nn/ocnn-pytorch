@@ -1,7 +1,7 @@
 import torch
 from typing import Optional
 
-__all__ = ['meshgrid', 'scatter_add']
+__all__ = ['meshgrid', 'scatter_add', 'cumsum']
 classes = __all__
 
 
@@ -16,6 +16,28 @@ def meshgrid(*tensors, indexing: Optional[str] = None):
     return torch.meshgrid(*tensors, indexing=indexing)
   else:
     return torch.meshgrid(*tensors)
+
+
+def cumsum(data: torch.Tensor, dim: int, exclusive: bool = False):
+  r''' Extends :func:`torch.cumsum` with the input argument :attr:`exclusive`.
+
+  Args:
+    data (torch.Tensor): The input data.
+    dim (int): The dimension to do the operation over.
+    exclusive (bool): If true, the behavior is the same as :func:`torch.cumsum`;
+        if false, returns the cumulative sum exclusively. Note that if false,
+        the shape of output tensor is larger by 1 than :attr:`data` in the
+        dimension where the computation occurs.
+  '''
+
+  out = torch.cumsum(data, dim)
+
+  if exclusive:
+    size = list(data.size())
+    size[dim] = 1
+    zeros = data.new_zeros(size)
+    out = torch.cat([zeros, out], dim)
+  return out
 
 
 def broadcast(src: torch.Tensor, other: torch.Tensor, dim: int):

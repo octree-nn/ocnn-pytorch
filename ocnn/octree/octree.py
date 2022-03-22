@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
-from typing import Optional, Union, List
+from typing import Union, List
 
-from ocnn.utils import meshgrid, scatter_add
+from ocnn.utils import meshgrid, scatter_add, cumsum
 from .points import Points
 from .shuffled_key import xyz2key, key2xyz
 
@@ -360,10 +360,7 @@ def merge_octrees(octrees: List['Octree']):
       [octrees[i].nnum_nempty for i in range(octree.batch_size)], dim=1)
   octree.nnum = torch.sum(nnum, dim=1)
   octree.nnum_nempty = torch.sum(nnum_nempty, dim=1)
-
-  nnum_cum = torch.cumsum(nnum_nempty, dim=1)
-  pad = torch.zeros_like(octrees[0].nnum).unsqueeze(1)
-  nnum_cum = torch.cat([pad, nnum_cum], dim=1)
+  nnum_cum = cumsum(nnum_nempty, dim=1, exclusive=True)
 
   # merge octre properties
   for d in range(octree.depth+1):
