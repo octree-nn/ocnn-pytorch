@@ -5,7 +5,7 @@ from typing import Optional, Union, List
 from .points import Points
 from .shuffled_key import xyz2key, key2xyz
 from .scatter import scatter_add
-from ocnn.utils import torch_meshgrid
+from ocnn.utils import meshgrid
 
 
 class Octree:
@@ -51,8 +51,8 @@ class Octree:
     # self.nnum_cum = torch.zeros(num, dtype=torch.int32)
 
     # construct the look up tables for neighborhood searching
-    center_grid = self.meshgrid(2, 3)    # (8, 3)
-    displacement = self.meshgrid(-1, 1)  # (27, 3)
+    center_grid = self.rng_grid(2, 3)    # (8, 3)
+    displacement = self.rng_grid(-1, 1)  # (27, 3)
     neigh_grid = center_grid.unsqueeze(1) + displacement  # (8, 27, 3)
     parent_grid = torch.div(neigh_grid, 2, rounding_mode='trunc')
     child_grid = neigh_grid % 2
@@ -157,7 +157,7 @@ class Octree:
       key = torch.arange(nnum, dtype=torch.long, device=self.device)
       x, y, z, _ = key2xyz(key, depth)
       xyz = torch.stack([x, y, z], dim=-1)  # (N,  3)
-      grid = self.meshgrid(min=-1, max=1)   # (27, 3)
+      grid = self.rng_grid(min=-1, max=1)   # (27, 3)
       xyz = xyz.unsqueeze(1) + grid         # (N, 27, 3)
       xyz = xyz.view(-1, 3)                 # (N*27, 3)
       neigh = xyz2key(xyz[:, 0], xyz[:, 1], xyz[:, 2], depth=depth)
@@ -328,12 +328,12 @@ class Octree:
 
     return self.to('cpu')
 
-  def meshgrid(self, min, max):
+  def rng_grid(self, min, max):
     r''' Builds a mesh grid in :obj:`[min, max]` (:attr:`max` included).
     '''
 
     rng = torch.arange(min, max+1, dtype=torch.long, device=self.device)
-    grid = torch_meshgrid(rng, rng, rng, indexing='ij')
+    grid = meshgrid(rng, rng, rng, indexing='ij')
     grid = torch.stack(grid, dim=-1).view(-1, 3)  # (27, 3)
     return grid
 

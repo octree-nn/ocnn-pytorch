@@ -1,11 +1,11 @@
 import torch
 from typing import Optional
 
-__all__ = ['torch_meshgrid']
+__all__ = ['meshgrid']
 classes = __all__
 
 
-def torch_meshgrid(*tensors, indexing: Optional[str] = None):
+def meshgrid(*tensors, indexing: Optional[str] = None):
   r''' Wraps :func:`torch.meshgrid` for compatibility.
   '''
 
