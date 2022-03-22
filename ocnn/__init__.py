@@ -2,6 +2,7 @@ from . import octree
 from . import nn
 from . import modules
 from . import models
+from . import dataset
 from . import utils
 
 __version__ = '2.0.0'
@@ -11,5 +12,6 @@ __all__ = [
     'nn',
     'modules',
     'models',
+    'dataset',
     'utils'
 ]

@@ -6,7 +6,7 @@ import random
 
 from solver import Dataset
 from ocnn.octree import Points
-from ocnn.utils import CollateBatch
+from ocnn.dataset import CollateBatch
 
 from .utils import ReadPly, Transform
 
