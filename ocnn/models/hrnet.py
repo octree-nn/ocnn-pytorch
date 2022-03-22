@@ -130,12 +130,12 @@ class ClsHeader(torch.nn.Module):
         torch.nn.Linear(256, out_channels))
 
   def forward(self, data: List[torch.Tensor], octree: Octree, depth: int):
-    
+
     full_depth = 2
     num = len(data)
     for i in range(num):
       depth_i = depth - i
-      for d in range(depth_i, full_depth, -1): 
+      for d in range(depth_i, full_depth, -1):
         data[i] = ocnn.nn.octree_max_pool(data[i], octree, d, self.nempty)
 
     out = torch.cat(data, dim=1)
@@ -160,7 +160,6 @@ class HRNet(torch.nn.Module):
     self.resblk_num = 3
     self.channels = [128, 256, 512, 512]
 
-    self.input_feature = ocnn.modules.InputFeature(in_channels, nempty)
     self.front = FrontLayer([in_channels, 64, self.channels[0]], nempty)
     self.branches = torch.nn.ModuleList([
         Branches(self.channels[:i+1], self.resblk_num, nempty)
@@ -171,11 +170,8 @@ class HRNet(torch.nn.Module):
 
     self.cls_header = ClsHeader(self.channels[:stages], out_channels, nempty)
 
-  def forward(self, octree: Octree):
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
     r''''''
-
-    depth = octree.depth
-    data = self.input_feature(octree)
 
     convs = [self.front(data, octree, depth)]
     depth = depth - 1  # the data is downsampled in `front`
