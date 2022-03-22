@@ -102,6 +102,19 @@ class Points:
     dis = dis.to(self.device)
     self.points = self.points + dis
 
+  def flip(self, axis: str):
+    r''' Flips the point cloud along the given :attr:`axis`.
+
+    Args:
+      axis (str): The flipping axis, choosen from :obj:`x`, :obj:`y`, and :obj`z`.
+    '''
+
+    axis_map = {'x': 0, 'y': 1, 'z': 2}
+    idx = axis_map[axis]
+    self.points[:, idx] *= -1.0
+    if self.normals is not None:
+      self.normals[:, idx] *= -1.0
+
   def clip(self, min: float = -1.0, max: float = 1.0, esp: float = 0.01):
     r''' Clips the point cloud to :obj:`[min+esp, max-esp]` and returns the mask.
 
