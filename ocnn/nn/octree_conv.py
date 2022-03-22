@@ -4,7 +4,8 @@ import torch.nn
 from torch.autograd import Function
 from typing import List
 
-from ocnn.octree import Octree, scatter_add
+from ocnn.octree import Octree
+from ocnn.utils import scatter_add
 from .octree2col import octree2col, col2octree
 from .octree_pad import octree_pad, octree_depad
 

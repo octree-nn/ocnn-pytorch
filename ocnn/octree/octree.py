@@ -2,10 +2,9 @@ import torch
 import torch.nn.functional as F
 from typing import Optional, Union, List
 
+from ocnn.utils import meshgrid, scatter_add
 from .points import Points
 from .shuffled_key import xyz2key, key2xyz
-from .scatter import scatter_add
-from ocnn.utils import meshgrid
 
 
 class Octree:

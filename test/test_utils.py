@@ -14,7 +14,7 @@ class TestScatter(unittest.TestCase):
       idx = torch.tensor([0, 1, 3, 2, 0], device=device)
       gt = torch.tensor([[6, 2, 4, 3, 0], [16, 7, 9, 8, 0]], device=device)
 
-      output = ocnn.octree.scatter_add(src, idx, dim=1, dim_size=5)
+      output = ocnn.utils.scatter_add(src, idx, dim=1, dim_size=5)
       self.assertTrue((output == gt).all())
 
 

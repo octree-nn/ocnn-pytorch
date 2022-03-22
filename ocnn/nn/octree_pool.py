@@ -1,9 +1,9 @@
 import torch
 import torch.nn
 
-from ocnn.octree import Octree, scatter_add
-from ocnn.nn import octree_pad, octree_depad
-from ocnn.utils import meshgrid
+from ocnn.octree import Octree
+from ocnn.utils import meshgrid, scatter_add
+from . import octree_pad, octree_depad
 
 
 def octree_max_pool(data: torch.Tensor, octree: Octree, depth: int,
