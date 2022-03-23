@@ -95,8 +95,8 @@ class TesOctree(unittest.TestCase):
     self.check_octree(octree, data)
 
     # check neigh
-    self.assertTrue(
-        np.array_equal(torch.cat(octree.neighs[1:], dim=0).numpy(), data['neigh']))
+    self.assertTrue(np.array_equal(
+        torch.cat(octree.neighs[1:], dim=0).numpy(), data['neigh']))
 
   def test_search_key(self):
 
@@ -106,12 +106,37 @@ class TesOctree(unittest.TestCase):
 
     depth = 5
     xyzb = torch.from_numpy(data['xyzb'])
-    key = ocnn.octree.xyz2key(xyzb[:, 0], xyzb[:, 1], xyzb[:, 2], xyzb[:, 3], depth)
+    key = ocnn.octree.xyz2key(
+        xyzb[:, 0], xyzb[:, 1], xyzb[:, 2], xyzb[:, 3], depth)
     idx = octree.search_key(key, depth, nempty=False)
     idx_ne = octree.search_key(key, depth, nempty=True)
 
     self.assertTrue(np.array_equal(idx.numpy(), data['idx']))
     self.assertTrue(np.array_equal(idx_ne.numpy(), data['idx_ne']))
+
+  def test_octree_grow(self):
+
+    folder = os.path.dirname(__file__)
+    data = np.load(os.path.join(folder, 'data/batch_45.npz'))
+    octree_gt = get_batch_octree()
+
+    depth = 6
+    full_depth = 3
+    octree = ocnn.octree.Octree(depth, full_depth, batch_size=2)
+    for d in range(full_depth+1):
+      octree.octree_grow_full(depth=d)
+
+    for d in range(full_depth, depth+1):
+      split = octree_gt.children[d] >= 0
+      octree.octree_split(split, d)
+      if d < depth:
+        octree.octree_grow(d + 1)
+
+    octree.normals[depth] = octree_gt.normals[depth]
+
+    self.check_octree(octree, data)
+    self.assertTrue(np.array_equal(
+        torch.cat(octree.neighs[1:], dim=0).numpy(), data['neigh']))
 
 
 if __name__ == "__main__":

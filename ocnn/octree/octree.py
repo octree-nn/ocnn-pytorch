@@ -91,12 +91,7 @@ class Octree:
 
     # layer 0 to full_layer: the octree is full in these layers
     for d in range(self.full_depth+1):
-      num = 1 << (3 * d)
-      self.keys[d] = torch.arange(num, dtype=torch.long, device=self.device)
-      self.children[d] = torch.arange(
-          num, dtype=torch.int32, device=self.device)
-      self.nnum[d] = num
-      self.nnum_nempty[d] = num
+      self.octree_grow_full(d, update_neigh=False)
 
     # layer depth_ to full_layer_
     for d in range(self.depth, self.full_depth, -1):
@@ -143,6 +138,93 @@ class Octree:
       self.features[d] = features / counts.unsqueeze(1)
 
     return idx
+
+  def octree_grow_full(self, depth: int, update_neigh: bool = True):
+    r''' Builds the full octree, which is essentially a dense volumetric grid.
+
+    Args:
+      depth (int): The depth of the octree. 
+      update_neigh (bool): If True, construct the neighborhood indices.
+    '''
+
+    # check
+    torch._assert(depth <= self.full_depth, 'error')
+
+    # node number
+    num = 1 << (3 * depth)
+    self.nnum[depth] = num * self.batch_size
+    self.nnum_nempty[depth] = num * self.batch_size
+
+    # update key
+    key = torch.arange(num, dtype=torch.long, device=self.device)
+    bs = torch.arange(self.batch_size, dtype=torch.long, device=self.device)
+    key = key.unsqueeze(0) | (bs.unsqueeze(1) << 48)
+    self.keys[depth] = key.view(-1)
+
+    # update children
+    self.children[depth] = torch.arange(
+        num * self.batch_size, dtype=torch.int32, device=self.device)
+
+    # update neigh if needed
+    if update_neigh:
+      self.construct_neigh(depth)
+
+  def octree_split(self, split: torch.Tensor, depth: int):
+    r''' Sets whether the octree nodes in :attr:`depth` are splitted or not.
+
+    Args:
+      split (torch.Tensor): The input tensor with its element indicating status
+          of each octree node: 0 - empty, 1 - non-empty or splitted.
+      depth (int): The depth of current octree.
+    '''
+
+    # split -> children
+    empty = split == 0
+    sum = cumsum(split, dim=0, exclusive=True)
+    children, nnum_nempty = torch.split(sum, [split.shape[0], 1])
+    children[empty] = -1
+
+    # boundary case, make sure that at least one octree node is splitted
+    if nnum_nempty == 0:
+      nnum_nempty = 1
+      children[0] = 0
+
+    # update octree
+    self.children[depth] = children
+    self.nnum_nempty[depth] = nnum_nempty
+
+  def octree_grow(self, depth: int, update_neigh: bool = True):
+    r''' Grows the octree and updates the relevant properties. And in most 
+    cases, call :func:`Octree.octree_split` to update the splitting status of
+    the octree before this function.
+
+    Args:
+      depth (int): The depth of the octree. 
+      update_neigh (bool): If True, construct the neighborhood indices.
+    '''
+
+    # node number
+    nnum = self.nnum_nempty[depth-1] * 8
+    self.nnum[depth] = nnum
+    self.nnum_nempty[depth] = nnum
+
+    # update keys
+    key = self.keys[depth-1]
+    nempty = self.children[depth-1] >= 0
+    key = key[nempty].unsqueeze(1)
+    batch_id = (key >> 48) << 48
+    key = (key & ((1 << 48) - 1)) << 3
+    key = key | batch_id
+    key = key + torch.arange(8, device=key.device)
+    self.keys[depth] = key.view(-1)
+
+    # update children
+    self.children[depth] = torch.arange(
+        nnum, dtype=torch.int32, device=self.device)
+
+    # update neighs
+    if update_neigh:
+      self.construct_neigh(depth)
 
   def construct_neigh(self, depth: int):
     r''' Constructs the :obj:`3x3x3` neighbors for each octree node.
