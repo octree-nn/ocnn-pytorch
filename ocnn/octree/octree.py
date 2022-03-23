@@ -253,11 +253,11 @@ class Octree:
 
     else:
       child_p = self.children[depth-1]
-      mask = child_p >= 0
-      neigh_p = self.neighs[depth-1][mask]   # (N, 27)
-      neigh_p = neigh_p[:, self.lut_parent]  # (N, 8, 27)
-      child_p = child_p[neigh_p]  # (N, 8, 27)
-      invalid = child_p < 0       # (N, 8, 27)
+      nempty = child_p >= 0
+      neigh_p = self.neighs[depth-1][nempty]   # (N, 27)
+      neigh_p = neigh_p[:, self.lut_parent]    # (N, 8, 27)
+      child_p = child_p[neigh_p]               # (N, 8, 27)
+      invalid = torch.logical_or(child_p < 0, neigh_p < 0)   # (N, 8, 27)
       neigh = child_p * 8 + self.lut_child
       neigh[invalid] = -1
       self.neighs[depth] = neigh.view(-1, 27)

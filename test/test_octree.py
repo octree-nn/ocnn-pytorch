@@ -138,6 +138,18 @@ class TesOctree(unittest.TestCase):
     self.assertTrue(np.array_equal(
         torch.cat(octree.neighs[1:], dim=0).numpy(), data['neigh']))
 
+  def test_octree_neigh(self):
+
+    octree1 = get_batch_octree()
+    octree2 = get_batch_octree()
+
+    # After change the full_depth, the neigh of `octree2 in` depth 3 is
+    # computed by the other if-branch in `Octree.construct_neigh()`
+    octree2.full_depth = 2
+    octree2.construct_neigh(depth=3)
+
+    self.assertTrue(torch.equal(octree1.neighs[3], octree2.neighs[3]))
+
 
 if __name__ == "__main__":
   os.environ['CUDA_VISIBLE_DEVICES'] = '0'
