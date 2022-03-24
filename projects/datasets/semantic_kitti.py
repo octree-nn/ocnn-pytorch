@@ -52,7 +52,7 @@ class KittiTransform(Transform):
 
     # get the input
     xyz = sample['points'][:, :3]
-    density = sample['points'][:, 3:]  # TODO: normalize density or not?
+    density = sample['points'][:, 3:]
 
     # normalization the xyz to [-1, 1]
     center = (xyz.min(axis=0) + xyz.max(axis=0)) / 2.0
