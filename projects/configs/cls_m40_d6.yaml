@@ -3,7 +3,7 @@ SOLVER:
   run: train
   type: sgd
 
-  logdir: logs/m40/d5
+  logdir: logs/m40/d6
   max_epoch: 300
   test_every_epoch: 5
 
@@ -15,7 +15,7 @@ SOLVER:
 DATA:
   train:
     # octree building
-    depth: 5
+    depth: 6
     full_depth: 2
 
     # data augmentations
@@ -34,7 +34,7 @@ DATA:
 
   test:
     # octree building
-    depth: 5
+    depth: 6
     full_depth: 2
 
     # data augmentations
@@ -55,7 +55,7 @@ MODEL:
   name: lenet
   feature: ND   # N -> Normal (3 channels);
                 # D -> Local displacement (1 channel)
-  stages: 3
+  stages: 4
   channel: 4
   nout: 40
 
