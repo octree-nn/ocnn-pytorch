@@ -26,9 +26,6 @@ class ModelNetTransform(Transform):
     #
     # points.scale(torch.Tensor([0.8, 0.8, 0.8]))
 
-    # Take the absolute values of normals to make normals oriented
-    points.orient_normal('xyz')
-
     return points
 
 

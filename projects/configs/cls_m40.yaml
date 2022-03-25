@@ -18,6 +18,9 @@ DATA:
     depth: 5
     full_depth: 2
 
+    # transformation
+    orient_normal: xyz
+
     # data augmentations
     distort: True
     angle: (0, 0, 5)      # small rotation along z axis
@@ -36,6 +39,9 @@ DATA:
     # octree building
     depth: 5
     full_depth: 2
+
+    # transformation
+    orient_normal: xyz
 
     # data augmentations
     distort: False

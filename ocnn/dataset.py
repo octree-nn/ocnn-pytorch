@@ -24,11 +24,13 @@ class Transform:
     scale (float): The maximum relative scale factor.
     uniform (bool): If true, performs uniform scaling.
     jittor (float): The maximum jitter values.
+    orient_normal (str): Orient point normals along the specified axis, which is
+        useful when normals are not oriented.
   '''
 
   def __init__(self, depth: int, full_depth: int, distort: bool, angle: list,
                interval: list, scale: float, uniform: bool, jitter: float,
-               **kwargs):
+               orient_normal: str = '', **kwargs):
     super().__init__()
 
     # for octree building
@@ -42,6 +44,9 @@ class Transform:
     self.scale = scale
     self.uniform = uniform
     self.jitter = jitter
+
+    # for other transformations
+    self.orient_normal = orient_normal
 
   def __call__(self, sample: dict, idx: int):
     r''''''
@@ -71,6 +76,9 @@ class Transform:
       points.rotate(rng_angle)
       points.scale(rng_scale)
       points.translate(rng_jitter)
+
+    if self.orient_normal:
+      points.orient_normal(self.orient_normal)
 
     # !!! NOTE !!!: Clip the point cloud to [-1, 1] before building the octree
     inbox_mask = points.clip(min=-1, max=1)
