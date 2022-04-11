@@ -366,7 +366,7 @@ class Octree:
 
     d = self.depth
     scale = 2 ** (1-d)
-    # the average points are in range [0, 2^d]
+    # normalize to [-1, 1] since the average points are in range [0, 2^d]
     points = self.points[d] * scale - 1.0
     return Points(points, self.normals[d], self.features[d])
 
