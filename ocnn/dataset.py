@@ -53,6 +53,7 @@ class Transform:
 
     points = self.preprocess(sample, idx)
     output = self.transform(points, idx)
+    output['octree'] = self.points2octree(output['points'])
     return output
 
   def preprocess(self, sample: dict, idx: int):
@@ -61,8 +62,8 @@ class Transform:
     '''
 
     xyz = torch.from_numpy(sample['points'])
-    normal = torch.from_numpy(sample['normal'])
-    points = Points(xyz, normal)
+    normals = torch.from_numpy(sample['normals'])
+    points = Points(xyz, normals)
     return points
 
   def transform(self, points: Points, idx: int):
@@ -80,14 +81,17 @@ class Transform:
     if self.orient_normal:
       points.orient_normal(self.orient_normal)
 
-    # !!! NOTE !!!: Clip the point cloud to [-1, 1] before building the octree
+    # !!! NOTE: Clip the point cloud to [-1, 1] before building the octree
     inbox_mask = points.clip(min=-1, max=1)
+    return {'points': points, 'inbox_mask': inbox_mask}
 
-    # Convert the points to an octree
+  def points2octree(self, points: Points):
+    r''' Converts the input :attr:`points` to an octree.
+    '''
+
     octree = Octree(self.depth, self.full_depth)
     octree.build_octree(points)
-
-    return {'octree': octree, 'points': points, 'inbox_mask': inbox_mask}
+    return octree
 
   def rnd_parameters(self):
     r''' Generates random parameters for data augmentation.

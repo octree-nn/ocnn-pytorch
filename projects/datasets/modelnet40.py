@@ -11,14 +11,10 @@ from .utils import ReadPly, Transform
 class ModelNetTransform(Transform):
 
   def preprocess(self, sample: dict, idx: int):
+    points = super().preprocess(sample, idx)
 
-    # Build Points
-    xyz = torch.from_numpy(sample['points']).float()
-    normal = torch.from_numpy(sample['normals']).float()
-    points = Points(xyz, normal)
-
-    # Comment out the following lines since the shapes have been normalized
-    # in the pre-processing stage.
+    # Comment out the following lines if the shapes have been normalized
+    # in the dataset generation stage.
     #
     # Normalize the points into one unit sphere in [-0.8, 0.8]
     # bbmin, bbmax = points.bbox()
