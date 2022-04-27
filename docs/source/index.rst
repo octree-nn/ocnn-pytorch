@@ -12,6 +12,7 @@ ocnn-pytorch is a pure-PyTorch-based implementation of O-CNN.
   :caption: Notes
 
   notes/installation
+  notes/classification
 
 
 .. toctree::
