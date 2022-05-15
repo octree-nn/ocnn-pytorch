@@ -16,7 +16,6 @@ class Branches(torch.nn.Module):
         for ch in channels])
 
   def forward(self, datas: List[torch.Tensor], octree: Octree, depth: int):
-
     num = len(self.channels)
     torch._assert(len(datas) == num, 'Error')
 
@@ -39,7 +38,6 @@ class TransFunc(torch.nn.Module):
 
   def forward(self, data: torch.Tensor, octree: Octree,
               in_depth: int, out_depth: int):
-
     out = data
     if in_depth > out_depth:
       for d in range(in_depth, out_depth, -1):
@@ -52,7 +50,6 @@ class TransFunc(torch.nn.Module):
         out = self.conv1x1(out)
       for d in range(in_depth, out_depth, 1):
         out = ocnn.nn.octree_upsample(out, octree, d, self.nempty)
-
     return out
 
 
@@ -70,7 +67,6 @@ class Transitions(torch.nn.Module):
         self.trans_func.append(TransFunc(channels[i], channels[j], nempty))
 
   def forward(self, data: List[torch.Tensor], octree: Octree, depth: int):
-
     num = len(self.channels)
     features = [[None] * (num - 1) for _ in range(num)]
     for i in range(num - 1):
@@ -83,8 +79,9 @@ class Transitions(torch.nn.Module):
 
     out = [None] * num
     for j in range(num):
+      # In the original tensorflow implmentation, the relu is added here,
+      # instead of Line 77
       out[j] = torch.stack(features[j], dim=0).sum(dim=0)
-
     return out
 
 
@@ -103,7 +100,6 @@ class FrontLayer(torch.nn.Module):
         ocnn.nn.OctreeMaxPool(nempty) for i in range(self.num - 1)])
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
-
     out = data
     for i in range(self.num - 1):
       depth_i = depth - i
@@ -122,15 +118,17 @@ class ClsHeader(torch.nn.Module):
     self.nempty = nempty
 
     in_channels = int(torch.Tensor(channels).sum())
-    self.conv1x1 = ocnn.modules.Conv1x1BnRelu(in_channels, 512)
+    self.conv1x1 = ocnn.modules.Conv1x1BnRelu(in_channels, 1024)
     self.global_pool = ocnn.nn.OctreeGlobalPool()
     self.header = torch.nn.Sequential(
-        ocnn.modules.FcBnRelu(512, 256),
-        torch.nn.Dropout(p=0.5),
-        torch.nn.Linear(256, out_channels))
+        torch.nn.Flatten(start_dim=1),
+        torch.nn.Linear(1024, out_channels, bias=True))
+    # self.header = torch.nn.Sequential(
+    #     ocnn.modules.FcBnRelu(512, 256),
+    #     torch.nn.Dropout(p=0.5),
+    #     torch.nn.Linear(256, out_channels))
 
   def forward(self, data: List[torch.Tensor], octree: Octree, depth: int):
-
     full_depth = 2
     num = len(data)
     for i in range(num):
@@ -160,7 +158,7 @@ class HRNet(torch.nn.Module):
     self.resblk_num = 3
     self.channels = [128, 256, 512, 512]
 
-    self.front = FrontLayer([in_channels, 64, self.channels[0]], nempty)
+    self.front = FrontLayer([in_channels, 32, self.channels[0]], nempty)
     self.branches = torch.nn.ModuleList([
         Branches(self.channels[:i+1], self.resblk_num, nempty)
         for i in range(stages)])
@@ -172,7 +170,6 @@ class HRNet(torch.nn.Module):
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
     r''''''
-
     convs = [self.front(data, octree, depth)]
     depth = depth - 1  # the data is downsampled in `front`
     for i in range(self.stages):
