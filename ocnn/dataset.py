@@ -75,8 +75,8 @@ class Transform:
     if self.distort:
       rng_angle, rng_scale, rng_jitter = self.rnd_parameters()
       points.rotate(rng_angle)
-      points.scale(rng_scale)
       points.translate(rng_jitter)
+      points.scale(rng_scale)
 
     if self.orient_normal:
       points.orient_normal(self.orient_normal)

@@ -4,7 +4,7 @@ SOLVER:
   type: sgd
 
   logdir: logs/m40/d6
-  max_epoch: 300
+  max_epoch: 280
   test_every_epoch: 5
 
   # lr_type: cos
@@ -26,6 +26,7 @@ DATA:
     angle: (0, 0, 5)      # small rotation along z axis
     interval: (1, 1, 1)
     scale: 0.25
+    uniform: True
     jitter: 0.125
 
     # data loading
@@ -48,6 +49,7 @@ DATA:
     angle: (0, 0, 5)      # small rotation along z axis
     interval: (1, 1, 1)
     scale: 0.25
+    uniform: True
     jitter: 0.125
 
     # data loading
@@ -58,10 +60,10 @@ DATA:
     # num_workers: 0
 
 MODEL:
-  name: lenet
+  name: hrnet
   feature: ND   # N -> Normal (3 channels);
                 # D -> Local displacement (1 channel)
-  stages: 4
+  stages: 3
   channel: 4
   nout: 40
 

@@ -11,9 +11,10 @@ class Branches(torch.nn.Module):
     super().__init__()
     self.channels = channels
     self.resblk_num = resblk_num
+    bottlenecks = [4 if c < 256 else 8 for c in channels]  # to save parameters
     self.resblocks = torch.nn.ModuleList([
-        ocnn.modules.OctreeResBlocks(ch, ch, resblk_num, nempty=nempty)
-        for ch in channels])
+        ocnn.modules.OctreeResBlocks(ch, ch, resblk_num, bnk, nempty=nempty)
+        for ch, bnk in zip(channels, bottlenecks)])
 
   def forward(self, datas: List[torch.Tensor], octree: Octree, depth: int):
     num = len(self.channels)
