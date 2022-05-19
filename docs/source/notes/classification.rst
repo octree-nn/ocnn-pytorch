@@ -1,5 +1,5 @@
 Classification
-============
+===========================
 
 
 Data Preparation
@@ -8,6 +8,7 @@ Data Preparation
 Clone the `ocnn-pytorch` repository, and enter the subdirectory `projects`.
 
 .. code-block:: none
+
   python tools/cls_modelnet.py
 
 
@@ -23,7 +24,7 @@ Experiments
   
 
 
-#. Train a HRNet used in our paper on `3D unsupervised pretraining<https://wang-ps.github.io/pretrain>`_
+#. Train a HRNet used in our paper on `3D Unsupervised Pretraining <https://wang-ps.github.io/pretrain>`_
 
   .. code-block:: none
 
