@@ -6,5 +6,6 @@ ocnn.egg-info
 dist
 data
 logs
+amlt
 *.sh
 *.xyz
