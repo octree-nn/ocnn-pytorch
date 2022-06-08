@@ -6,6 +6,9 @@ ocnn.egg-info
 dist
 data
 logs
-amlt
 *.sh
 *.xyz
+amlt
+submit
+.amltconfig
+.amltignore

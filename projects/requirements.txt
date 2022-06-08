@@ -9,3 +9,4 @@ scikit-image
 trimesh
 wget
 cyminiball
+protobuf>=3.1.0,<=3.20.0

@@ -2,7 +2,10 @@ import os
 import torch
 import numpy as np
 from tqdm import tqdm
-# torch.multiprocessing.set_sharing_strategy('file_system')
+
+# The following line is to fix `RuntimeError: received 0 items of ancdata`.
+# Refer: https://github.com/pytorch/pytorch/issues/973
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 import ocnn
 from solver import Solver, get_config
