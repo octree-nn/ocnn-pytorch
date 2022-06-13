@@ -11,7 +11,7 @@ class UNet(torch.nn.Module):
   '''
 
   def __init__(self, in_channels: int, out_channels: int, interp: str = 'linear',
-               nempty: bool = False):
+               nempty: bool = False, **kwargs):
     super(UNet, self).__init__()
     self.in_channels = in_channels
     self.out_channels = out_channels
@@ -93,7 +93,7 @@ class UNet(torch.nn.Module):
     convd = self.unet_encoder(data, octree, depth)
     deconv = self.unet_decoder(convd, octree, depth - self.encoder_stages)
 
-    d = depth - self.encoder_stages + self.decoder_stages
-    feature = self.octree_interp(deconv, octree, d, query_pts)
+    interp_depth = depth - self.encoder_stages + self.decoder_stages
+    feature = self.octree_interp(deconv, octree, interp_depth, query_pts)
     logits = self.header(feature)
     return logits
