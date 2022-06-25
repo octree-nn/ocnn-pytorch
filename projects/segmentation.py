@@ -72,27 +72,37 @@ class SegSolver(Solver):
     return dict(zip(names, tensors))
 
   def eval_step(self, batch):
-    octree = batch['octree'].cuda()
-    points = batch['points'].cuda()
-    pts = torch.cat([points.points, points.batch_id], dim=1)
-
-    logit = self.model(octree, pts)
+    with torch.no_grad():
+      logit, _ = self.model_forward(batch)
     prob = torch.nn.functional.softmax(logit, dim=1)
-    label = prob.argmax(dim=1)
 
+    # The point cloud may be clipped when doing data augmentation. The
+    # `inbox_mask` indicates which points are clipped. The `prob_all_pts`
+    # contains the prediction for all points.
+    inbox_mask = batch['inbox_mask'][0]
     assert len(batch['inbox_mask']) == 1, 'The batch_size must be 1'
-    filename = '%02d.%04d.npz' % (batch['epoch'], batch['iter_num'])
-    np.savez(os.path.join(self.logdir, filename),
-             prob=prob.cpu().numpy(),
-             label=label.cpu().numpy(),
-             inbox_mask=batch['inbox_mask'][0].numpy().astype(bool))
+    prob_all_pts = torch.zeros([inbox_mask.shape[0], prob.shape[1]])
+    prob_all_pts[inbox_mask] = prob.cpu()
+
+    # Aggregate predictions across different epochs
+    filename = batch['filename'][0]
+    self.eval_rst[filename] = self.eval_rst.get(filename, 0) + prob_all_pts
+
+    # Save the prediction results in the last epoch
+    if self.FLAGS.SOLVER.eval_epoch - 1 == batch['epoch']:
+      full_filename = os.path.join(self.logdir, filename + '.eval.npz')
+      curr_folder = os.path.dirname(full_filename)
+      if not os.path.exists(curr_folder): os.makedirs(curr_folder)
+      np.savez(full_filename, prob=self.eval_rst[filename].numpy())
 
   def result_callback(self, avg_tracker, epoch):
-    ''' Calculate the part mIoU for PartNet and ScanNet'''
-    avg = avg_tracker.average()
+    ''' Calculate the part mIoU for PartNet and ScanNet.
+    '''
 
     iou_part = 0.0
-    # Labels smaller than mask is ignored. The points with the label 0 in
+    avg = avg_tracker.average()
+
+    # Labels smaller than `mask` is ignored. The points with the label 0 in
     # PartNet are background points, i.e., unlabeled points
     mask = self.FLAGS.LOSS.mask + 1
     num_class = self.FLAGS.LOSS.num_class

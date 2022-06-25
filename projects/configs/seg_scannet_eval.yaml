@@ -15,7 +15,7 @@ DATA:
     full_depth: 2
 
     # data augmentations
-    distort: False  # no data augmentation
+    distort: True
     angle: (0, 0, 180)
     scale: 0.1
     jitter: 0.1

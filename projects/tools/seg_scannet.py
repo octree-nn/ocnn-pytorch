@@ -191,36 +191,31 @@ def fix_bug_files():
 
 
 def generate_output_seg():
+  ''' Converts the predicted probabilities to segmentation labels: merge the
+  predictions for each chunk; map the predicted labels to the original labels.
+  '''
+
   # load filelist
   filename_scans = []
   with open(args.filelist, 'r') as fid:
     for line in fid:
-      filename = line.split()[0]
-      filename_scans.append(filename[:-4])  # remove '.ply'
-
-  # input files
-  pred_files = sorted(os.listdir(args.path_pred))
-  pred_files = [f for f in pred_files if f.endswith('.npz')]
-  assert len(pred_files) % len(filename_scans) == 0
+      filename_scans.append(line.split()[0])
 
   # process
   probs = {}
-  for i in tqdm(range(len(pred_files)), ncols=80):
-    filename_scan = filename_scans[i % len(filename_scans)]
+  for filename_scan in tqdm(filename_scans, ncols=80):
+    filename_pred = os.path.join(args.path_pred, filename_scan + '.eval.npz')
+    pred = np.load(filename_pred)
+    prob0 = pred['prob']
 
-    pred = np.load(os.path.join(args.path_pred, pred_files[i]))
-    prob, inbox_mask = pred['prob'], pred['inbox_mask']
-    prob0 = np.zeros([inbox_mask.shape[0], prob.shape[1]])
-    prob0[inbox_mask] = prob
-
+    # merge `chunk_x`
+    filename_scan = filename_scan[:-4]  # remove '.ply'
     if 'chunk' in filename_scan:
       filename_mask = filename_scan + '.mask.npy'
       mask = np.load(os.path.join(args.path_in, filename_mask))
       prob1 = np.zeros([mask.shape[0], prob0.shape[1]])
       prob1[mask] = prob0
-
-      # update prob0 and filename_scan
-      prob0 = prob1
+      prob0 = prob1                       # update prob0
       filename_scan = filename_scan[:-8]  # remove '.chunk_x'
 
     probs[filename_scan] = probs.get(filename_scan, 0) + prob0
@@ -232,6 +227,7 @@ def generate_output_seg():
   for filename, prob in tqdm(probs.items(), ncols=80):
     filename_label = filename + '.txt'
     label = np.argmax(prob, axis=1)
+    # map the predicted label to the original label
     for i in range(label.shape[0]):
       label[i] = ilabel_dict[label[i]]
     np.savetxt(os.path.join(args.path_out, filename_label), label, fmt='%d')
