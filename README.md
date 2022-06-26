@@ -7,7 +7,7 @@ This repository contains the **pure PyTorch**-based implementation of
 `Pytorch>=1.9.0`.
 
 O-CNN is an octree-based sparse convolutional neural network framework for 3D
-deep learning. O-CNN contains the CNN storage and computation into non-empty
+deep learning. O-CNN constrains the CNN storage and computation into non-empty
 sparse voxels for efficiency and uses the `octree` data structure to organize
 and index these sparse voxels.
 
