@@ -5,7 +5,6 @@ Segmentation
 ScanNet
 ---------------------------
 
-
 #. Download the data from the
    `ScanNet benchmark <http://kaldir.vc.in.tum.de/scannet_benchmark/>`_.
    Unzip the data and place it to the folder ``<scannet_folder>``.
@@ -44,3 +43,10 @@ ScanNet
 
       python scripts/run_scannet.py --gpu 0,1,2,3 --alias all  
       python scripts/run_scannet.py --run test    --alias all
+
+.. note::
+    
+    The ocnn-pytorch is very efficient compared with other sparse convolution
+    frameworks.  It only takes 18 hours to train the network on ScanNet for 600
+    epochs with 4 V100 GPUs. For reference, under the same training settings,
+    MinkowskiNet 0.4.3 takes 60 hours and MinkowskiNet 0.5.4 takes 30 hours.
