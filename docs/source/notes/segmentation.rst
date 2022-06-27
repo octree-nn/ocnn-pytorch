@@ -36,12 +36,12 @@ ScanNet
 
 #. To achieve the 76.2 mIoU on the testing set of the 
    `ScanNet benchmark <http://kaldir.vc.in.tum.de/scannet_benchmark>`_,
-   run the following command to train the network both on the training and
-   validation dataset and then get the predictions for the testing dataset.
+   run the following command to train the network on both the training and
+   validation dataset and get the predictions for the testing dataset.
 
    .. code-block:: none
 
-      python scripts/run_scannet.py --gpu 0,1,2,3 --alias all  
+      python scripts/run_scannet.py --run train_all --gpu 0,1,2,3 --alias all
       python scripts/run_scannet.py --run test    --alias all
 
 .. note::
