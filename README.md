@@ -29,7 +29,7 @@ known as Sparse Convolution in the research community.
 
 - **Simplicity**. The ocnn-pytorch is based on pure PyTorch, it is portable and
   can be intalled with a simple command:`pip install ocnn`. Other sparse
-  convolution frameworks heavily rely on C++ and CUDA, and it complicated to
+  convolution frameworks heavily rely on C++ and CUDA, and it is complicated to
   configure the compiling environment.
 
 - **Efficiency**. The ocnn-pytorch is very efficient compared with other sparse
