@@ -4,15 +4,19 @@ import argparse
 import numpy as np
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--alias', type=str, required=False, default='shapenet')
-parser.add_argument('--gpu', type=int, required=False, default=0)
-parser.add_argument('--mode', type=str, required=False, default='randinit')
-parser.add_argument('--ckpt', type=str, required=False, default='\'\'')
+parser.add_argument('--alias', type=str, default='shapenet')
+parser.add_argument('--gpu', type=str, default='0')
+parser.add_argument('--model', type=str, default='segnet')
+parser.add_argument('--mode', type=str, default='randinit')
+parser.add_argument('--ckpt', type=str, default='\'\'')
+parser.add_argument('--ratios', type=float, default=[1.0], nargs='*')
 
 args = parser.parse_args()
 alias = args.alias
 gpu = args.gpu
 mode = args.mode
+ratios = args.ratios
+# ratios = [0.01, 0.02, 0.05, 0.10, 0.20, 0.50, 1.00]
 
 module = 'segmentation.py'
 script = 'python %s --config configs/seg_shapenet.yaml' % module
@@ -37,9 +41,6 @@ max_epoches = [300, 1800, 2400, 600, 300, 2000, 600, 600,
 max_iters = [20000, 3000, 3000, 10000, 20000, 3000, 10000, 5000,
              10000, 5000, 5000, 5000, 5000, 3000, 5000, 20000]
 
-# ratios = [0.01, 0.02, 0.05, 0.10, 0.20, 0.50, 1.00]
-ratios = [0.10, 0.50, 1.00]
-
 
 for i in range(len(ratios)):
   for k in range(len(categories)):
@@ -63,6 +64,7 @@ for i in range(len(ratios)):
         'DATA.train.take {}'.format(take),
         'DATA.test.filelist {}/filelist/{}_test.txt'.format(data, cat),
         'MODEL.nout {}'.format(seg_num[k]),
+        'MODEL.name {}'.format(args.model),
         'LOSS.num_class {}'.format(seg_num[k])
     ]
 
