@@ -50,25 +50,26 @@ class Octree:
     # self.nnum_cum = torch.zeros(num, dtype=torch.int32)
 
     # construct the look up tables for neighborhood searching
+    device = self.device
     center_grid = self.rng_grid(2, 3)    # (8, 3)
     displacement = self.rng_grid(-1, 1)  # (27, 3)
     neigh_grid = center_grid.unsqueeze(1) + displacement  # (8, 27, 3)
     parent_grid = torch.div(neigh_grid, 2, rounding_mode='trunc')
     child_grid = neigh_grid % 2
     self.lut_parent = torch.sum(
-        parent_grid * torch.tensor([9, 3, 1]), dim=2).to(self.device)
+        parent_grid * torch.tensor([9, 3, 1], device=device), dim=2)
     self.lut_child = torch.sum(
-        child_grid * torch.tensor([4, 2, 1]), dim=2).to(self.device)
+        child_grid * torch.tensor([4, 2, 1], device=device), dim=2)
 
     # lookup tables for different kernel sizes
     self.lut_kernel = {
-        '222': torch.tensor([13, 14, 16, 17, 22, 23, 25, 26], device=self.device),
-        '311': torch.tensor([4, 13, 22], device=self.device),
-        '131': torch.tensor([10, 13, 16], device=self.device),
-        '113': torch.tensor([12, 13, 14], device=self.device),
-        '331': torch.tensor([1, 4, 7, 10, 13, 16, 19, 22, 25], device=self.device),
-        '313': torch.tensor([3, 4, 5, 12, 13, 14, 21, 22, 23], device=self.device),
-        '133': torch.tensor([9, 10, 11, 12, 13, 14, 15, 16, 17], device=self.device),
+        '222': torch.tensor([13, 14, 16, 17, 22, 23, 25, 26], device=device),
+        '311': torch.tensor([4, 13, 22], device=device),
+        '131': torch.tensor([10, 13, 16], device=device),
+        '113': torch.tensor([12, 13, 14], device=device),
+        '331': torch.tensor([1, 4, 7, 10, 13, 16, 19, 22, 25], device=device),
+        '313': torch.tensor([3, 4, 5, 12, 13, 14, 21, 22, 23], device=device),
+        '133': torch.tensor([9, 10, 11, 12, 13, 14, 15, 16, 17], device=device),
     }
 
   def build_octree(self, point_cloud: Points):
@@ -388,7 +389,7 @@ class Octree:
       return [p.to(device) if isinstance(p, torch.Tensor) else None for p in prop]
 
     # Construct a new Octree on the specified device
-    octree = Octree(self.depth, self.full_depth, self.batch_size, self.device)
+    octree = Octree(self.depth, self.full_depth, self.batch_size, device)
     octree.keys = list_to_device(self.keys)
     octree.children = list_to_device(self.children)
     octree.neighs = list_to_device(self.neighs)

@@ -16,10 +16,11 @@ class TesOctree(unittest.TestCase):
     labels = torch.Tensor([[0], [2], [2]])
     return ocnn.octree.Points(points, normals, features, labels)
 
-  def test_build_octree(self):
-    point_cloud = self.init_points()
-    octree = ocnn.octree.Octree(depth=5, full_depth=1)
+  def build_octree(self, device):
+    point_cloud = self.init_points().to(device)
+    octree = ocnn.octree.Octree(depth=5, full_depth=1, device=device)
     octree.build_octree(point_cloud)
+    octree = octree.to('cpu')
 
     # test node number
     nnum = torch.Tensor([1, 8, 16, 16, 16, 16])
@@ -81,6 +82,11 @@ class TesOctree(unittest.TestCase):
     normals = octree.normals[octree.depth].numpy()
     self.assertTrue(
         np.allclose(normals, data['feature'][:, :3]))
+
+  def test_build_octree(self):
+    self.build_octree('cpu')
+    if torch.cuda.is_available():
+      self.build_octree('cuda')
 
   def test_octree_with_data(self):
     for i in range(1, 6):

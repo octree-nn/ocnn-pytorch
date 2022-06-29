@@ -177,8 +177,7 @@ class Points:
       return self
 
     # Construct a new Points on the specified device
-    points = Points(torch.zeros(1, 3))
-    points.device = device
+    points = Points(torch.zeros(1, 3, device=device))
     points.batch_npt = self.batch_npt
     points.points = self.points.to(device)
     if self.normals is not None:
