@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--alias', type=str, default='shapenet')
+parser.add_argument('--alias', type=str, default='segnet_d5')
 parser.add_argument('--gpu', type=str, default='0')
 parser.add_argument('--depth', type=int, default=5)
 parser.add_argument('--model', type=str, default='segnet')

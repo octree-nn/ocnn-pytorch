@@ -5,7 +5,8 @@ Installation
 Requirement
 ---------------------------
 
-Install `PyTorch >= 1.9.0 <https://pytorch.org/get-started/locally/>`_ according the official PyTorch instructions.
+Install `PyTorch >= 1.9.0 <https://pytorch.org/get-started/locally/>`_ according
+the official PyTorch instructions.
 
 
 Installation via Pip
