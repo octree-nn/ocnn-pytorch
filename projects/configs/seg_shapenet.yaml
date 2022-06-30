@@ -3,7 +3,7 @@ SOLVER:
   run: train
   type: sgd
 
-  logdir: logs/seg/02691156_airplane
+  logdir: logs/seg_shapenet/02691156_airplane_d5
   max_epoch: 300
   test_every_epoch: 5
 
@@ -48,7 +48,7 @@ DATA:
     orient_normal: xyz
 
     # data augmentations
-    distort: False
+    distort: False   # False -> no data augmentation
     angle: (0, 5, 0)
     interval: (1, 1, 1)
     scale: 0.25

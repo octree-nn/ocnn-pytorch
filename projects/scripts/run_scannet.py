@@ -4,7 +4,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--run', type=str, required=False, default='train')
 parser.add_argument('--alias', type=str, required=False, default='scannet')
-parser.add_argument('--gpu', type=str, required=False, default='0,')
+parser.add_argument('--gpu', type=str, required=False, default='0')
 parser.add_argument('--ckpt', type=str, required=False, default='\'\'')
 args = parser.parse_args()
 
@@ -19,7 +19,7 @@ def train():
   cmds = [
       'python segmentation.py',
       '--config configs/seg_scannet.yaml',
-      'SOLVER.gpu  {}'.format(args.gpu),
+      'SOLVER.gpu  {},'.format(args.gpu),
       'SOLVER.alias  {}'.format(args.alias),]
   execute_command(cmds)
 
@@ -28,7 +28,7 @@ def train_all():
   cmds = [
       'python segmentation.py',
       '--config configs/seg_scannet.yaml',
-      'SOLVER.gpu  {}'.format(args.gpu),
+      'SOLVER.gpu  {},'.format(args.gpu),
       'SOLVER.alias  {}'.format(args.alias),
       'DATA.train.filelist data/scannet/scannetv2_train_val_new.txt',]
   execute_command(cmds)
@@ -42,7 +42,7 @@ def test():
   cmds = [
       'python segmentation.py',
       '--config configs/seg_scannet_eval.yaml',
-      'SOLVER.gpu  {}'.format(args.gpu),
+      'SOLVER.gpu  {},'.format(args.gpu),
       'SOLVER.eval_epoch 72',  # voting with 72 predictions
       'SOLVER.alias test_{}'.format(args.alias),
       'SOLVER.ckpt {}'.format(ckpt),
