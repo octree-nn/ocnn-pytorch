@@ -66,9 +66,9 @@ ShapeNet
 #. Run the following command to train the a shallow SegNet with an octree depth
    of 5 used in the original experiment of
    `O-CNN <https://wang-ps.github.io/O-CNN.html>`__.
-   And the segmentation refinement in the paper is omitted for simplicity. The
-   category mIoU and instance mIoU without voting is 82.5 and 84.0 respectively,
-   the training log and weights can be downloaded from this
+   And the segmentation refinement based on CRF in the paper is omitted for
+   simplicity. The category mIoU and instance mIoU without voting is 82.5 and
+   84.0 respectively, the training log and weights can be downloaded from this
    `link <https://1drv.ms/u/s!Ago-xIr0OR2-cXkHyzrqrgT-CTo?e=GE0pXi>`__.
    It is also easy to do experiments with an octree depth of 6 by specifying
    command line parameter ``--depth 6``, with which the category mIoU and
