@@ -19,6 +19,14 @@ class Octree:
         (default: :obj:`cpu`)
 
   .. note::
+    The octree data structure requires that if an octree node has children nodes,
+    the number of children nodes is exactly 8, in which some of the nodes are
+    empty and some nodes are non-empty. The properties of an octree, including
+    :obj:`keys`, :obj:`children` and :obj:`neighs`, contain both non-empty and
+    empty nodes, and other properties, including :obj:`features`, :obj:`normals`
+    and :obj:`points`, contain only non-empty nodes.
+
+  .. note::
     The point cloud must be in range :obj:`[-1, 1]`.
   '''
 
