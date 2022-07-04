@@ -120,7 +120,7 @@ class ClsHeader(torch.nn.Module):
 
     in_channels = int(torch.Tensor(channels).sum())
     self.conv1x1 = ocnn.modules.Conv1x1BnRelu(in_channels, 1024)
-    self.global_pool = ocnn.nn.OctreeGlobalPool()
+    self.global_pool = ocnn.nn.OctreeGlobalPool(nempty)
     self.header = torch.nn.Sequential(
         torch.nn.Flatten(start_dim=1),
         torch.nn.Linear(1024, out_channels, bias=True))

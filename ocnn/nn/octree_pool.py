@@ -57,16 +57,19 @@ def octree_max_unpool(data: torch.Tensor, indices: torch.Tensor, octree: Octree,
   return out
 
 
-def octree_global_pool(data: torch.Tensor, octree: Octree, depth: int):
+def octree_global_pool(data: torch.Tensor, octree: Octree, depth: int,
+                       nempty: bool = False):
   r''' Performs octree global average pooling.
 
   Args:
     data (torch.Tensor): The input tensor.
     octree (Octree): The corresponding octree.
     depth (int): The depth of current octree.
+    nempty (bool): If True, :attr:`data` contains only features of non-empty
+        octree nodes.
   '''
 
-  batch_id = octree.keys[depth] >> 48
+  batch_id = octree.batch_id(depth, nempty)
   out = scatter_add(data, batch_id, dim=0, dim_size=octree.batch_size)
 
   ones = torch.ones(data.shape[0], 1, dtype=data.dtype, device=data.device)
@@ -76,15 +79,29 @@ def octree_global_pool(data: torch.Tensor, octree: Octree, depth: int):
   return out
 
 
-class OctreeMaxPool(torch.nn.Module):
+class OctreePoolBase(torch.nn.Module):
+  r''' The base class for octree-based pooling.
+  '''
+
+  def __init__(self, nempty: bool = False):
+    super().__init__()
+    self.nempty = nempty
+
+  def extra_repr(self) -> str:
+    r''' Sets the extra representation of the module.
+    '''
+
+    return ('nempty={}').format(self.nempty)
+
+
+class OctreeMaxPool(OctreePoolBase):
   r''' Performs octree max pooling.
 
   Please refer to :func:`octree_max_pool` for details.
   '''
 
   def __init__(self, nempty: bool = False, return_indices: bool = False):
-    super().__init__()
-    self.nempty = nempty
+    super().__init__(nempty)
     self.return_indices = return_indices
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
@@ -93,15 +110,11 @@ class OctreeMaxPool(torch.nn.Module):
     return octree_max_pool(data, octree, depth, self.nempty, self.return_indices)
 
 
-class OctreeMaxUnpool(torch.nn.Module):
+class OctreeMaxUnpool(OctreePoolBase):
   r''' Performs octree max unpooling.
 
   Please refer to :func:`octree_max_unpool` for details.
   '''
-
-  def __init__(self, nempty: bool = False):
-    super().__init__()
-    self.nempty = nempty
 
   def forward(self, data: torch.Tensor, indices: torch.Tensor, octree: Octree,
               depth: int):
@@ -110,16 +123,13 @@ class OctreeMaxUnpool(torch.nn.Module):
     return octree_max_unpool(data, indices, octree, depth, self.nempty)
 
 
-class OctreeGlobalPool(torch.nn.Module):
+class OctreeGlobalPool(OctreePoolBase):
   r''' Performs octree global pooling.
 
   Please refer to :func:`octree_global_pool` for details.
   '''
 
-  def __init__(self):
-    super().__init__()
-
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
     r''''''
 
-    return octree_global_pool(data, octree, depth)
+    return octree_global_pool(data, octree, depth, self.nempty)

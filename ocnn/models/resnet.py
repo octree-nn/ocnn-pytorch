@@ -25,7 +25,7 @@ class ResNet(torch.nn.Module):
         nempty=nempty) for i in range(stages-1)])  # noqa
     self.pools = torch.nn.ModuleList(
         [ocnn.nn.OctreeMaxPool(nempty) for i in range(stages-1)])
-    self.global_pool = ocnn.nn.OctreeGlobalPool()
+    self.global_pool = ocnn.nn.OctreeGlobalPool(nempty)
     # self.header = torch.nn.Linear(channels[-1], out_channels, bias=True)
     self.header = torch.nn.Sequential(
         ocnn.modules.FcBnRelu(channels[-1], 512),
