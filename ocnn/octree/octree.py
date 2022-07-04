@@ -52,7 +52,7 @@ class Octree:
     self.normals = [None] * num
     self.points = [None] * num
 
-    # octree node numbers in each octree layers TODO: settle them to 'gpu'?
+    # octree node numbers in each octree layers. TODO: settle them to 'gpu'?
     self.nnum = torch.zeros(num, dtype=torch.int32)
     self.nnum_nempty = torch.zeros(num, dtype=torch.int32)
     # self.nnum_cum = torch.zeros(num, dtype=torch.int32)

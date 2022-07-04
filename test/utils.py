@@ -22,10 +22,10 @@ def get_octree(id, return_data=False):
   return (octree, data) if return_data else octree
 
 
-def get_batch_octree():
+def get_batch_octree(device='cpu'):
 
-  octree1 = get_octree(4)
-  octree2 = get_octree(5)
+  octree1 = get_octree(4).to(device)
+  octree2 = get_octree(5).to(device)
   octree = ocnn.octree.merge_octrees([octree1, octree2])
   octree.construct_all_neigh()
 

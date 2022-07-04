@@ -94,15 +94,17 @@ class TesOctree(unittest.TestCase):
       self.check_octree(octree, data)
 
   def test_merge_octree_with_data(self):
-
     folder = os.path.dirname(__file__)
     data = np.load(os.path.join(folder, 'data/batch_45.npz'))
-    octree = get_batch_octree()
-    self.check_octree(octree, data)
 
-    # check neigh
-    self.assertTrue(np.array_equal(
-        torch.cat(octree.neighs[1:], dim=0).numpy(), data['neigh']))
+    devices = ['cpu', 'cuda'] if torch.cuda.is_available() else ['cpu']
+    for device in devices:
+      octree = get_batch_octree(device).to('cpu')
+      self.check_octree(octree, data)
+
+      # check neigh
+      self.assertTrue(np.array_equal(
+          torch.cat(octree.neighs[1:], dim=0).numpy(), data['neigh']))
 
   def test_search_key(self):
 
