@@ -80,6 +80,44 @@ class Octree:
         '133': torch.tensor([9, 10, 11, 12, 13, 14, 15, 16, 17], device=device),
     }
 
+  def xyzb(self, depth: int, nempty: bool = False):
+    r''' Returns the xyz coordinates and the batch indices of each octree node.
+
+    Args:
+      depth (int): The depth of the octree.
+      nempty (bool): If True, returns the results of non-empty octree nodes.
+    '''
+
+    key = self.keys[depth]
+    if nempty:
+      mask = self.nempty_mask(depth)
+      key = key[mask]
+    return key2xyz(key, depth)
+
+  def batch_id(self, depth: int, nempty: bool = False):
+    r''' Returns the batch indices of each octree node.
+
+    Args:
+      depth (int): The depth of the octree.
+      nempty (bool): If True, returns the results of non-empty octree nodes.
+    '''
+
+    batch_id = self.keys[depth] >> 48
+    if nempty:
+      mask = self.nempty_mask(depth)
+      batch_id = batch_id[mask]
+    return batch_id
+
+  def nempty_mask(self, depth: int):
+    r''' Returns a binary mask which indicates whether the cooreponding octree
+    node is empty or not.
+
+    Args:
+      depth (int): The depth of the octree.
+    '''
+
+    return self.children[depth] >= 0
+
   def build_octree(self, point_cloud: Points):
     r''' Builds an octree from a point cloud.
 

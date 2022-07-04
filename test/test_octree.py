@@ -59,7 +59,7 @@ class TesOctree(unittest.TestCase):
     for d in range(0, 6):
       self.assertTrue((octree.children[d] == children[d]).all())
 
-    #  test the signal
+    # test the signal
     normals = torch.Tensor([[1., 0., 0.], [-1., 0., 0.], [0., 1., 0.]])
     features = torch.Tensor([[1, -1], [2, -2], [3, -3]])
     self.assertTrue((octree.normals[5] == normals).all())
@@ -157,6 +157,26 @@ class TesOctree(unittest.TestCase):
     octree2.construct_neigh(depth=3)
 
     self.assertTrue(torch.equal(octree1.neighs[3], octree2.neighs[3]))
+
+  def test_batch_id(self):
+    # get the octree batch
+    octree1 = get_octree(4)
+    octree2 = get_octree(5)
+    octree = ocnn.octree.merge_octrees([octree1, octree2])
+
+    # test1
+    depth = 4
+    for nempty in [True, False]:
+      b0 = octree.xyzb(depth, nempty)[3]
+      b1 = octree.batch_id(depth, nempty)
+      if nempty:
+        b2 = torch.cat([torch.zeros(octree1.nnum_nempty[depth]),
+                        torch.ones(octree2.nnum_nempty[depth])])
+      else:
+        b2 = torch.cat([torch.zeros(octree1.nnum[depth]),
+                        torch.ones(octree2.nnum[depth])])
+      self.assertTrue(torch.equal(b0, b1))
+      self.assertTrue(torch.equal(b0, b2.long()))
 
 
 if __name__ == "__main__":
