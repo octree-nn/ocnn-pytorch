@@ -69,13 +69,13 @@ def octree_global_pool(data: torch.Tensor, octree: Octree, depth: int,
         octree nodes.
   '''
 
+  batch_size = octree.batch_size
   batch_id = octree.batch_id(depth, nempty)
-  out = scatter_add(data, batch_id, dim=0, dim_size=octree.batch_size)
-
-  ones = torch.ones(data.shape[0], 1, dtype=data.dtype, device=data.device)
+  ones = data.new_ones(data.shape[0], 1)
   count = scatter_add(ones, batch_id, dim=0, dim_size=octree.batch_size)
-  count[count < 1] = 1
-  out = out / count
+
+  out = scatter_add(data, batch_id, dim=0, dim_size=batch_size)
+  out = out / (count + 1e-5)   # there might be 0 element in some shapes
   return out
 
 
