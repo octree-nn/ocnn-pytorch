@@ -7,7 +7,7 @@ from .octree_pool import (octree_max_pool, OctreeMaxPool,
                           octree_max_unpool, OctreeMaxUnpool,
                           octree_global_pool, OctreeGlobalPool)
 from .octree_conv import OctreeConv, OctreeDeconv
-
+from .octree_norm import OctreeInstanceNorm
 
 __all__ = [
     'octree2voxel',
@@ -17,12 +17,12 @@ __all__ = [
     'octree_upsample',
     'octree_max_pool', 'octree_max_unpool',
     'octree_global_pool',
-
     'Octree2Voxel',
     'OctreeMaxPool', 'OctreeMaxUnpool',
     'OctreeGlobalPool',
     'OctreeConv', 'OctreeDeconv',
     'OctreeInterp', 'OctreeUpsample',
+    'OctreeInstanceNorm',
 ]
 
 classes = __all__
