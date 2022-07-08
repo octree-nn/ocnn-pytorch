@@ -115,9 +115,16 @@ class OctreeInterp(torch.nn.Module):
 
     return self.func(data, octree, depth, pts, self.nempty, self.bound_check)
 
+  def extra_repr(self) -> str:
+    r''' Sets the extra representation of the module.
+    '''
 
-def octree_upsample(data: torch.Tensor, octree: Octree, depth: int,
-                    nempty: bool = False):
+    return ('method={}, nempty={}, bound_check={}, rescale_pts={}').format(
+            self.method, self.nempty, self.bound_check, self.rescale_pts)  # noqa
+
+
+def octree_nearest_upsample(data: torch.Tensor, octree: Octree, depth: int,
+                            nempty: bool = False):
   r''' Upsamples the octree node features from :attr:`depth` to :attr:`(depth+1)`
   with the nearest-neighbor interpolation.
 
@@ -138,17 +145,41 @@ def octree_upsample(data: torch.Tensor, octree: Octree, depth: int,
   return out
 
 
+def octree_linear_upsample(data: torch.Tensor, octree: Octree, depth: int,
+                           nempty: bool = False):
+  r''' Upsamples the octree node features from :attr:`depth` to :attr:`(depth+1)`
+  with the linear interpolation.
+
+  Please refer to :func:`octree_upsample_nearest` for the arguments.
+  '''
+
+  xyzb = octree.xyzb(depth+1, nempty)
+  pts = torch.stack(xyzb, dim=1)
+  pts[:, :3] = (pts[:, :3] + 0.5) * 0.5
+  out = octree_linear_pts(data, octree, depth, pts, nempty)
+  return out
+
+
 class OctreeUpsample(torch.nn.Module):
   r''' Upsamples the octree node features.
 
   Refer to :func:`octree_upsample` for details.
   '''
 
-  def __init__(self, nempty):
+  def __init__(self, method: str = 'linear', nempty: bool = False):
     super().__init__()
+    self.method = method
     self.nempty = nempty
+    fn = {'linear': octree_linear_upsample, 'nearest': octree_nearest_upsample}
+    self.func = fn[method]
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
     r''''''
 
-    return octree_upsample(data, octree, depth, self.nempty)
+    return self.func(data, octree, depth, self.nempty)
+
+  def extra_repr(self) -> str:
+    r''' Sets the extra representation of the module.
+    '''
+
+    return ('method={}, nempty={}').format(self.method, self.nempty)

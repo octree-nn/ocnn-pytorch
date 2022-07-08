@@ -7,7 +7,7 @@ python classification.py  \
 python classification.py  \
        --config configs/cls_m40.yaml  \
        MODEL.name resnet  \
-       SOLVER.alias resnet_nempty   \
+       SOLVER.alias resnet_nempty_time   \
        SOLVER.gpu 0,
 
 # test - classification

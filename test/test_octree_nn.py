@@ -10,6 +10,9 @@ from .utils import get_batch_octree, get_octree
 class TesOctreeNN(unittest.TestCase):
 
   def test_octree_nn(self):
+    r''' Tests octree2col/col2octree, octree_conv/octree_deconv, 
+    octree_max_pool/octree_max_unpool.
+    '''
 
     folder = os.path.dirname(__file__)
     data = np.load(os.path.join(folder, 'data/octree_nn.npz'))
