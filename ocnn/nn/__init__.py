@@ -9,6 +9,7 @@ from .octree_pool import (octree_max_pool, OctreeMaxPool,
                           octree_global_pool, OctreeGlobalPool)
 from .octree_conv import OctreeConv, OctreeDeconv
 from .octree_norm import OctreeInstanceNorm
+from .octree_drop import OctreeDropPath
 
 __all__ = [
     'octree2voxel',
@@ -24,6 +25,7 @@ __all__ = [
     'OctreeConv', 'OctreeDeconv',
     'OctreeInterp', 'OctreeUpsample',
     'OctreeInstanceNorm',
+    'OctreeDropPath',
 ]
 
 classes = __all__
