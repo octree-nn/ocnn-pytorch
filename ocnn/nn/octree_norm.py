@@ -41,3 +41,6 @@ class OctreeInstanceNorm(torch.nn.Module):
 
     out = out * self.weights + self.bias
     return out
+
+  def extra_repr(self) -> str:
+    return ('in_channels={}, nempty={}').format(self.in_channels, self.nempty)
