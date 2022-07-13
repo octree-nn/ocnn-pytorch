@@ -52,10 +52,16 @@ class Octree:
     self.normals = [None] * num
     self.points = [None] * num
 
-    # octree node numbers in each octree layers. TODO: settle them to 'gpu'?
+    # octree node numbers in each octree layers.
+    # TODO: decide whether to settle them to 'gpu' or not?
     self.nnum = torch.zeros(num, dtype=torch.int32)
     self.nnum_nempty = torch.zeros(num, dtype=torch.int32)
-    # self.nnum_cum = torch.zeros(num, dtype=torch.int32)
+
+    # the following properties are valid after `merge_octrees` and `build_octree`
+    # TODO: make them available after `octree_grow` and `octree_split`
+    batch_size = self.batch_size
+    self.batch_nnum = torch.zeros(num, batch_size, dtype=torch.int32)
+    self.batch_nnum_nempty = torch.zeros(num, batch_size, dtype=torch.int32)
 
     # construct the look up tables for neighborhood searching
     device = self.device
@@ -172,6 +178,10 @@ class Octree:
         node_key.numel(), dtype=torch.int32, device=self.device)
     self.children[d] = children
     self.nnum_nempty[d] = node_key.numel()
+
+    # set the batch_nnum
+    self.batch_nnum[:, 0] = self.nnum
+    self.batch_nnum_nempty[:, 0] = self.nnum_nempty
 
     # average the signal for the last octree layer
     d = self.depth
@@ -444,6 +454,8 @@ class Octree:
     octree.points = list_to_device(self.points)
     octree.nnum = self.nnum.clone()  # TODO: whether to move nnum to the self.device?
     octree.nnum_nempty = self.nnum_nempty.clone()
+    octree.batch_nnum = self.batch_nnum.clone()
+    octree.batch_nnum_nempty = self.batch_nnum_nempty.clone()
     return octree
 
   def cuda(self):
@@ -483,13 +495,15 @@ def merge_octrees(octrees: List['Octree']):
     torch._assert(condition, 'The check of merge_octrees failed')
 
   # node num
-  nnum = torch.stack(
+  batch_nnum = torch.stack(
       [octrees[i].nnum for i in range(octree.batch_size)], dim=1)
-  nnum_nempty = torch.stack(
+  batch_nnum_nempty = torch.stack(
       [octrees[i].nnum_nempty for i in range(octree.batch_size)], dim=1)
-  octree.nnum = torch.sum(nnum, dim=1)
-  octree.nnum_nempty = torch.sum(nnum_nempty, dim=1)
-  nnum_cum = cumsum(nnum_nempty, dim=1, exclusive=True)
+  octree.nnum = torch.sum(batch_nnum, dim=1)
+  octree.nnum_nempty = torch.sum(batch_nnum_nempty, dim=1)
+  octree.batch_nnum = batch_nnum
+  octree.batch_nnum_nempty = batch_nnum_nempty
+  nnum_cum = cumsum(batch_nnum_nempty, dim=1, exclusive=True)
 
   # merge octre properties
   for d in range(octree.depth+1):
