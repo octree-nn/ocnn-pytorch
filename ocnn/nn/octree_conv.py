@@ -313,22 +313,23 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
         construct a large matrix, which may consume a lot of memory. If False,
         performs the convolution in a sub-matrix manner, which can save the 
         requied runtime memory.
+    use_bias (bool): If True, add a bias term to the convolution.
     max_buffer (int): The maximum number of elements in the buffer, used when 
         :attr:`direct_method` is False.
-
-  .. note::
-    There is no bias term in the convolution for simplicity. (TODO)
   '''
 
   def __init__(self, in_channels: int, out_channels: int,
                kernel_size: List[int] = [3], stride: int = 1,
                nempty: bool = False, direct_method: bool = False,
-               max_buffer: int = int(2e8)):
+               use_bias: bool = False, max_buffer: int = int(2e8)):
     super().__init__(
         in_channels, out_channels, kernel_size, stride, nempty, max_buffer)
 
     self.direct_method = direct_method
+    self.use_bias = use_bias
     self.weights = torch.nn.Parameter(torch.Tensor(*self.weights_shape))
+    if self.use_bias:
+      self.bias = torch.nn.Parameter(torch.Tensor(out_channels))
     self.reset_parameters()
 
   def reset_parameters(self):
@@ -340,13 +341,14 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
     the the shape of :attr:`OctreeConv.weights` is :obj:`(kdim, in_c, out_c)`
     '''
 
-    shape = self.weights.shape
+    shape = self.weights.shape  # (kernel_dim, in_conv, out_conv)
     fan_in = shape[0] * shape[1]
     fan_out = shape[0] * shape[2]
     std = math.sqrt(2.0 / float(fan_in + fan_out))
     a = math.sqrt(3.0) * std  # Calculate uniform bounds from standard deviation
-    with torch.no_grad():
-      return self.weights.uniform_(-a, a)
+    torch.nn.init.uniform_(self.weights, -a, a)
+    if self.use_bias:
+      torch.nn.init.zeros_(self.bias)
 
   def is_conv_layer(self): return True
 
@@ -371,6 +373,9 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
 
     if self.stride == 2 and not self.nempty:
       out = octree_pad(out, octree, depth-1)
+
+    if self.use_bias:
+      out += self.bias
     return out
 
   def extra_repr(self) -> str:
@@ -378,8 +383,8 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
     '''
 
     return ('in_channels={}, out_channels={}, kernel_size={}, stride={}, '
-            'nempty={}').format(self.in_channels, self.out_channels,
-             self.kernel_size, self.stride, self.nempty)  # noqa
+            'nempty={}, bias={}').format(self.in_channels, self.out_channels,
+             self.kernel_size, self.stride, self.nempty, self.use_bias)  # noqa
 
 
 class OctreeDeconv(OctreeConv):
@@ -413,4 +418,6 @@ class OctreeDeconv(OctreeConv):
           self.out_channels, self.kernel_size, self.stride, self.nempty,
           self.max_buffer)
 
+    if self.use_bias:
+      out += self.bias
     return out
