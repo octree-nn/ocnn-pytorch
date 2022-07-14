@@ -32,6 +32,7 @@ class Octree:
 
   def __init__(self, depth: int, full_depth: int = 2, batch_size: int = 1,
                device: Union[torch.device, str] = 'cpu', **kwargs):
+    super().__init__()
     self.depth = depth
     self.full_depth = full_depth
     self.batch_size = batch_size
@@ -86,8 +87,8 @@ class Octree:
         '133': torch.tensor([9, 10, 11, 12, 13, 14, 15, 16, 17], device=device),
     }
 
-  def xyzb(self, depth: int, nempty: bool = False):
-    r''' Returns the xyz coordinates and the batch indices of each octree node.
+  def key(self, depth: int, nempty: bool = False):
+    r''' Returns the shuffled key of each octree node.
 
     Args:
       depth (int): The depth of the octree.
@@ -98,6 +99,17 @@ class Octree:
     if nempty:
       mask = self.nempty_mask(depth)
       key = key[mask]
+    return key
+
+  def xyzb(self, depth: int, nempty: bool = False):
+    r''' Returns the xyz coordinates and the batch indices of each octree node.
+
+    Args:
+      depth (int): The depth of the octree.
+      nempty (bool): If True, returns the results of non-empty octree nodes.
+    '''
+
+    key = self.key(depth, nempty)
     return key2xyz(key, depth)
 
   def batch_id(self, depth: int, nempty: bool = False):
