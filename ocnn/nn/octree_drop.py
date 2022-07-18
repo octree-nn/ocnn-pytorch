@@ -40,5 +40,5 @@ class OctreeDropPath(torch.nn.Module):
     return output
 
   def extra_repr(self) -> str:
-    return ('drop_prob={}, nempty={}, scale_by_keep={}').format(
+    return ('drop_prob={:.4f}, nempty={}, scale_by_keep={}').format(
             self.drop_prob, self.nempty, self.scale_by_keep)  # noqa

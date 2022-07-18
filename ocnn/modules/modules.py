@@ -171,14 +171,15 @@ class InputFeature(torch.nn.Module):
   r''' Returns the initial input feature stored in octree.
 
   Args:
-    feature (str): A string used to indicate which features to extract in octree. 
-        If the character :obj:`N` is in :attr:`feature`, the normal signal is
-        extracted (3 channels). Similarly, if :obj:`D` is in :attr:`feature`,
-        the local displacement is extracted (1 channels). If :obj:`L` is in
-        :attr:`feature`, the local coordinates of the averaged points in each
-        octree node is extracted (3 channels). If :attr:`P` is in :attr:`feature`, 
-        the global coordinates are extracted (3 channels). If :attr:`F` is in 
-        :attr:`feature`, other features (like colors) are extracted (k channels).
+    feature (str): A string used to indicate which features to extract from the
+        input octree. If the character :obj:`N` is in :attr:`feature`, the
+        normal signal is extracted (3 channels). Similarly, if :obj:`D` is in
+        :attr:`feature`, the local displacement is extracted (1 channels). If
+        :obj:`L` is in :attr:`feature`, the local coordinates of the averaged
+        points in each octree node is extracted (3 channels). If :attr:`P` is in
+        :attr:`feature`, the global coordinates are extracted (3 channels). If
+        :attr:`F` is in :attr:`feature`, other features (like colors) are
+        extracted (k channels).
     nempty (bool): If false, gets the features of all octree nodes. 
   '''
 
@@ -217,3 +218,7 @@ class InputFeature(torch.nn.Module):
     if not self.nempty:
       out = ocnn.nn.octree_pad(out, octree, depth)
     return out
+
+  def extra_repr(self) -> str:
+    r''''''
+    return 'feature={}, nempty={}'.format(self.feature, self.nempty)
