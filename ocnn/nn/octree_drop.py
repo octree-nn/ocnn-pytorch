@@ -1,4 +1,6 @@
 import torch
+from typing import Optional
+
 from ocnn.octree import Octree
 
 
@@ -21,7 +23,8 @@ class OctreeDropPath(torch.nn.Module):
     self.nempty = nempty
     self.scale_by_keep = scale_by_keep
 
-  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int,
+              batch_id: Optional[torch.Tensor] = None):
     r''''''
 
     if self.drop_prob <= 0.0 or not self.training:
@@ -34,7 +37,8 @@ class OctreeDropPath(torch.nn.Module):
     if keep_prob > 0.0 and self.scale_by_keep:
       rnd_tensor.div_(keep_prob)
 
-    batch_id = octree.batch_id(depth, self.nempty)
+    if batch_id is None:
+      batch_id = octree.batch_id(depth, self.nempty)
     drop_mask = rnd_tensor[batch_id]
     output = data * drop_mask
     return output
