@@ -3,10 +3,13 @@ import argparse
 import wget
 import zipfile
 import ssl
+import numpy as np
+from tqdm import tqdm
+from plyfile import PlyData, PlyElement
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--run', type=str, default='download_point_clouds')
+parser.add_argument('--run', type=str, default='prepare_dataset')
 args = parser.parse_args()
 
 abs_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -34,24 +37,36 @@ def download_point_clouds():
     zip_ref.extractall(root_folder)
 
 
+def _read_ply(filename: str):
+  plydata = PlyData.read(filename)
+  vtx = plydata['vertex']
+  points = np.stack([vtx['x'], vtx['y'], vtx['z']], axis=1)
+  normals = np.stack([vtx['nx'], vtx['ny'], vtx['nz']], axis=1)
+  return points.astype(np.float32), normals.astype(np.float32)
+
+
 def _convert_ply_to_numpy(prefix='shape'):
   ply_folder = os.path.join(root_folder, prefix + '.ply')
-  npy_folder = os.path.join(root_folder, prefix + '.npy')
+  npy_folder = os.path.join(root_folder, prefix + '.npz')
 
   folders = os.listdir(ply_folder)
   for folder in folders:
     src_folder = os.path.join(ply_folder, folder)
     des_folder = os.path.join(npy_folder, folder)
+    if not os.path.exists(des_folder):
+      os.makedirs(des_folder)
 
     filenames = os.listdir(src_folder)
-    for filename in filenames:
+    for filename in tqdm(filenames):
       if filename.endswith('.ply'):
         ply_filename = os.path.join(src_folder, filename)
-        npy_filename = os.path.join(des_folder, filename)
+        npz_filename = os.path.join(des_folder, filename[:-4] + '.npz')
 
         # load ply
+        points, normals = _read_ply(ply_filename)
 
         # save npy
+        np.savez(npz_filename, points=points, normals=normals)
 
 
 def convert_ply_to_numpy():
@@ -59,8 +74,28 @@ def convert_ply_to_numpy():
   _convert_ply_to_numpy('test.scans')
 
 
+def _create_filelist(filename: str, suffix: str = '.npz'):
+  filename = os.path.join(root_folder, filename)
+  with open(filename, 'r') as fid:
+    lines = fid.readlines()
+
+  lines = [line.replace('.points', suffix) for line in lines]
+
+  filename_out = filename[:-4] + suffix + '.txt'
+  with open(filename_out, 'w') as fid:
+    fid.write(''.join(lines))
+
+
 def create_filelist():
-  pass
+  for filename in ['filelist_test', 'filelist_train', 'filelist_test_scans']:
+    _create_filelist(filename + '.txt', suffix='.npz')
+    _create_filelist(filename + '.txt', suffix='.ply')
+
+
+def prepare_dataset():
+  download_point_clouds()
+  convert_ply_to_numpy()
+  create_filelist()
 
 
 if __name__ == '__main__':
