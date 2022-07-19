@@ -1,39 +1,54 @@
 import os
 import torch
+import torch.functional as F
 import numpy as np
+from tqdm import tqdm
 
-import builder
-import utils
+import ocnn
 from solver import Solver, get_config
+from datasets import get_ae_shapenet_dataset
 
 
-class DualOcnnSolver(Solver):
+class AutoEncoderSolver(Solver):
 
   def get_model(self, flags):
-    return builder.get_model(flags)
+    return ocnn.models.AutoEncoder(
+        flags.channel_in, flags.nout, flags.depth, flags.full_depth,
+        feature=flags.feature)
 
   def get_dataset(self, flags):
-    return builder.get_dataset(flags)
+    return get_ae_shapenet_dataset(flags)
 
-  def batch_to_cuda(self, batch):
-    keys = ['octree_in', 'octree_gt', 'pos', 'sdf', 'grad', 'weight', 'occu']
-    for key in keys:
-      if key in batch:
-        batch[key] = batch[key].cuda()
+  def get_ground_truth_signal(self, octree):
+    flags = self.FLAGS.MODEL
+    octree_feature = ocnn.modules.InputFeature(flags.feature, nempty=True)
+    data = octree_feature(octree)
+    return data
 
-  def compute_loss(self, batch, model_out):
-    flags = self.FLAGS.LOSS
-    loss_func = builder.get_loss_function(flags)
-    output = loss_func(batch, model_out, flags.loss_type)
+  def compute_loss(self, octree, model_out):
+    # octree splitting loss
+    output = dict()
+    logits = model_out['logits']
+    for d in logits.keys():
+      logitd = logits[d]
+      label_gt = octree.nempty_mask(d).long()
+      output['loss_%d' % d] = F.cross_entropy(logitd, label_gt)
+      output['accu_%d' % d] = logitd.argmax(1).eq(label_gt).float().mean()
+
+    # octree regression loss
+    signal = model_out['signal']
+    signal_gt = self.get_ground_truth_signal(octree)
+    output['loss_reg'] = torch.mean(torch.sum((signal_gt - signal)**2, dim=1))
+
+    # total loss
+    losses = [val for key, val in output.items() if 'loss' in key]
+    output['loss'] = torch.sum(torch.stack(losses))
     return output
 
   def model_forward(self, batch):
-    self.batch_to_cuda(batch)
-    model_out = self.model(batch['octree_in'], batch['octree_gt'], batch['pos'])
-
-    output = self.compute_loss(batch, model_out)
-    losses = [val for key, val in output.items() if 'loss' in key]
-    output['loss'] = torch.sum(torch.stack(losses))
+    octree = batch['octree'].cuda()
+    model_out = self.model(octree, update_octree=False)
+    output = self.compute_loss(octree, model_out)
     return output
 
   def train_step(self, batch):
@@ -48,40 +63,32 @@ class DualOcnnSolver(Solver):
 
   def eval_step(self, batch):
     # forward the model
-    output = self.model.forward(batch['octree_in'].cuda())
+    octree = batch['octree'].cuda()
+    output = self.model(octree, update_octree=True)
 
-    # extract the mesh
-    filename = batch['filename'][0]
-    pos = filename.rfind('.')
-    if pos != -1: filename = filename[:pos]  # remove the suffix
-    filename = os.path.join(self.logdir, filename + '.obj')
-    folder = os.path.dirname(filename)
-    if not os.path.exists(folder): os.makedirs(folder)
-    bbox = batch['bbox'][0].numpy() if 'bbox' in batch else None
-    self.extract_mesh(output['neural_mpu'], filename, bbox)
+    # # extract the output point cloud
+    # filename = batch['filename'][0]
+    # pos = filename.rfind('.')
+    # if pos != -1: filename = filename[:pos]  # remove the suffix
+    # filename = os.path.join(self.logdir, filename + '.obj')
+    # folder = os.path.dirname(filename)
+    # if not os.path.exists(folder): os.makedirs(folder)
+    # bbox = batch['bbox'][0].numpy() if 'bbox' in batch else None
+    # self.extract_mesh(output['neural_mpu'], filename, bbox)
 
-    # save the input point cloud
-    filename = filename[:-4] + '.input.ply'
-    utils.points2ply(filename, batch['points_in'][0].cpu(),
-                     self.FLAGS.DATA.test.point_scale)
+    # # save the input point cloud
+    # filename = filename[:-4] + '.input.ply'
 
   @classmethod
   def update_configs(cls):
     FLAGS = get_config()
-    FLAGS.SOLVER.resolution = 128       # the resolution used for marching cubes
-    FLAGS.SOLVER.save_sdf = False       # save the sdfs in evaluation
-    FLAGS.SOLVER.sdf_scale = 0.9        # the scale of sdfs
 
-    FLAGS.DATA.train.point_scale = 0.5  # the scale of point clouds
-    FLAGS.DATA.train.load_sdf = True    # load sdf samples
-    FLAGS.DATA.train.load_occu = False  # load occupancy samples
-    FLAGS.DATA.train.point_sample_num = 10000
-    FLAGS.DATA.train.sample_surf_points = False
-
-    # FLAGS.MODEL.skip_connections = True
+    FLAGS.DATA.train.points_scale = 128
     FLAGS.DATA.test = FLAGS.DATA.train.clone()
-    FLAGS.LOSS.loss_type = 'sdf_reg_loss'
+
+    FLAGS.MODEL.depth = 6
+    FLAGS.MODEL.full_depth = 2
 
 
 if __name__ == '__main__':
-  DualOcnnSolver.main()
+  AutoEncoderSolver.main()

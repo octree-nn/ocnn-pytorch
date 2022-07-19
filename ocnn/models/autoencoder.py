@@ -131,14 +131,11 @@ class AutoEncoder(torch.nn.Module):
       octree.octree_grow_full(depth=d)
     return octree
 
-  def forward(self, octree_in: Octree, octree_out: Optional[Octree] = None):
+  def forward(self, octree_in: Octree, update_octree: bool):
     r''''''
 
     shape_code = self.ae_encoder(octree_in)
-
-    update_octree = octree_out is None
     if update_octree:
-      octree_out = self.init_octree(shape_code)
-
-    out = self.ae_decoder(shape_code, octree_out, update_octree)
+      octree = self.init_octree(shape_code)
+    out = self.ae_decoder(shape_code, octree, update_octree)
     return out
