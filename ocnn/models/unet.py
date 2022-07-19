@@ -7,7 +7,7 @@ from ocnn.octree import Octree
 
 
 class UNet(torch.nn.Module):
-  r''' Octree-based UNet for segmentation
+  r''' Octree-based UNet for segmentation.
   '''
 
   def __init__(self, in_channels: int, out_channels: int, interp: str = 'linear',
@@ -23,26 +23,24 @@ class UNet(torch.nn.Module):
     # encoder
     self.conv1 = ocnn.modules.OctreeConvBnRelu(
         in_channels, self.encoder_channel[0], nempty=nempty)
-    self.downsample = torch.nn.ModuleList(
-        [ocnn.modules.OctreeConvBnRelu(self.encoder_channel[i],
-         self.encoder_channel[i+1], kernel_size=[2], stride=2, nempty=nempty)
-         for i in range(self.encoder_stages)])
-    self.encoder = torch.nn.ModuleList(
-        [ocnn.modules.OctreeResBlocks(self.encoder_channel[i+1],
-         self.encoder_channel[i+1], self.encoder_blocks[i], self.bottleneck,
-         nempty, self.resblk) for i in range(self.encoder_stages)])
+    self.downsample = torch.nn.ModuleList([ocnn.modules.OctreeConvBnRelu(
+        self.encoder_channel[i], self.encoder_channel[i+1], kernel_size=[2],
+        stride=2, nempty=nempty) for i in range(self.encoder_stages)])
+    self.encoder = torch.nn.ModuleList([ocnn.modules.OctreeResBlocks(
+        self.encoder_channel[i+1], self.encoder_channel[i + 1],
+        self.encoder_blocks[i], self.bottleneck, nempty, self.resblk)
+        for i in range(self.encoder_stages)])
 
     # decoder
     channel = [self.decoder_channel[i+1] + self.encoder_channel[-i-2]
                for i in range(self.decoder_stages)]
-    self.upsample = torch.nn.ModuleList(
-        [ocnn.modules.OctreeDeconvBnRelu(self.decoder_channel[i],
-         self.decoder_channel[i+1], kernel_size=[2], stride=2, nempty=nempty)
-         for i in range(self.decoder_stages)])
-    self.decoder = torch.nn.ModuleList(
-        [ocnn.modules.OctreeResBlocks(channel[i],
-         self.decoder_channel[i+1], self.decoder_blocks[i], self.bottleneck,
-         nempty, self.resblk) for i in range(self.decoder_stages)])
+    self.upsample = torch.nn.ModuleList([ocnn.modules.OctreeDeconvBnRelu(
+        self.decoder_channel[i], self.decoder_channel[i+1], kernel_size=[2],
+        stride=2, nempty=nempty) for i in range(self.decoder_stages)])
+    self.decoder = torch.nn.ModuleList([ocnn.modules.OctreeResBlocks(
+        channel[i], self.decoder_channel[i+1],
+        self.decoder_blocks[i], self.bottleneck, nempty, self.resblk)
+        for i in range(self.decoder_stages)])
 
     # header
     # channel = self.decoder_channel[self.decoder_stages]
