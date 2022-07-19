@@ -7,6 +7,8 @@ from ocnn.octree import Octree
 
 
 class AutoEncoder(torch.nn.Module):
+  r''' Octree-based AutoEncoder for shape encoding and decoding.
+  '''
 
   def __init__(self, channel_in: int, channel_out: int, depth: int,
                full_depth: int = 2, feature: str = 'N'):
@@ -53,7 +55,10 @@ class AutoEncoder(torch.nn.Module):
     assert out.size(1) == self.channel_in
     return out
 
-  def encoder_network(self, octree: Octree):
+  def ae_encoder(self, octree: Octree):
+    r''' The encoder network of the AutoEncoder.
+    '''
+
     convs = dict()
     depth, full_depth = self.depth, self.full_depth
     data = self.get_input_feature(octree)
@@ -65,8 +70,11 @@ class AutoEncoder(torch.nn.Module):
     shape_code = torch.tanh(convs[depth])
     return shape_code
 
-  def decoder_network(self, shape_code: torch.Tensor, octree: Octree,
-                      update_octree: bool = False):
+  def ae_decoder(self, shape_code: torch.Tensor, octree: Octree,
+                 update_octree: bool = False):
+    r''' The decoder network of the AutoEncoder.
+    '''
+
     logits = dict()
     deconv = shape_code
     depth, full_depth = self.depth, self.full_depth
@@ -96,12 +104,25 @@ class AutoEncoder(torch.nn.Module):
 
     return {'logits': logits, 'signal': signal, 'octree_out': octree}
 
-  def decode_code(self, shape_code):
+  def decode_code(self, shape_code: torch.Tensor):
+    r''' Decodes the shape code to an output octree.
+
+    Args:
+      shape_code (torch.Tensor): The shape code for decoding.
+    '''
+
     octree_out = self.init_octree(shape_code)
-    out = self.decoder_network(shape_code, octree_out, update_octree=True)
+    out = self.ae_decoder(shape_code, octree_out, update_octree=True)
     return out
 
   def init_octree(self, shape_code: torch.Tensor):
+    r''' Initialize a full octree for decoding.
+
+    Args:
+      shape_code (torch.Tensor): The shape code for decoding, used to getting 
+          the `batch_size` and `device` to initialize the output octree.
+    '''
+
     device = shape_code.device
     node_num = 2 ** (3 * self.full_depth)
     batch_size = shape_code.size(0) // node_num
@@ -113,11 +134,11 @@ class AutoEncoder(torch.nn.Module):
   def forward(self, octree_in: Octree, octree_out: Optional[Octree] = None):
     r''''''
 
-    shape_code = self.encoder_network(octree_in)
+    shape_code = self.ae_encoder(octree_in)
 
     update_octree = octree_out is None
     if update_octree:
       octree_out = self.init_octree(shape_code)
 
-    out = self.decoder_network(shape_code, octree_out, update_octree)
+    out = self.ae_decoder(shape_code, octree_out, update_octree)
     return out
