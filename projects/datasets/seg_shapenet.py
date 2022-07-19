@@ -23,7 +23,7 @@ class ShapeNetTransform(Transform):
     return points
 
 
-def get_shapenet_seg_dataset(flags):
+def get_seg_shapenet_dataset(flags):
   transform = ShapeNetTransform(flags)
   read_ply = ReadPly(has_normal=True, has_label=True)
   collate_batch = CollateBatch(merge_points=True)
