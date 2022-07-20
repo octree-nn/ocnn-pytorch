@@ -19,6 +19,7 @@ class AutoEncoder(torch.nn.Module):
     self.full_depth = full_depth
     self.feature = feature
     self.resblk_num = 3
+    self.shape_code_channel = 128
     self.channels = [512, 512, 256, 256, 128, 128, 32, 32, 16, 16]
 
     # encoder
@@ -30,8 +31,11 @@ class AutoEncoder(torch.nn.Module):
     self.downsample = torch.nn.ModuleList([ocnn.modules.OctreeConvBnRelu(
         self.channels[d], self.channels[d-1], kernel_size=[2], stride=2,
         nempty=False) for d in range(depth, full_depth, -1)])
+    self.proj = torch.nn.Linear(
+        self.channels[full_depth], self.shape_code_channel, bias=True)
 
     # decoder
+    self.channels[full_depth] = self.shape_code_channel  # update `channels`
     self.upsample = torch.nn.ModuleList([ocnn.modules.OctreeDeconvBnRelu(
         self.channels[d-1], self.channels[d], kernel_size=[2], stride=2,
         nempty=False) for d in range(full_depth+1, depth+1)])
@@ -64,10 +68,12 @@ class AutoEncoder(torch.nn.Module):
     data = self.get_input_feature(octree)
     convs[depth] = self.conv1(data, octree, depth)
     for i, d in enumerate(range(depth, full_depth-1, -1)):
-      convs[d] = self.encoder_blks[i](convs[d], octree)
+      convs[d] = self.encoder_blks[i](convs[d], octree, d)
       if d > full_depth:
-        convs[d-1] = self.downsample[i](convs[d], octree)
-    shape_code = torch.tanh(convs[depth])
+        convs[d-1] = self.downsample[i](convs[d], octree, d)
+
+    # NOTE: here tanh is used to constrain the shape code in [-1, 1]
+    shape_code = self.proj(convs[full_depth]).tanh()
     return shape_code
 
   def ae_decoder(self, shape_code: torch.Tensor, octree: Octree,
@@ -79,9 +85,9 @@ class AutoEncoder(torch.nn.Module):
     deconv = shape_code
     depth, full_depth = self.depth, self.full_depth
     for i, d in enumerate(range(full_depth, depth+1)):
-      deconv = self.decoder_blks[i](deconv, octree, d)
       if d > full_depth:
-        deconv = self.upsample[i-1](deconv, octree, d)
+        deconv = self.upsample[i-1](deconv, octree, d-1)
+      deconv = self.decoder_blks[i](deconv, octree, d)
 
       # predict the splitting label
       logit = self.predict[i](deconv)
@@ -131,10 +137,10 @@ class AutoEncoder(torch.nn.Module):
       octree.octree_grow_full(depth=d)
     return octree
 
-  def forward(self, octree_in: Octree, update_octree: bool):
+  def forward(self, octree: Octree, update_octree: bool):
     r''''''
 
-    shape_code = self.ae_encoder(octree_in)
+    shape_code = self.ae_encoder(octree)
     if update_octree:
       octree = self.init_octree(shape_code)
     out = self.ae_decoder(shape_code, octree, update_octree)

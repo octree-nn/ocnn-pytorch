@@ -1,0 +1,62 @@
+SOLVER:
+  gpu: 0,
+  run: train
+
+  logdir: logs/ae_shapenet/ae
+  max_epoch: 300
+  test_every_epoch: 20
+  log_per_iter: 50
+  ckpt_num: 40
+
+  # optimizer
+  type: adamw
+  weight_decay: 0.01  # default value of adamw
+  lr: 0.001           # default value of adamw
+
+  # learning rate
+  lr_type: poly
+  step_size: (160,240)
+
+DATA:
+  train:
+    name: shapenet
+    points_scale: 128
+
+    # octree building
+    depth: 6
+    full_depth: 2
+
+    # no data augmentations
+    distort: False
+
+    # data loading
+    location: data/ae_shapenet/shape.npz
+    filelist: data/ae_shapenet/filelist_train.npz.txt
+    batch_size: 32
+    shuffle: True
+    # num_workers: 0
+
+  test:
+    name: shapenet
+
+    # octree building
+    depth: 6
+    full_depth: 2
+
+    # no data augmentations
+    distort: False
+
+    # data loading
+    location: data/ae_shapenet/shape.npz
+    filelist: data/ae_shapenet/filelist_test.npz.txt
+    batch_size: 1
+    shuffle: False
+    # num_workers: 0
+
+MODEL:
+  name: autoencoder
+  feature: ND   # N -> Normal (3 channels); D -> Local displacement (1 channel)
+  channel: 4
+  nout: 4
+  depth: 6
+  full_depth: 2

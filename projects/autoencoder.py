@@ -1,6 +1,6 @@
 import os
 import torch
-import torch.functional as F
+import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm
 
@@ -13,7 +13,7 @@ class AutoEncoderSolver(Solver):
 
   def get_model(self, flags):
     return ocnn.models.AutoEncoder(
-        flags.channel_in, flags.nout, flags.depth, flags.full_depth,
+        flags.channel, flags.nout, flags.depth, flags.full_depth,
         feature=flags.feature)
 
   def get_dataset(self, flags):
@@ -25,7 +25,7 @@ class AutoEncoderSolver(Solver):
     data = octree_feature(octree)
     return data
 
-  def compute_loss(self, octree, model_out):
+  def compute_loss(self, octree: ocnn.octree.Octree, model_out: dict):
     # octree splitting loss
     output = dict()
     logits = model_out['logits']
