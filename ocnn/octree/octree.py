@@ -278,13 +278,11 @@ class Octree:
     self.nnum_nempty[depth] = nnum
 
     # update keys
-    key = self.keys[depth-1]
-    nempty = self.children[depth-1] >= 0
-    key = key[nempty].unsqueeze(1)
+    key = self.key(depth-1, nempty=True)
     batch_id = (key >> 48) << 48
     key = (key & ((1 << 48) - 1)) << 3
     key = key | batch_id
-    key = key + torch.arange(8, device=key.device)
+    key = key.unsqueeze(1) + torch.arange(8, device=key.device)
     self.keys[depth] = key.view(-1)
 
     # update children

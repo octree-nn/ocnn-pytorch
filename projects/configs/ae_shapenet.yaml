@@ -6,7 +6,7 @@ SOLVER:
   max_epoch: 300
   test_every_epoch: 20
   log_per_iter: 50
-  ckpt_num: 40
+  ckpt_num: 20
 
   # optimizer
   type: adamw
@@ -49,7 +49,7 @@ DATA:
     # data loading
     location: data/ae_shapenet/shape.npz
     filelist: data/ae_shapenet/filelist_test.npz.txt
-    batch_size: 1
+    batch_size: 16
     shuffle: False
     # num_workers: 0
 

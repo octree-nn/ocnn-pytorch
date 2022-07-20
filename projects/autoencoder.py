@@ -2,7 +2,6 @@ import os
 import torch
 import torch.nn.functional as F
 import numpy as np
-from tqdm import tqdm
 
 import ocnn
 from solver import Solver, get_config
@@ -65,19 +64,43 @@ class AutoEncoderSolver(Solver):
     # forward the model
     octree = batch['octree'].cuda()
     output = self.model(octree, update_octree=True)
+    points_out = self.octree2pts(output['octree_out'])
 
-    # # extract the output point cloud
-    # filename = batch['filename'][0]
-    # pos = filename.rfind('.')
-    # if pos != -1: filename = filename[:pos]  # remove the suffix
-    # filename = os.path.join(self.logdir, filename + '.obj')
-    # folder = os.path.dirname(filename)
-    # if not os.path.exists(folder): os.makedirs(folder)
-    # bbox = batch['bbox'][0].numpy() if 'bbox' in batch else None
-    # self.extract_mesh(output['neural_mpu'], filename, bbox)
+    # save the output point clouds
+    # NOTE: Curretnly, it consumes much time to save point clouds to hard disks
+    points_in = batch['points']
+    filenames = batch['filename']
+    for i, filename in enumerate(filenames):
+      pos = filename.rfind('.')
+      if pos != -1: filename = filename[:pos]  # remove the suffix
+      filename_in = os.path.join(self.logdir, filename + '.in.xyz')
+      filename_out = os.path.join(self.logdir, filename + '.out.xyz')
 
-    # # save the input point cloud
-    # filename = filename[:-4] + '.input.ply'
+      folder = os.path.dirname(filename_in)
+      if not os.path.exists(folder): os.makedirs(folder)
+
+      points_in[i].save(filename_in)
+      np.savetxt(filename_out, points_out[i].cpu().numpy(), fmt='%.6f')
+
+  def octree2pts(self, octree: ocnn.octree.Octree):
+    depth = octree.depth
+    batch_size = octree.batch_size
+
+    signal = octree.features[depth]
+    normal = F.normalize(signal[:, :3])
+    displacement = signal[:, 3:]
+
+    x, y, z, _ = octree.xyzb(depth, nempty=True)
+    xyz = torch.stack([x, y, z], dim=1) + 0.5 + displacement * normal
+    # points_scale = self.FLAGS.DATA.test.points_scale
+    # xyz = xyz * (points_scale / 2**depth)
+    xyz = xyz / 2**(depth - 1) - 1.0  # [0, 2^depth] -> [-1, 1]
+    point_cloud = torch.cat([xyz, normal], dim=1)
+
+    batch_id = octree.batch_id(depth, nempty=True)
+    points_num = [torch.sum(batch_id == i) for i in range(batch_size)]
+    points = torch.split(point_cloud, points_num)
+    return points
 
   @classmethod
   def update_configs(cls):

@@ -8,17 +8,25 @@ from ocnn.octree import Octree
 
 class AutoEncoder(torch.nn.Module):
   r''' Octree-based AutoEncoder for shape encoding and decoding.
+
+  Args:
+    channel_in (int): The channel of the input signal.
+    channel_out (int): The channel of the output signal.
+    depth (int): The depth of the octree.
+    full_depth (int): The full depth of the octree.
+    feature (str): The feature type of the input signal. For details of this
+        argument, please refer to :class:`ocnn.modules.InputFeature`.
   '''
 
   def __init__(self, channel_in: int, channel_out: int, depth: int,
-               full_depth: int = 2, feature: str = 'N'):
+               full_depth: int = 2, feature: str = 'ND'):
     super().__init__()
     self.channel_in = channel_in
     self.channel_out = channel_out
     self.depth = depth
     self.full_depth = full_depth
     self.feature = feature
-    self.resblk_num = 3
+    self.resblk_num = 2
     self.shape_code_channel = 128
     self.channels = [512, 512, 256, 256, 128, 128, 32, 32, 16, 16]
 
@@ -54,6 +62,9 @@ class AutoEncoder(torch.nn.Module):
         ocnn.modules.Conv1x1(num_hidden, channel_out, use_bias=True))
 
   def get_input_feature(self, octree: Octree):
+    r''' Get the input feature from the input `octree`.
+    '''
+
     octree_feature = ocnn.modules.InputFeature(self.feature, nempty=False)
     out = octree_feature(octree)
     assert out.size(1) == self.channel_in
