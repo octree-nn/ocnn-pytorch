@@ -6,7 +6,7 @@ import unittest
 from .utils import get_octree
 
 
-class OctreeDropTest(unittest.TestCase):
+class OctreeNormTest(unittest.TestCase):
 
   def test_instance_norm(self):
     octree1 = get_octree(4)
