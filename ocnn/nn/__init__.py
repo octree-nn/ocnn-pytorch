@@ -8,7 +8,7 @@ from .octree_pool import (octree_max_pool, OctreeMaxPool,
                           octree_max_unpool, OctreeMaxUnpool,
                           octree_global_pool, OctreeGlobalPool)
 from .octree_conv import OctreeConv, OctreeDeconv
-from .octree_norm import OctreeInstanceNorm
+from .octree_norm import OctreeInstanceNorm, OctreeBatchNorm
 from .octree_drop import OctreeDropPath
 
 __all__ = [
@@ -24,7 +24,7 @@ __all__ = [
     'OctreeGlobalPool',
     'OctreeConv', 'OctreeDeconv',
     'OctreeInterp', 'OctreeUpsample',
-    'OctreeInstanceNorm',
+    'OctreeInstanceNorm', 'OctreeBatchNorm',
     'OctreeDropPath',
 ]
 

@@ -371,11 +371,11 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
           self.out_channels, self.kernel_size, self.stride, self.nempty,
           self.max_buffer)
 
-    if self.stride == 2 and not self.nempty:
-      out = octree_pad(out, octree, depth-1)
-
     if self.use_bias:
       out += self.bias
+
+    if self.stride == 2 and not self.nempty:
+      out = octree_pad(out, octree, depth-1)
     return out
 
   def extra_repr(self) -> str:

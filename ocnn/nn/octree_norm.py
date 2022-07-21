@@ -5,6 +5,9 @@ from ocnn.octree import Octree
 from ocnn.utils import scatter_add
 
 
+OctreeBatchNorm = torch.nn.BatchNorm1d
+
+
 class OctreeInstanceNorm(torch.nn.Module):
   r''' An instance normalization layer for the octree.
   '''
