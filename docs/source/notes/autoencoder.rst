@@ -19,7 +19,8 @@ ShapeNet
       python tools/ae_shapenet.py --run prepare_dataset
 
 
-#. Run the following command to train the network. 
+#. Run the following command to train the network. The training log and weights
+   can be downloaded `here <https://1drv.ms/u/s!Ago-xIr0OR2-cgSYpuccOEaCmUU?e=A4gtyq>`__.
 
    .. code-block:: none
 
@@ -32,7 +33,7 @@ ShapeNet
 
    .. code-block:: none
 
-      python autoencoder.py --config configs/ae_shapenet.yaml  \
-             SOLVER.run evaluate  SOLVER.alias eval            \
-             SOLVER.ckpt logs/ae_shapenet/ae/00300.model.pth
+      python autoencoder.py --config configs/ae_shapenet.yaml             \
+             SOLVER.run evaluate  SOLVER.alias eval                       \
+             SOLVER.ckpt logs/ae_shapenet/ae/checkpoints/00300.model.pth
 
