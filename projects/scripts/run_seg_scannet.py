@@ -20,7 +20,7 @@ def train():
       'python segmentation.py',
       '--config configs/seg_scannet.yaml',
       'SOLVER.gpu  {},'.format(args.gpu),
-      'SOLVER.alias  {}'.format(args.alias),]
+      'SOLVER.alias  {}'.format(args.alias), ]
   execute_command(cmds)
 
 
@@ -30,9 +30,8 @@ def train_all():
       '--config configs/seg_scannet.yaml',
       'SOLVER.gpu  {},'.format(args.gpu),
       'SOLVER.alias  {}'.format(args.alias),
-      'DATA.train.filelist data/scannet/scannetv2_train_val_new.txt',]
+      'DATA.train.filelist data/scannet/scannetv2_train_val_new.txt', ]
   execute_command(cmds)
-
 
 
 def test():

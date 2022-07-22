@@ -9,7 +9,7 @@ for folder in folders:  # categories
   if not os.path.isdir(curr_folder): continue
 
   sub_folders = os.listdir(curr_folder)
-  for sub_folder in sub_folders: # ratios
+  for sub_folder in sub_folders:  # ratios
     curr_subfolder = os.path.join(curr_folder, sub_folder, 'checkpoints')
     if not os.path.isdir(curr_subfolder): continue
 
@@ -20,5 +20,3 @@ for folder in folders:  # categories
       filename = os.path.join(curr_subfolder, ckpt)
       print('Remove ' + filename)
       os.remove(filename)
-
-  
