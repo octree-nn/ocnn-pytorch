@@ -340,27 +340,26 @@ class Octree:
     r''' Searches the octree nodes given the query points.
 
     Args:
-      query (torch.Tensor): The query points with shape :obj:`(N, 4)`, where the
-          first 3 channels are :obj:`x`, :obj:`y`, and :obj:`z`, and the last 
-          channel is the batch index. Note that the coordinates must be in range
-          :obj:`[0, 2^depth)`.
-      depth (int): The depth of the octree layer.
-      nemtpy (bool): If true, only searches the non-empty octree nodes.
+      query (torch.Tensor): The keys of query points with shape :obj:`(N,)`,
+          which are computed from the coordinates of query points. And the first
+          3 channels of the coordinates are :obj:`x`, :obj:`y`, and :obj:`z`,
+          and the last channel is the batch index. Note that the coordinates
+          must be in range :obj:`[0, 2^depth)`.
+      depth (int): The depth of the octree layer. nemtpy (bool): If true, only
+      searches the non-empty octree nodes.
     '''
 
-    key = self.keys[depth]
+    key = self.key(depth, nempty)
+    # `torch.bucketize` is similar to `torch.searchsorted`.
+    # I choose `torch.bucketize` here because it has fewer dimension checks,
+    # resulting in slightly better performance according to the docs of
+    # pytorch-1.9.1, since `key` is always 1-D sorted sequence.
     idx = torch.bucketize(query, key)
 
-    valid = idx < key.shape[0]
+    valid = idx < key.shape[0]  # invalid if out of bound
     found = key[idx[valid]] == query[valid]
     valid[valid.clone()] = found
     idx[valid.logical_not()] = -1
-
-    if nempty:
-      child = self.children[depth]
-      mask = idx >= 0
-      idx[mask] = child[idx[mask]].long()
-
     return idx
 
   def get_neigh(self, depth: int, kernel: str = '333', stride: int = 1,
