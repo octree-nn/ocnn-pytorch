@@ -336,17 +336,30 @@ class Octree:
     for depth in range(1, self.depth+1):
       self.construct_neigh(depth)
 
+  def search_xyzb(self, query: torch.Tensor, depth: int, nempty: bool = False):
+    r''' Searches the octree nodes given the query points.
+
+    Args:
+      query (torch.Tensor): The coordinates of query points with shape 
+          :obj:`(N, 4)`. The first 3 channels of the coordinates are :obj:`x`,
+          :obj:`y`, and :obj:`z`, and the last channel is the batch index. Note
+          that the coordinates must be in range :obj:`[0, 2^depth)`.
+      depth (int): The depth of the octree layer. nemtpy (bool): If true, only
+          searches the non-empty octree nodes.
+    '''
+
+    key = xyz2key(query[:, 0], query[:, 1], query[:, 2], query[:, 3], depth)
+    idx = self.search_key(key, depth, nempty)
+    return idx
+
   def search_key(self, query: torch.Tensor, depth: int, nempty: bool = False):
     r''' Searches the octree nodes given the query points.
 
     Args:
       query (torch.Tensor): The keys of query points with shape :obj:`(N,)`,
-          which are computed from the coordinates of query points. And the first
-          3 channels of the coordinates are :obj:`x`, :obj:`y`, and :obj:`z`,
-          and the last channel is the batch index. Note that the coordinates
-          must be in range :obj:`[0, 2^depth)`.
+          which are computed from the coordinates of query points. 
       depth (int): The depth of the octree layer. nemtpy (bool): If true, only
-      searches the non-empty octree nodes.
+          searches the non-empty octree nodes.
     '''
 
     key = self.key(depth, nempty)

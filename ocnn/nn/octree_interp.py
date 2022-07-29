@@ -26,8 +26,7 @@ def octree_nearest_pts(data: torch.Tensor, octree: Octree, depth: int,
   '''
 
   # pts: (x, y, z, id)
-  key = ocnn.octree.xyz2key(pts[:, 0], pts[:, 1], pts[:, 2], pts[:, 3], depth)
-  idx = octree.search_key(key, depth, nempty)
+  idx = octree.search_xyzb(pts, depth, nempty)
   valid = idx > -1   # valid indices
   if bound_check:
     bound = torch.logical_and(pts[:, :3] >= 0, pts[:, :3] < 2**depth).all(1)
@@ -58,9 +57,8 @@ def octree_linear_pts(data: torch.Tensor, octree: Octree, depth: int,
   frac = xyzf - xyzi        # the fraction part (N, 3)
 
   xyzn = (xyzi.unsqueeze(1) + grid).view(-1, 3)
-  batch = pts[:, 3].unsqueeze(1).repeat(1, 8).view(-1)
-  key = ocnn.octree.xyz2key(xyzn[:, 0], xyzn[:, 1], xyzn[:, 2], batch, depth)
-  idx = octree.search_key(key, depth, nempty)
+  batch = pts[:, 3].unsqueeze(1).repeat(1, 8).view(-1, 1)
+  idx = octree.search_xyzb(torch.cat([xyzn, batch], dim=1), depth, nempty)
   valid = idx > -1  # valid indices
   if bound_check:
     bound = torch.logical_and(xyzn >= 0, xyzn < 2**depth).all(1)

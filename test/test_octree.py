@@ -118,9 +118,13 @@ class TesOctree(unittest.TestCase):
         xyzb[:, 0], xyzb[:, 1], xyzb[:, 2], xyzb[:, 3], depth)
     idx = octree.search_key(key, depth, nempty=False)
     idx_ne = octree.search_key(key, depth, nempty=True)
+    idx_xyz = octree.search_xyzb(xyzb, depth, nempty=False)
+    idx_xyz_ne = octree.search_xyzb(xyzb, depth, nempty=True)
 
     self.assertTrue(np.array_equal(idx.numpy(), data['idx']))
     self.assertTrue(np.array_equal(idx_ne.numpy(), data['idx_ne']))
+    self.assertTrue(np.array_equal(idx_xyz.numpy(), data['idx']))
+    self.assertTrue(np.array_equal(idx_xyz_ne.numpy(), data['idx_ne']))
 
   def test_octree_grow(self):
 
