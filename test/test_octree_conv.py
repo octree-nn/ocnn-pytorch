@@ -11,14 +11,13 @@ import numpy as np
 import unittest
 
 import ocnn
-from .utils import get_batch_octree, get_octree
+from .utils import get_batch_octree
 
 
-class TesOctreeNN(unittest.TestCase):
+class TesOctreeConv(unittest.TestCase):
 
-  def test_octree_nn(self):
-    r''' Tests octree2col/col2octree, octree_conv/octree_deconv, 
-    octree_max_pool/octree_max_unpool.
+  def test_conv_forward(self):
+    r''' Tests octree2col/col2octree, octree_conv/octree_deconv.
     '''
 
     folder = os.path.dirname(__file__)
@@ -83,14 +82,7 @@ class TesOctreeNN(unittest.TestCase):
             # update counter
             counter = counter + 1
 
-    # test max pool
-    pool, idx = ocnn.nn.octree_max_pool(
-        data_in[0], octree, depth, return_indices=True)
-    self.assertTrue(np.array_equal(pool.numpy(), data['pool']))
-    upool = ocnn.nn.octree_max_unpool(pool, idx, octree, depth-1)
-    self.assertTrue(np.array_equal(upool.numpy(), data['upool']))
-
-  def test_conv_backward_nn(self):
+  def test_conv_backward(self):
 
     folder = os.path.dirname(__file__)
     data = np.load(os.path.join(folder, 'data/octree_nn.npz'))
