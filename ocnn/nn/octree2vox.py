@@ -20,7 +20,7 @@ def octree2voxel(data: torch.Tensor, octree: Octree, depth: int,
     octree (Octree): The corresponding octree.
     depth (int): The depth of current octree.
     nempty (bool): If True, :attr:`data` only contains the features of non-empty
-        octree nodes.  
+        octree nodes.
   '''
 
   key = octree.keys[depth]
@@ -51,3 +51,6 @@ class Octree2Voxel(torch.nn.Module):
     r''''''
 
     return octree2voxel(data, octree, depth, self.nempty)
+
+  def extra_repr(self) -> str:
+    return 'nempty={}'.format(self.nempty)
