@@ -5,10 +5,11 @@
 # Written by Peng-Shuai Wang
 # --------------------------------------------------------
 
+import math
 import torch
 from typing import Optional
 
-__all__ = ['meshgrid', 'cumsum', 'scatter_add', ]
+__all__ = ['meshgrid', 'cumsum', 'scatter_add', 'xavier_uniform_', ]
 classes = __all__
 
 
@@ -96,3 +97,22 @@ def scatter_add(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
     out = torch.zeros(size, dtype=src.dtype, device=src.device)
 
   return out.scatter_add_(dim, index, src)
+
+
+def xavier_uniform_(weights: torch.Tensor):
+  r''' Initialize convolution weights with the same method as
+  :obj:`torch.nn.init.xavier_uniform_`.
+
+  :obj:`torch.nn.init.xavier_uniform_` initialize a tensor with shape
+  :obj:`(out_c, in_c, kdim)`. It can not be used in :class:`ocnn.nn.OctreeConv`
+  since the the shape of :attr:`OctreeConv.weights` is :obj:`(kdim, in_c,
+  out_c)`.
+  '''
+
+  shape = weights.shape     # (kernel_dim, in_conv, out_conv)
+  fan_in = shape[0] * shape[1]
+  fan_out = shape[0] * shape[2]
+  std = math.sqrt(2.0 / float(fan_in + fan_out))
+  a = math.sqrt(3.0) * std  # Calculate uniform bounds from standard deviation
+
+  torch.nn.init.uniform_(weights, -a, a)

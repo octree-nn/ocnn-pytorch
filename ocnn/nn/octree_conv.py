@@ -5,14 +5,13 @@
 # Written by Peng-Shuai Wang
 # --------------------------------------------------------
 
-import math
 import torch
 import torch.nn
 from torch.autograd import Function
 from typing import List
 
 from ocnn.octree import Octree
-from ocnn.utils import scatter_add
+from ocnn.utils import scatter_add, xavier_uniform_
 from .octree2col import octree2col, col2octree
 from .octree_pad import octree_pad, octree_depad
 
@@ -340,20 +339,7 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
     self.reset_parameters()
 
   def reset_parameters(self):
-    r''' Initialize convolution weights with the same method as
-    :obj:`torch.nn.init.xavier_uniform_`.
-
-    :obj:`torch.nn.init.xavier_uniform_` initialize a tensor with shape
-    :obj:`(out_c, in_c, kdim)`. It can not be used in :class:`OctreeConv` since
-    the the shape of :attr:`OctreeConv.weights` is :obj:`(kdim, in_c, out_c)`
-    '''
-
-    shape = self.weights.shape  # (kernel_dim, in_conv, out_conv)
-    fan_in = shape[0] * shape[1]
-    fan_out = shape[0] * shape[2]
-    std = math.sqrt(2.0 / float(fan_in + fan_out))
-    a = math.sqrt(3.0) * std  # Calculate uniform bounds from standard deviation
-    torch.nn.init.uniform_(self.weights, -a, a)
+    xavier_uniform_(self.weights)
     if self.use_bias:
       torch.nn.init.zeros_(self.bias)
 
