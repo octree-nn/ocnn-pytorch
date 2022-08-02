@@ -102,9 +102,11 @@ class OctreeConvBase:
     # The heigh and number of the temporary buffer
     self.buffer_n = 1
     self.buffer_h = self.neigh.shape[0]
-    ideal_size = self.buffer_h * self.neigh.shape[1] * self.in_conv
+    ideal_size = self.buffer_h * self.kdim * self.in_conv
     if ideal_size > self.max_buffer:
-      self.buffer_n = (ideal_size + self.max_buffer - 1) // self.max_buffer
+      kc = self.kdim * self.in_conv            # make `max_buffer` be divided
+      max_buffer = self.max_buffer // kc * kc  # by `kc` with no remainder
+      self.buffer_n = (ideal_size + max_buffer - 1) // max_buffer
       self.buffer_h = (self.buffer_h + self.buffer_n - 1) // self.buffer_n
     self.buffer_shape = (self.buffer_h, self.kdim, self.in_conv)
 
