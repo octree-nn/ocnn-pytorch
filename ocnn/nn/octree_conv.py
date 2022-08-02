@@ -37,7 +37,7 @@ class OctreeConvBase:
 
   def resize_with_last_val(self, list_in, num=3):
     r''' Resizes the number of elements of :attr:`list_in` to :attr:`num` with
-    the last element of :attr:`list_in` if its number of elements is smaller 
+    the last element of :attr:`list_in` if its number of elements is smaller
     than :attr:`num`.
     '''
 
@@ -60,7 +60,7 @@ class OctreeConvBase:
     raise NotImplementedError
 
   def setup(self, octree: Octree, depth: int):
-    r''' Setup the shapes of each tensor. 
+    r''' Setup the shapes of each tensor.
     This function MUST be called before :obj:`forward_gemm`, :obj:`backward_gemm`
     and :obj:`weight_gemm`.
     '''
@@ -152,7 +152,7 @@ class OctreeConvBase:
 
   def backward_gemm(self, out: torch.Tensor, grad: torch.Tensor,
                     weights: torch.Tensor):
-    r''' Performs the backward pass of octree-based convolution. 
+    r''' Performs the backward pass of octree-based convolution.
     '''
 
     # Loop over each sub-matrix
@@ -308,19 +308,19 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
   Args:
     in_channels (int): Number of input channels.
     out_channels (int): Number of output channels.
-    kernel_size (List(int)): The kernel shape, choose from :obj:`[3]`,
-        :obj:`[2]`,`[3,3,3]`, :obj:`[3,1,1]`, :obj:`[1,3,1]`, :obj:`[1,1,3]`,
+    kernel_size (List(int)): The kernel shape, choose from :obj:`[3]`, :obj:`[2]`,
+        :obj:`[3,3,3]`, :obj:`[3,1,1]`, :obj:`[1,3,1]`, :obj:`[1,1,3]`,
         :obj:`[2,2,2]`, :obj:`[3,3,1]`, :obj:`[1,3,3]`, and :obj:`[3,1,3]`.
     stride (int): The stride of the convolution (:obj:`1` or :obj:`2`).
     nempty (bool): If True, only performs the convolution on non-empty
         octree nodes.
     direct_method (bool): If True, directly performs the convolution via using
-        gemm and octree2col/col2octree. The octree2col/col2octree needs to 
+        gemm and octree2col/col2octree. The octree2col/col2octree needs to
         construct a large matrix, which may consume a lot of memory. If False,
-        performs the convolution in a sub-matrix manner, which can save the 
+        performs the convolution in a sub-matrix manner, which can save the
         requied runtime memory.
     use_bias (bool): If True, add a bias term to the convolution.
-    max_buffer (int): The maximum number of elements in the buffer, used when 
+    max_buffer (int): The maximum number of elements in the buffer, used when
         :attr:`direct_method` is False.
   '''
 

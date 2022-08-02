@@ -21,9 +21,13 @@ voxels, while these 3 works use the `Hash Table`.
 
 Our O-CNN is published in SIGGRAPH 2017, H-CNN is published in TVCG 2018,
 SparseConvNet is published in CVPR 2018, and MinkowskiNet is published in CVPR
-2019. Therefore, the idea of constraining CNN computation into sparse non-emtpry
-voxels is first proposed by our O-CNN. Currently, this type of 3D convolution is
-known as Sparse Convolution in the research community.      
+2019. Actually, our O-CNN was submitted to SIGGRAPH in the end of 2016 and was
+officially accepted in March, 2017. The camera-ready version of our O-CNN was
+submitted to SIGGRAPH in April, 2017. We just did not post our paper on Arxiv
+during the review process of SIGGRAPH. Therefore, **the idea of constraining CNN
+computation into sparse non-emtpry voxels is first proposed by our O-CNN**.
+Currently, this type of 3D convolution is known as Sparse Convolution in the
+research community. 
 
 ## Key benefits of ocnn-pytorch
 
