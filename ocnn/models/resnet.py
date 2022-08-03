@@ -27,11 +27,11 @@ class ResNet(torch.nn.Module):
     self.conv1 = ocnn.modules.OctreeConvBnRelu(
         in_channels, channels[0], nempty=nempty)
     self.pool1 = ocnn.nn.OctreeMaxPool(nempty)
-    self.resblocks = torch.nn.ModuleList([
-        ocnn.modules.OctreeResBlocks(channels[i], channels[i+1], resblock_num,
-        nempty=nempty) for i in range(stages-1)])  # noqa
-    self.pools = torch.nn.ModuleList(
-        [ocnn.nn.OctreeMaxPool(nempty) for i in range(stages-1)])
+    self.resblocks = torch.nn.ModuleList([ocnn.modules.OctreeResBlocks(
+        channels[i], channels[i+1], resblock_num, nempty=nempty)
+        for i in range(stages-1)])
+    self.pools = torch.nn.ModuleList([ocnn.nn.OctreeMaxPool(
+        nempty) for i in range(stages-1)])
     self.global_pool = ocnn.nn.OctreeGlobalPool(nempty)
     # self.header = torch.nn.Linear(channels[-1], out_channels, bias=True)
     self.header = torch.nn.Sequential(

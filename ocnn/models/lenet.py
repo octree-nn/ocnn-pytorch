@@ -23,11 +23,10 @@ class LeNet(torch.nn.Module):
     self.nempty = nempty
     channels = [in_channels] + [2 ** max(i+7-stages, 2) for i in range(stages)]
 
-    self.convs = torch.nn.ModuleList(
-        [ocnn.modules.OctreeConvBnRelu(channels[i], channels[i+1], nempty=nempty)
-         for i in range(stages)])
-    self.pools = torch.nn.ModuleList(
-        [ocnn.nn.OctreeMaxPool(nempty) for i in range(stages)])
+    self.convs = torch.nn.ModuleList([ocnn.modules.OctreeConvBnRelu(
+        channels[i], channels[i+1], nempty=nempty) for i in range(stages)])
+    self.pools = torch.nn.ModuleList([ocnn.nn.OctreeMaxPool(
+        nempty) for i in range(stages)])
     self.octree2voxel = ocnn.nn.Octree2Voxel(self.nempty)
     self.header = torch.nn.Sequential(
         torch.nn.Dropout(p=0.5),                     # drop1
