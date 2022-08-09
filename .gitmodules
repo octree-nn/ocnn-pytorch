@@ -1,3 +1,0 @@
-[submodule "projects/solver"]
-	path = projects/solver
-	url = https://github.com/octree-nn/solver-pytorch.git
