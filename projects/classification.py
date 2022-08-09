@@ -8,8 +8,8 @@
 import torch
 import torch.nn.functional as F
 import ocnn
+from thsolver import Solver
 
-from solver import Solver
 from datasets import get_modelnet40_dataset
 
 

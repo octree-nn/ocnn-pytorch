@@ -9,9 +9,9 @@ import os
 import torch
 import torch.nn.functional as F
 import numpy as np
-
 import ocnn
-from solver import Solver, get_config
+from thsolver import Solver, get_config
+
 from datasets import get_ae_shapenet_dataset
 
 

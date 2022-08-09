@@ -10,8 +10,7 @@ import numpy as np
 import scipy.interpolate
 import scipy.ndimage
 import random
-
-from solver import Dataset
+from thsolver import Dataset
 from ocnn.octree import Points
 from ocnn.dataset import CollateBatch
 

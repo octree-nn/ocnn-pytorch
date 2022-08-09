@@ -9,9 +9,9 @@ import os
 import torch
 import numpy as np
 from tqdm import tqdm
-
 import ocnn
-from solver import Solver, get_config
+from thsolver import Solver, get_config
+
 from datasets import (get_seg_shapenet_dataset, get_scannet_dataset,
                       get_kitti_dataset)
 

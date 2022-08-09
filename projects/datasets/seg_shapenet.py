@@ -6,8 +6,7 @@
 # --------------------------------------------------------
 
 import torch
-
-from solver import Dataset
+from thsolver import Dataset
 from ocnn.octree import Points
 from ocnn.dataset import CollateBatch
 

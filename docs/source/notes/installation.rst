@@ -29,7 +29,7 @@ It is also easy to install `ocnn` from source.
 
     .. code-block:: none
 
-      git clone --recursive https://github.com/octree-nn/ocnn-pytorch.git
+      git clone https://github.com/octree-nn/ocnn-pytorch.git
 
 #. Enter the folder containing the code, and run the following command:
 
