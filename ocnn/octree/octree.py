@@ -148,16 +148,20 @@ class Octree:
 
     Args:
       point_cloud (Points): The input point cloud.
+
+    .. note::
+      Currently, the batch size of the point cloud must be 1.
     '''
 
     self.device = point_cloud.device
 
-    # normalize points from [-1, 1] to [0, 2^depth]
+    # normalize points from [-1, 1] to [0, 2^depth]. #[Lable:S]
     scale = 2 ** (self.depth - 1)
     points = (point_cloud.points + 1.0) * scale
 
     # get the shuffled key and sort
-    key = xyz2key(points[:, 0], points[:, 1], points[:, 2], depth=self.depth)
+    x, y, z = points[:, 0], points[:, 1], points[:, 2]
+    key = xyz2key(x, y, z, point_cloud.batch_id, self.depth)
     node_key, idx, counts = torch.unique(
         key, sorted=True, return_inverse=True, return_counts=True)
 
@@ -173,7 +177,7 @@ class Octree:
           pkey, return_inverse=True, return_counts=True)
 
       # augmented key
-      key = pkey.unsqueeze(-1) * 8 + torch.arange(8, device=self.device)
+      key = (pkey.unsqueeze(-1) << 3) + torch.arange(8, device=self.device)
       self.keys[d] = key.view(-1)
       self.nnum[d] = key.numel()
       self.nnum_nempty[d] = node_key.numel()
@@ -204,7 +208,7 @@ class Octree:
 
     # average the signal for the last octree layer
     d = self.depth
-    points = scatter_add(points, idx, dim=0)  # here points is rescaled in L84
+    points = scatter_add(points, idx, dim=0)  # points is rescaled in [Lable:S]
     self.points[d] = points / counts.unsqueeze(1)
     if point_cloud.normals is not None:
       normals = scatter_add(point_cloud.normals, idx, dim=0)
@@ -219,7 +223,7 @@ class Octree:
     r''' Builds the full octree, which is essentially a dense volumetric grid.
 
     Args:
-      depth (int): The depth of the octree. 
+      depth (int): The depth of the octree.
       update_neigh (bool): If True, construct the neighborhood indices.
     '''
 
@@ -270,12 +274,12 @@ class Octree:
     self.nnum_nempty[depth] = nnum_nempty
 
   def octree_grow(self, depth: int, update_neigh: bool = True):
-    r''' Grows the octree and updates the relevant properties. And in most 
+    r''' Grows the octree and updates the relevant properties. And in most
     cases, call :func:`Octree.octree_split` to update the splitting status of
     the octree before this function.
 
     Args:
-      depth (int): The depth of the octree. 
+      depth (int): The depth of the octree.
       update_neigh (bool): If True, construct the neighborhood indices.
     '''
 
@@ -347,7 +351,7 @@ class Octree:
     r''' Searches the octree nodes given the query points.
 
     Args:
-      query (torch.Tensor): The coordinates of query points with shape 
+      query (torch.Tensor): The coordinates of query points with shape
           :obj:`(N, 4)`. The first 3 channels of the coordinates are :obj:`x`,
           :obj:`y`, and :obj:`z`, and the last channel is the batch index. Note
           that the coordinates must be in range :obj:`[0, 2^depth)`.
@@ -364,7 +368,7 @@ class Octree:
 
     Args:
       query (torch.Tensor): The keys of query points with shape :obj:`(N,)`,
-          which are computed from the coordinates of query points. 
+          which are computed from the coordinates of query points.
       depth (int): The depth of the octree layer. nemtpy (bool): If true, only
           searches the non-empty octree nodes.
     '''
