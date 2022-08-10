@@ -2,6 +2,10 @@
 
 **[Documentation](https://ocnn-pytorch.readthedocs.io)**
 
+[![Documentation Status](https://readthedocs.org/projects/ocnn-pytorch/badge/?version=latest)](https://ocnn-pytorch.readthedocs.io/en/latest/?badge=latest)
+[![downloads](https://pepy.tech/badge/ocnn)](https://pepy.tech/project/ocnn)
+[![PyPI](https://img.shields.io/pypi/v/ocnn)](https://pypi.org/project/ocnn/)
+
 This repository contains the **pure PyTorch**-based implementation of
 [O-CNN](https://wang-ps.github.io/O-CNN.html). The code has been tested with
 `Pytorch>=1.9.0`.
@@ -20,9 +24,9 @@ The key difference is that our O-CNN uses the `octree` to index the sparse
 voxels, while these 3 works use the `Hash Table`.
 
 Our O-CNN is published in SIGGRAPH 2017, H-CNN is published in TVCG 2018,
-SparseConvNet is published in CVPR 2018, and MinkowskiNet is published in CVPR
-2019. Actually, our O-CNN was submitted to SIGGRAPH in the end of 2016 and was
-officially accepted in March, 2017. The camera-ready version of our O-CNN was
+SparseConvNet is published in CVPR 2018, and MinkowskiNet is published in 
+CVPR 2019. Actually, our O-CNN was submitted to SIGGRAPH in the end of 2016 and
+was officially accepted in March, 2017. The camera-ready version of our O-CNN was
 submitted to SIGGRAPH in April, 2017. We just did not post our paper on Arxiv
 during the review process of SIGGRAPH. Therefore, **the idea of constraining CNN
 computation into sparse non-emtpry voxels is first proposed by our O-CNN**.
