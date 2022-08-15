@@ -65,8 +65,8 @@ class Octree:
     self.nnum = torch.zeros(num, dtype=torch.int32)
     self.nnum_nempty = torch.zeros(num, dtype=torch.int32)
 
-    # the following properties are valid after `merge_octrees` and `build_octree`
-    # TODO: make them available after `octree_grow` and `octree_split`
+    # the following properties are valid after `merge_octrees`.
+    # TODO: make them valid after `octree_grow`, `octree_split` and `build_octree`
     batch_size = self.batch_size
     self.batch_nnum = torch.zeros(num, batch_size, dtype=torch.int32)
     self.batch_nnum_nempty = torch.zeros(num, batch_size, dtype=torch.int32)
@@ -154,6 +154,7 @@ class Octree:
     '''
 
     self.device = point_cloud.device
+    assert point_cloud.batch_size == self.batch_size, 'Inconsistent batch_size'
 
     # normalize points from [-1, 1] to [0, 2^depth]. #[Lable:S]
     scale = 2 ** (self.depth - 1)
@@ -161,7 +162,8 @@ class Octree:
 
     # get the shuffled key and sort
     x, y, z = points[:, 0], points[:, 1], points[:, 2]
-    key = xyz2key(x, y, z, point_cloud.batch_id, self.depth)
+    b = None if self.batch_size == 1 else point_cloud.batch_id.view(-1)
+    key = xyz2key(x, y, z, b, self.depth)
     node_key, idx, counts = torch.unique(
         key, sorted=True, return_inverse=True, return_counts=True)
 
@@ -191,20 +193,21 @@ class Octree:
       self.children[d] = children
 
       # cache pkey for the next iteration
-      node_key = pkey
+      # Use `pkey >> 45` instead of `pkey >> 48` in L199 since pkey is already
+      # shifted to the right by 3 bits in L177
+      node_key = pkey if self.batch_size == 1 else  \
+          ((pkey >> 45) << 48) | (pkey & ((1 << 45) - 1))
 
     # set the children for the layer full_layer,
     # now the node_keys are the key for full_layer
     d = self.full_depth
     children = -torch.ones_like(self.children[d])
-    children[node_key] = torch.arange(
+    nempty_idx = node_key if self.batch_size == 1 else  \
+        ((node_key >> 48) << (3 * d)) | (node_key & ((1 << 48) - 1))
+    children[nempty_idx] = torch.arange(
         node_key.numel(), dtype=torch.int32, device=self.device)
     self.children[d] = children
     self.nnum_nempty[d] = node_key.numel()
-
-    # set the batch_nnum
-    self.batch_nnum[:, 0] = self.nnum
-    self.batch_nnum_nempty[:, 0] = self.nnum_nempty
 
     # average the signal for the last octree layer
     d = self.depth

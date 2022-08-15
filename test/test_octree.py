@@ -11,7 +11,7 @@ import numpy as np
 import unittest
 
 import ocnn
-from .utils import get_octree, get_batch_octree
+from .utils import get_points, get_octree, get_batch_octree
 
 
 class TesOctree(unittest.TestCase):
@@ -100,6 +100,16 @@ class TesOctree(unittest.TestCase):
       octree, data = get_octree(i, return_data=True)
       self.check_octree(octree, data)
 
+  def test_build_octree_from_batched_points(self):
+    folder = os.path.dirname(__file__)
+    data = np.load(os.path.join(folder, 'data/batch_45.npz'))
+
+    points = ocnn.octree.merge_points([get_points(4), get_points(5)])
+    octree = ocnn.octree.Octree(
+        data['depth'].item(), full_depth=data['full_depth'].item(), batch_size=2)
+    octree.build_octree(points)
+    self.check_octree(octree, data)
+
   def test_merge_octree_with_data(self):
     folder = os.path.dirname(__file__)
     data = np.load(os.path.join(folder, 'data/batch_45.npz'))
@@ -114,7 +124,6 @@ class TesOctree(unittest.TestCase):
           torch.cat(octree.neighs[1:], dim=0).numpy(), data['neigh']))
 
   def test_search_key(self):
-
     folder = os.path.dirname(__file__)
     data = np.load(os.path.join(folder, 'data/search_key.npz'))
     octree = get_batch_octree()
