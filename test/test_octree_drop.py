@@ -15,7 +15,7 @@ from .utils import get_octree
 
 class OctreeDropTest(unittest.TestCase):
 
-  def test_octree_property(self):
+  def test_octree_drop_path(self):
     r'''Just execute the `OctreeDropPath`, and there are no comparisons with 
     ground-truth results.
     '''

@@ -169,6 +169,7 @@ class OctreeConvBase:
       # The sub-matrix gemm
       buffer = torch.mm(grad[start:end], weights.flatten(0, 1).t())
       buffer = buffer.view(-1, self.buffer_shape[1], self.buffer_shape[2])
+      buffer = buffer.to(out.dtype)  # for pytorch.amp
 
       # Performs col2octree
       neigh_i = self.neigh[start:end]
