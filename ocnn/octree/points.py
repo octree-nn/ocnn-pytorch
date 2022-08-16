@@ -14,7 +14,7 @@ class Points:
   r''' Represents a point cloud and contains some elementary transformations.
 
   Args:
-    points (torch.Tensor): The coordinates of the points with a shape of 
+    points (torch.Tensor): The coordinates of the points with a shape of
         :obj:`(N, 3)`, where :obj:`N` is the number of points.
     normals (torch.Tensor or None): The point normals with a shape of
         :obj:`(N, 3)`.
@@ -22,6 +22,8 @@ class Points:
         :obj:`(N, C)`, where :obj:`C` is the channel of features.
     labels (torch.Tensor or None): The point labels with a shape of
         :obj:`(N, K)`, where :obj:`K` is the channel of labels.
+    batch_id (torch.Tensor or None): The batch indices for each point with a
+        shape of :obj:`(N, 1)`.
     batch_size (int): The batch size.
   '''
 
@@ -29,21 +31,23 @@ class Points:
                normals: Optional[torch.Tensor] = None,
                features: Optional[torch.Tensor] = None,
                labels: Optional[torch.Tensor] = None,
+               batch_id: Optional[torch.Tensor] = None,
                batch_size: int = 1):
+    super().__init__()
     self.points = points
     self.normals = normals
     self.features = features
     self.labels = labels
     self.device = points.device
+    self.batch_id = batch_id
     self.batch_size = batch_size
-    self.batch_npt = None
-    self.batch_id = None
+    self.batch_npt = None   # valid after `merge_points`
 
   def orient_normal(self, axis: str = 'x'):
     r''' Orients the point normals along a given axis.
 
     Args:
-      axis (int): The coordinate axes, choose from :obj:`x`, :obj:`y` and 
+      axis (int): The coordinate axes, choose from :obj:`x`, :obj:`y` and
           :obj:`z`. (default: :obj:`x`)
     '''
 
@@ -60,7 +64,7 @@ class Points:
       self.normals.abs_()
 
   def scale(self, factor: torch.Tensor):
-    r''' Rescales the point cloud. 
+    r''' Rescales the point cloud.
 
     Args:
       factor (torch.Tensor): The scale factor with shape :obj:`(3,)`.
@@ -81,7 +85,7 @@ class Points:
       self.normals = self.normals / torch.clamp(norm2, min=1.0e-12)
 
   def rotate(self, angle: torch.Tensor):
-    r''' Rotates the point cloud. 
+    r''' Rotates the point cloud.
 
     Args:
       angle (torch.Tensor): The rotation angles in radian with shape :obj:`(3,)`.
@@ -100,7 +104,7 @@ class Points:
       self.normals = self.normals @ rot
 
   def translate(self, dis: torch.Tensor):
-    r''' Translates the point cloud. 
+    r''' Translates the point cloud.
 
     Args:
       dis (torch.Tensor): The displacement with shape :obj:`(3,)`.
@@ -170,7 +174,7 @@ class Points:
     self.points = (self.points - center) * (2.0 * scale / box_size)
 
   def to(self, device: Union[torch.device, str]):
-    r''' Moves the Points to a specified device. 
+    r''' Moves the Points to a specified device.
 
     Args:
       device (torch.device or str): The destination device.
