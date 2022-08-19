@@ -55,7 +55,6 @@ class KittiTransform(Transform):
     self.label_map = get_label_map()
 
   def preprocess(self, sample, idx=None):
-
     # get the input
     xyz = sample['points'][:, :3]
     density = sample['points'][:, 3:]

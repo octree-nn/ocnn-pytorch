@@ -11,7 +11,7 @@ SOLVER:
   logdir: logs/kitti/D12_5cm
   max_epoch: 20
   test_every_epoch: 1
-  log_per_iter: 100
+  log_per_iter: 50
   weight_decay: 0.0001
 
   # learning rate
@@ -36,8 +36,8 @@ DATA:
     uniform: True
 
     # data loading
-    location: data/SemanticKitti
-    filelist: data/SemanticKitti/train.txt
+    location: data/SemanticKITTI
+    filelist: data/SemanticKITTI/train.txt
     batch_size: 2
     shuffle: True
     # num_workers: 0
@@ -57,8 +57,8 @@ DATA:
     uniform: True
 
     # data loading
-    location: data/SemanticKitti
-    filelist: data/SemanticKitti/val.txt
+    location: data/SemanticKITTI
+    filelist: data/SemanticKITTI/val.txt
     batch_size: 1
     shuffle: False
     # num_workers: 0

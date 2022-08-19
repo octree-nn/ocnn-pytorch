@@ -103,7 +103,7 @@ class SegSolver(Solver):
       np.savez(full_filename, prob=self.eval_rst[filename].numpy())
 
   def result_callback(self, avg_tracker, epoch):
-    ''' Calculate the part mIoU for PartNet and ScanNet.
+    r''' Calculate the part mIoU for PartNet and ScanNet.
     '''
 
     iou_part = 0.0

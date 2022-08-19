@@ -52,6 +52,33 @@ ScanNet
     MinkowskiNet 0.4.3 takes 60 hours and MinkowskiNet 0.5.4 takes 30 hours.
 
 
+
+SemanticKITTI
+---------------------------
+
+#. Download the dataset and semantic labels from the official website of
+   `SemanticKITTI <http://www.semantic-kitti.org/dataset.html#download>`__,
+   including `data_odometry_velodyne.zip <http://www.cvlibs.net/download.php?file=data_odometry_velodyne.zip>`__
+   and `data_odometry_labels.zip <http://www.semantic-kitti.org/assets/data_odometry_labels.zip>`__,
+   and place them into the folder ``projects/data/SemanticKITTI``. Then enter
+   the subdirectory ``projects``, run the following command to prepare the
+   dataset.
+
+   .. code-block:: none
+
+      python tools/seg_kitti.py
+
+
+#. Run the following command to train the network with 4 GPUs. The mIoU on the
+   validation set is **64.0**, the training log and weights can be downloaded from
+   this `link <https://1drv.ms/u/s!Ago-xIr0OR2-eyisuXI6_Fh0Rrg?e=woPcl9>`__.
+   .. I observe random fluctuations of 2 points mIoU in this experiment.
+
+   .. code-block:: none
+
+      python segmentation.py --config configs/seg_kitti.yaml SOLVER.gpu 0,1,2,3
+
+
 ShapeNet
 ---------------------------
 
@@ -81,7 +108,7 @@ ShapeNet
 
 #. Run the following command to train the a deep UNet with an octree depth of 5.
    The category mIoU and instance mIoU without voting is **84.2** and **85.4**
-   respectively, the training log and weights can be downloaded from this 
+   respectively, the training log and weights can be downloaded from this
    `link <https://1drv.ms/u/s!Ago-xIr0OR2-cgSYpuccOEaCmUU?e=guhj1T>`__.
 
    .. code-block:: none
