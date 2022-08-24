@@ -72,7 +72,6 @@ SemanticKITTI
 #. Run the following command to train the network with 4 GPUs. The mIoU on the
    validation set is **64.0**, the training log and weights can be downloaded from
    this `link <https://1drv.ms/u/s!Ago-xIr0OR2-eyisuXI6_Fh0Rrg?e=woPcl9>`__.
-   .. I observe random fluctuations of 2 points mIoU in this experiment.
 
    .. code-block:: none
 
