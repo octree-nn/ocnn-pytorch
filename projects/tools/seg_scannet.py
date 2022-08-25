@@ -19,8 +19,10 @@ parser.add_argument('--path_out', type=str, default='data/scannet')
 parser.add_argument('--path_pred', type=str, default='logs/scannet/D9_2cm_eval')
 parser.add_argument('--filelist', type=str, default='scannetv2_test_new.txt')
 parser.add_argument('--label_remap', type=str, default='true')
-parser.add_argument('--run', type=str, default='process_scannet',
-                    help='Choose from `process_scannet`, `generate_output_seg` and `calc_iou`.')
+parser.add_argument('--generate_chunks', type=str, default='false')
+parser.add_argument(
+    '--run', type=str, default='process_scannet',
+    help='Choose from `process_scannet`, `generate_output_seg` and `calc_iou`')
 args = parser.parse_args()
 
 label_remap = args.label_remap.lower() == 'true'
@@ -127,8 +129,8 @@ def generate_chunks(filename, point_cloud, cropsize=10.0, stride=5.0):
 
   chunk_id = 0
   min_size = 3000
-  chunk_num = np.ceil(np.maximum(bbmax - cropsize, 0) /
-                      stride).astype(np.int32) + 1
+  chunk_num = np.ceil(np.maximum(
+      bbmax - cropsize, 0) / stride).astype(np.int32) + 1
   for i in range(chunk_num[0]):
     for j in range(chunk_num[1]):
       for k in range(chunk_num[2]):
@@ -179,7 +181,8 @@ def process_scannet():
       # save the original file
       save_ply(processed, filename_out)
       # save the cropped chunks in the 10x10x10 box
-      generate_chunks(filename_out, processed)
+      if args.generate_chunks.lower() == 'true':
+        generate_chunks(filename_out, processed)
 
 
 def fix_bug_files():
