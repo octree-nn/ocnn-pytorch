@@ -22,7 +22,7 @@ SOLVER:
 
   # learning rate
   lr_type: poly
-  step_size: (160,240)
+  milestones: (160,240)
 
 DATA:
   train:

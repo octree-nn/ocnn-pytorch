@@ -55,7 +55,7 @@ for i in range(len(ratios)):
     ratio, cat = ratios[i], categories[k]
     mul = 2 if ratios[i] < 0.1 else 1  # longer iterations when data < 10%
     max_epoch = int(max_epoches[k] * ratio * mul)
-    step_size1, step_size2 = int(0.5 * max_epoch), int(0.25 * max_epoch)
+    milestone1, milestone2 = int(0.5 * max_epoch), int(0.25 * max_epoch)
     test_every_epoch = int(math.ceil(max_epoch * 0.02))
     take = int(math.ceil(train_num[k] * ratio))
     logs = os.path.join(
@@ -66,7 +66,7 @@ for i in range(len(ratios)):
         'SOLVER.gpu {},'.format(gpu),
         'SOLVER.logdir {}'.format(logs),
         'SOLVER.max_epoch {}'.format(max_epoch),
-        'SOLVER.step_size {},{}'.format(step_size1, step_size2),
+        'SOLVER.milestones {},{}'.format(milestone1, milestone2),
         'SOLVER.test_every_epoch {}'.format(test_every_epoch),
         'SOLVER.ckpt {}'.format(args.ckpt),
         'DATA.train.depth {}'.format(args.depth),

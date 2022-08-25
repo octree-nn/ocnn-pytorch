@@ -17,7 +17,7 @@ SOLVER:
   # learning rate
   lr: 0.06
   lr_type: poly
-  step_size: (10,14,18)  # has no effect for `poly`
+  milestones: (10,14,18)  # has no effect for `poly`
 
 
 DATA:

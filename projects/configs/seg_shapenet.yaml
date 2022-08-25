@@ -15,7 +15,7 @@ SOLVER:
   test_every_epoch: 5
 
   # lr_type: cos
-  step_size: (120,180,240)
+  milestones: (120,180,240)
   ckpt_num: 20
 
 DATA:
