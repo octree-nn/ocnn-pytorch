@@ -8,6 +8,8 @@
 import os
 import argparse
 import numpy as np
+import wget
+import zipfile
 from pathlib import Path
 from tqdm import tqdm
 from plyfile import PlyData, PlyElement
@@ -20,8 +22,7 @@ parser.add_argument('--path_pred', type=str, default='logs/scannet/D9_2cm_eval')
 parser.add_argument('--filelist', type=str, default='scannetv2_test_new.txt')
 parser.add_argument('--label_remap', type=str, default='true')
 parser.add_argument('--generate_chunks', type=str, default='false')
-parser.add_argument(
-    '--run', type=str, default='process_scannet',
+parser.add_argument('--run', type=str, default='process_scannet',  # noqa
     help='Choose from `process_scannet`, `generate_output_seg` and `calc_iou`')
 args = parser.parse_args()
 
@@ -46,16 +47,14 @@ def download_filelists():
   if not os.path.exists(path_out):
     os.makedirs(path_out)
 
-  # download
-  url = 'https://www.dropbox.com/s/aeizpy34zhozrcw/scannet_filelist.zip?dl=0'
-  cmd = 'wget %s -O %s' % (url, zip_file)
-  print(cmd)
-  os.system(cmd)
+  # download via wget
+  url = 'https://www.dropbox.com/s/g168492gu88zxh6/scannet_filelist.zip?dl=1'
+  print('-> Download the filelist.')
+  wget.download(url, zip_file)
 
   # unzip
-  cmd = 'unzip %s -d %s' % (zip_file, path_out)
-  print(cmd)
-  os.system(cmd)
+  with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+    zip_ref.extractall(path_out)
 
 
 def read_ply(filename, compute_normal=True):

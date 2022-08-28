@@ -95,7 +95,8 @@ class ScanNetTransform(Transform):
   def __init__(self, flags):
     super().__init__(flags)
 
-    self.scale_factor = 5.12
+    # self.scale_factor = 5.12    # depth 9
+    self.scale_factor = 10.24     # depth 10
     self.color_trans_ratio = 0.10
     self.color_jit_std = 0.05
     self.elastic_params = np.array([[0.2, 0.4], [0.8, 1.6]], np.float32)
@@ -105,6 +106,7 @@ class ScanNetTransform(Transform):
     # normalize points
     xyz = sample['points']
     center = (xyz.min(axis=0) + xyz.max(axis=0)) / 2.0
+    center[2] = 0.5   # fix the z axis center for all scenes
     xyz = (xyz - center) / self.scale_factor  # xyz in [-1, 1]
 
     # normalize color
