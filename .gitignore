@@ -10,5 +10,6 @@ logs
 *.xyz
 amlt
 submit
+thsolver
 .amltconfig
 .amltignore

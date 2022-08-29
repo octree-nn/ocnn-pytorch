@@ -37,13 +37,13 @@ def train_all():
       '--config configs/seg_scannet.yaml',
       'SOLVER.gpu  {},'.format(args.gpu),
       'SOLVER.alias  {}'.format(args.alias),
-      'DATA.train.filelist data/scannet/scannetv2_train_val_new.txt', ]
+      'DATA.train.filelist data/scannet/scannetv2_train_val.txt', ]
   execute_command(cmds)
 
 
 def test():
   # get the predicted probabilities for each point
-  ckpt = 'logs/scannet/D9_2cm_{}/checkpoints/00600.model.pth'.format(args.alias)
+  ckpt = 'logs/scannet/D10_2cm_{}/checkpoints/00600.model.pth'.format(args.alias)
   if args.ckpt != '\'\'': ckpt = args.ckpt   # use args.ckpt if provided
   cmds = [
       'python segmentation.py',
@@ -59,26 +59,27 @@ def test():
   cmds = [
       'python tools/seg_scannet.py',
       '--run generate_output_seg',
-      '--path_in data/scannet/train',
-      '--path_pred logs/scannet/D9_2cm_eval_{}'.format(args.alias),
-      '--path_out logs/scannet/D9_2cm_eval_seg_{}'.format(args.alias),
-      '--filelist  data/scannet/scannetv2_val_new.txt', ]
+      '--path_in data/scannet/test',
+      '--path_pred logs/scannet/D10_2cm_eval_test_{}'.format(args.alias),
+      '--path_out logs/scannet/D10_2cm_eval_test_seg_{}'.format(args.alias),
+      '--filelist  data/scannet/scannetv2_test.txt', ]
   execute_command(cmds)
 
 
 def validate():
   # get the predicted probabilities for each point
-  ckpt = 'logs/scannet/D9_2cm_{}/checkpoints/00600.model.pth'.format(args.alias)
+  ckpt = 'logs/scannet/D10_2cm_{}/checkpoints/00600.model.pth'.format(args.alias)
   if args.ckpt != '\'\'': ckpt = args.ckpt   # use args.ckpt if provided
   cmds = [
       'python segmentation.py',
       '--config configs/seg_scannet_eval.yaml',
+      'SOLVER.gpu  {},'.format(args.gpu),
       'SOLVER.eval_epoch 12',  # voting with 12 predictions
       'SOLVER.alias val_{}'.format(args.alias),
       'SOLVER.ckpt {}'.format(ckpt),
       'DATA.test.distort True',
       'DATA.test.location  data/scannet/train',
-      'DATA.test.filelist data/scannet/scannetv2_val_new.txt', ]
+      'DATA.test.filelist data/scannet/scannetv2_val.txt', ]
   execute_command(cmds)
 
   # map the probabilities to labels
@@ -86,9 +87,9 @@ def validate():
       'python tools/seg_scannet.py',
       '--run generate_output_seg',
       '--path_in data/scannet/train',
-      '--path_pred logs/scannet/D9_2cm_eval_val_{}'.format(args.alias),
-      '--path_out logs/scannet/D9_2cm_eval_val_seg_{}'.format(args.alias),
-      '--filelist  data/scannet/scannetv2_val_new.txt', ]
+      '--path_pred logs/scannet/D10_2cm_eval_val_{}'.format(args.alias),
+      '--path_out logs/scannet/D10_2cm_eval_val_seg_{}'.format(args.alias),
+      '--filelist  data/scannet/scannetv2_val.txt', ]
   execute_command(cmds)
 
   # calculate the mIoU
@@ -96,7 +97,7 @@ def validate():
       'python tools/seg_scannet.py',
       '--run calc_iou',
       '--path_in data/scannet/train',
-      '--path_pred logs/scannet/D9_2cm_eval_val_seg_{}'.format(args.alias), ]
+      '--path_pred logs/scannet/D10_2cm_eval_val_seg_{}'.format(args.alias), ]
   execute_command(cmds)
 
 

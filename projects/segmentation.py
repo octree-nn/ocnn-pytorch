@@ -86,10 +86,10 @@ class SegSolver(Solver):
     # The point cloud may be clipped when doing data augmentation. The
     # `inbox_mask` indicates which points are clipped. The `prob_all_pts`
     # contains the prediction for all points.
-    inbox_mask = batch['inbox_mask'][0]
+    inbox_mask = batch['inbox_mask'][0].cuda()
     assert len(batch['inbox_mask']) == 1, 'The batch_size must be 1'
-    prob_all_pts = torch.zeros([inbox_mask.shape[0], prob.shape[1]])
-    prob_all_pts[inbox_mask] = prob.cpu()
+    prob_all_pts = prob.new_zeros([inbox_mask.shape[0], prob.shape[1]])
+    prob_all_pts[inbox_mask] = prob
 
     # Aggregate predictions across different epochs
     filename = batch['filename'][0]
@@ -100,7 +100,7 @@ class SegSolver(Solver):
       full_filename = os.path.join(self.logdir, filename + '.eval.npz')
       curr_folder = os.path.dirname(full_filename)
       if not os.path.exists(curr_folder): os.makedirs(curr_folder)
-      np.savez(full_filename, prob=self.eval_rst[filename].numpy())
+      np.savez(full_filename, prob=self.eval_rst[filename].cpu().numpy())
 
   def result_callback(self, avg_tracker, epoch):
     r''' Calculate the part mIoU for PartNet and ScanNet.

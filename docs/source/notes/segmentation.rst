@@ -17,8 +17,9 @@ ScanNet
 
 
 #. Run the following command to train the network with 4 GPUs. The mIoU on the
-   validation set is 73.6, the training log and weights can be downloaded from
-   this `link <https://1drv.ms/u/s!Ago-xIr0OR2-cH_ZcJj2G8G9Naw?e=RhGMOt>`__.
+   validation set without voting is **73.7**, the training log and weights can
+   be downloaded from this
+   `link <https://1drv.ms/u/s!Ago-xIr0OR2-fakjVl4YIjvXfoM?e=ShbVId>`__.
 
    .. code-block:: none
 
@@ -26,7 +27,7 @@ ScanNet
 
 
 #. Run the following command to get the per-point predictions for the validation
-   dataset with a voting strategy. And after voting the mIoU is **74.8** on the
+   dataset with a voting strategy. And after voting, the mIoU is **74.9** on the
    validation dataset.
 
    .. code-block:: none

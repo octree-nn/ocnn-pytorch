@@ -64,7 +64,6 @@ DATA:
 
 MODEL:
   name: unet
-
   # N -> Normal (3 channels);
   # D -> Displacement (1 channel);
   # F -> Color (3 channels)
