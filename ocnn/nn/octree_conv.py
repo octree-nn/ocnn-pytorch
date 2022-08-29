@@ -116,7 +116,7 @@ class OctreeConvBase:
 
     # Check the shape of input data
     check = tuple(data.shape) == self.in_shape
-    torch._assert(check, 'The shape of input data is wrong.')
+    assert check, 'The shape of input data is wrong.'
 
     # Init the output data
     out = data.new_zeros(self.out_shape)

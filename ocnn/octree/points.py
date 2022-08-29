@@ -73,7 +73,7 @@ class Points:
     non_zero = (factor != 0).all()
     all_ones = (factor == 1.0).all()
     non_uniform = (factor != factor[0]).any()
-    torch._assert(non_zero, 'The scale factor must not constain 0.')
+    assert non_zero, 'The scale factor must not constain 0.'
     if all_ones: return
 
     factor = factor.to(self.device)

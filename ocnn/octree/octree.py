@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 from typing import Union, List
 
-from ocnn.utils import meshgrid, scatter_add, cumsum
+from ocnn.utils import meshgrid, scatter_add, cumsum, trunc_div
 from .points import Points
 from .shuffled_key import xyz2key, key2xyz
 
@@ -76,7 +76,7 @@ class Octree:
     center_grid = self.rng_grid(2, 3)    # (8, 3)
     displacement = self.rng_grid(-1, 1)  # (27, 3)
     neigh_grid = center_grid.unsqueeze(1) + displacement  # (8, 27, 3)
-    parent_grid = torch.div(neigh_grid, 2, rounding_mode='trunc')
+    parent_grid = trunc_div(neigh_grid, 2)
     child_grid = neigh_grid % 2
     self.lut_parent = torch.sum(
         parent_grid * torch.tensor([9, 3, 1], device=device), dim=2)
@@ -231,7 +231,7 @@ class Octree:
     '''
 
     # check
-    torch._assert(depth <= self.full_depth, 'error')
+    assert depth <= self.full_depth, 'error'
 
     # node number
     num = 1 << (3 * depth)
@@ -528,7 +528,7 @@ def merge_octrees(octrees: List['Octree']):
     condition = (octrees[i].depth == octree.depth and
                  octrees[i].full_depth == octree.full_depth and
                  octrees[i].device == octree.device)
-    torch._assert(condition, 'The check of merge_octrees failed')
+    assert condition, 'The check of merge_octrees failed'
 
   # node num
   batch_nnum = torch.stack(

@@ -9,8 +9,22 @@ import math
 import torch
 from typing import Optional
 
-__all__ = ['meshgrid', 'cumsum', 'scatter_add', 'xavier_uniform_', ]
+__all__ = ['trunc_div', 'meshgrid', 'cumsum', 'scatter_add', 'xavier_uniform_']
 classes = __all__
+
+
+def trunc_div(input, other):
+  r''' Wraps :func:`torch.div` for compatibility. It rounds the results of the
+  division towards zero and is equivalent to C-style integer  division.
+  '''
+
+  version = torch.__version__.split('.')
+  larger_than_170 = int(version[0]) > 0 and int(version[1]) > 7
+
+  if larger_than_170:
+    return torch.div(input, other, rounding_mode='trunc')
+  else:
+    return torch.floor_divide(input, other)
 
 
 def meshgrid(*tensors, indexing: Optional[str] = None):
@@ -43,7 +57,7 @@ def cumsum(data: torch.Tensor, dim: int, exclusive: bool = False):
   if exclusive:
     size = list(data.size())
     size[dim] = 1
-    zeros = data.new_zeros(size)
+    zeros = out.new_zeros(size)
     out = torch.cat([zeros, out], dim)
   return out
 
