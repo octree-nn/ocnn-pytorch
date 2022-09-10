@@ -46,7 +46,10 @@ def download_m40():
     wget.download(url, filename)
 
   # unzip
-  flag_file = os.path.join(root_folder, 'flags/unzip_succ')
+  flag_floder = os.path.join(root_folder, 'flags')
+  if not os.path.exists(flag_floder):
+    os.makedirs(flag_floder)
+  flag_file = os.path.join(flag_floder, 'unzip_succ')
   if not os.path.exists(flag_file):
     print('-> Unzip the dataset.')
     with zipfile.ZipFile(filename, 'r') as zip_ref:
@@ -81,7 +84,7 @@ def _get_point_folder():
 def get_filelist(root_folder, train=True, suffix='off', ratio=1.0):
   filelist, category = [], []
   folders = sorted(os.listdir(root_folder))
-  assert(len(folders) == 40)
+  assert len(folders) == 40
   for idx, folder in enumerate(folders):
     subfolder = 'train' if train else 'test'
     current_folder = os.path.join(root_folder, folder, subfolder)
