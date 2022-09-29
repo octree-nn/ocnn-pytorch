@@ -162,6 +162,10 @@ class OctreeDWConv(OctreeDWConvBase, torch.nn.Module):
   r''' Performs octree-based depth-wise convolution.
 
   Please refer to :class:`ocnn.nn.OctreeConv` for the meaning of the arguments.
+
+  .. note::
+    This implementation uses the :func:`torch.einsum` and I find that the speed
+    is relatively slow. Further optimization is needed to speed it up.
   '''
 
   def __init__(self, in_channels: int, kernel_size: List[int] = [3],
