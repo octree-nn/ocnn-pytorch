@@ -32,7 +32,9 @@ def octree_nearest_pts(data: torch.Tensor, octree: Octree, depth: int,
     The :attr:`pts` MUST be scaled into :obj:`[0, 2^depth)`.
   '''
 
-  # pts: (x, y, z, id)
+  nnum = octree.nnum_nempty[depth] if nempty else octree.nnum[depth]
+  assert data.shape[0] == nnum, 'The shape of input data is wrong.'
+
   idx = octree.search_xyzb(pts, depth, nempty)
   valid = idx > -1   # valid indices
   if bound_check:
@@ -52,6 +54,9 @@ def octree_linear_pts(data: torch.Tensor, octree: Octree, depth: int,
 
   Refer to :func:`octree_nearest_pts` for the meaning of the arguments.
   '''
+
+  nnum = octree.nnum_nempty[depth] if nempty else octree.nnum[depth]
+  assert data.shape[0] == nnum, 'The shape of input data is wrong.'
 
   device = data.device
   grid = torch.tensor(
