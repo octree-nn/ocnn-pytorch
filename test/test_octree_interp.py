@@ -11,6 +11,7 @@ import numpy as np
 import unittest
 
 import ocnn
+from ocnn.nn.octree_interp import octree_nearest_upsample
 from .utils import get_batch_octree
 
 
@@ -48,8 +49,7 @@ class TesOctreeInterp(unittest.TestCase):
     # test case: nempty=False
     nnum = octree.nnum[depth]
     data = torch.rand(nnum, 4)
-    out = ocnn.nn.octree_nearest_upsample(
-        data, octree, depth=depth, nempty=False)
+    out = octree_nearest_upsample(data, octree, depth=depth, nempty=False)
 
     xyzb = octree.xyzb(depth_out, nempty=False)
     pts = torch.stack(xyzb, dim=1)
@@ -61,8 +61,7 @@ class TesOctreeInterp(unittest.TestCase):
     # test case: nempty=False
     nnum = octree.nnum_nempty[depth]
     data = torch.rand(nnum, 4)
-    out = ocnn.nn.octree_nearest_upsample(
-        data, octree, depth=depth, nempty=True)
+    out = octree_nearest_upsample(data, octree, depth=depth, nempty=True)
 
     xyzb = octree.xyzb(depth_out, nempty=True)
     pts = torch.stack(xyzb, dim=1)

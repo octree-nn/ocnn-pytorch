@@ -9,7 +9,6 @@ from .octree2vox import octree2voxel, Octree2Voxel
 from .octree2col import octree2col, col2octree
 from .octree_pad import octree_pad, octree_depad
 from .octree_interp import (octree_nearest_pts, octree_linear_pts,
-                            octree_nearest_upsample, octree_linear_upsample,
                             OctreeInterp, OctreeUpsample)
 from .octree_pool import (octree_max_pool, OctreeMaxPool,
                           octree_max_unpool, OctreeMaxUnpool,
@@ -25,7 +24,6 @@ __all__ = [
     'octree2col', 'col2octree',
     'octree_pad', 'octree_depad',
     'octree_nearest_pts', 'octree_linear_pts',
-    'octree_nearest_upsample', 'octree_linear_upsample',
     'octree_max_pool', 'octree_max_unpool',
     'octree_global_pool',
     'Octree2Voxel',

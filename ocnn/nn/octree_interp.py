@@ -7,7 +7,7 @@
 
 import torch
 import torch.sparse
-from typing import List
+from typing import List, Optional
 
 import ocnn
 from ocnn.octree import Octree
@@ -143,7 +143,7 @@ def octree_nearest_upsample(data: torch.Tensor, octree: Octree, depth: int,
     octree (Octree): The octree to interpolate.
     depth (int): The depth of the data.
     nempty (bool): If true, the :attr:`data` only contains features of non-empty 
-        octree nodes
+        octree nodes.
   '''
 
   out = data
@@ -155,38 +155,31 @@ def octree_nearest_upsample(data: torch.Tensor, octree: Octree, depth: int,
   return out
 
 
-def octree_linear_upsample(data: torch.Tensor, octree: Octree, depth: int,
-                           nempty: bool = False):
-  r''' Upsamples the octree node features from :attr:`depth` to :attr:`(depth+1)`
-  with the linear interpolation.
-
-  Please refer to :func:`octree_upsample_nearest` for the arguments.
-  '''
-
-  xyzb = octree.xyzb(depth+1, nempty)
-  pts = torch.stack(xyzb, dim=1)
-  pts[:, :3] = (pts[:, :3] + 0.5) * 0.5
-  out = octree_linear_pts(data, octree, depth, pts, nempty)
-  return out
-
-
 class OctreeUpsample(torch.nn.Module):
-  r''' Upsamples the octree node features.
+  r'''  Upsamples the octree node features from :attr:`depth` to
+  :attr:`(target_depth)`.
 
-  Refer to :func:`octree_upsample` for details.
+  Refer to :class:`octree_nearest_pts` for details.
   '''
 
   def __init__(self, method: str = 'linear', nempty: bool = False):
     super().__init__()
     self.method = method
     self.nempty = nempty
-    fn = {'linear': octree_linear_upsample, 'nearest': octree_nearest_upsample}
-    self.func = fn[method]
+    self.func = octree_linear_pts if method == 'linear' else octree_nearest_pts
 
-  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int,
+              target_depth: Optional[int] = None):
     r''''''
 
-    return self.func(data, octree, depth, self.nempty)
+    if target_depth is None:
+      target_depth = depth + 1
+    assert target_depth > depth, 'target_depth must be larger than depth'
+
+    xyzb = octree.xyzb(target_depth, self.nempty)
+    pts = torch.stack(xyzb, dim=1).float()
+    pts[:, :3] = (pts[:, :3] + 0.5) * (2**(depth - target_depth))  # !!! rescale
+    return self.func(data, octree, depth, pts, self.nempty)
 
   def extra_repr(self) -> str:
     r''' Sets the extra representation of the module.
