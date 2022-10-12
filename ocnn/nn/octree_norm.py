@@ -44,10 +44,10 @@ class OctreeInstanceNorm(torch.nn.Module):
     norm = 1.0 / (count + self.eps)  # there might be 0 element in some shapes
 
     mean = scatter_add(data, batch_id, dim=0, dim_size=batch_size) * norm
-    out = data - mean[batch_id]
+    out = data - mean.index_select(0, batch_id)
     var = scatter_add(out * out, batch_id, dim=0, dim_size=batch_size) * norm
     inv_std = 1.0 / (var + self.eps).sqrt()
-    out = out * inv_std[batch_id]
+    out = out * inv_std.index_select(0, batch_id)
 
     out = out * self.weights + self.bias
     return out
