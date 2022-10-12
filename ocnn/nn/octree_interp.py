@@ -43,7 +43,7 @@ def octree_nearest_pts(data: torch.Tensor, octree: Octree, depth: int,
 
   size = (pts.shape[0], data.shape[1])
   out = torch.zeros(size, device=data.device, dtype=data.dtype)
-  out[valid] = data[idx[valid]]
+  out[valid] = data.index_select(0, idx[valid])
   return out
 
 
@@ -146,6 +146,9 @@ def octree_nearest_upsample(data: torch.Tensor, octree: Octree, depth: int,
         octree nodes.
   '''
 
+  nnum = octree.nnum_nempty[depth] if nempty else octree.nnum[depth]
+  assert data.shape[0] == nnum, 'The shape of input data is wrong.'
+
   out = data
   if not nempty:
     out = ocnn.nn.octree_depad(out, octree, depth)
@@ -175,6 +178,9 @@ class OctreeUpsample(torch.nn.Module):
     if target_depth is None:
       target_depth = depth + 1
     assert target_depth > depth, 'target_depth must be larger than depth'
+
+    if target_depth == depth + 1 and self.method == 'nearest':
+      return octree_nearest_upsample(data, octree, depth, self.nempty)
 
     xyzb = octree.xyzb(target_depth, self.nempty)
     pts = torch.stack(xyzb, dim=1).float()
