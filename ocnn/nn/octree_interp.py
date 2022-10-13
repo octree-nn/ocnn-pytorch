@@ -177,7 +177,9 @@ class OctreeUpsample(torch.nn.Module):
 
     if target_depth is None:
       target_depth = depth + 1
-    assert target_depth > depth, 'target_depth must be larger than depth'
+    if target_depth == depth:
+      return data   # return, do nothing
+    assert target_depth >= depth, 'target_depth must be larger than depth'
 
     if target_depth == depth + 1 and self.method == 'nearest':
       return octree_nearest_upsample(data, octree, depth, self.nempty)
