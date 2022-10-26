@@ -74,8 +74,7 @@ class Transform:
     return points
 
   def transform(self, points: Points, idx: int):
-    r''' Applies the general transformations provided by :obj:`ocnn`, and builds
-    the octree.
+    r''' Applies the general transformations provided by :obj:`ocnn`.
     '''
 
     # The augmentations including rotation, scaling, and jittering.
@@ -117,7 +116,6 @@ class Transform:
       rnd_scale[2] = rnd_scale[0]
 
     rnd_jitter = torch.rand(3) * (2 * self.jitter) - self.jitter
-
     return rnd_angle, rnd_scale, rnd_jitter
 
 
