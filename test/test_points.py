@@ -48,8 +48,8 @@ class TestPoints(unittest.TestCase):
     normals = point_cloud.normals.clone()
     points = point_cloud.points.clone()
     point_cloud.scale(factor)
-    self.assertTrue(torch.allclose(point_cloud.normals, F.normalize(normals/factor)) &
-                    torch.equal(point_cloud.points, points * factor))
+    self.assertTrue(torch.allclose(point_cloud.normals, F.normalize(
+        normals/factor)) & torch.equal(point_cloud.points, points * factor))
 
   def test_rotation(self):
     point_cloud = self.init_points()
@@ -91,6 +91,18 @@ class TestPoints(unittest.TestCase):
 
     self.assertTrue((point_cloud.points >= -1).all() &
                     (point_cloud.points <= 1).all())
+
+  def test_clip(self):
+    point_cloud = self.init_points()
+    point_cloud.clip(min=-4, max=4)
+
+    s2 = 2.0 ** 0.5 / 2.0
+    self.assertTrue(torch.equal(
+        point_cloud.points, torch.Tensor([[1, 2, 3]])))
+    self.assertTrue(torch.equal(
+        point_cloud.normals, torch.Tensor([[s2, -s2, 0]])))
+    self.assertTrue(torch.equal(
+        point_cloud.labels, torch.Tensor([[1]])))
 
 
 if __name__ == "__main__":

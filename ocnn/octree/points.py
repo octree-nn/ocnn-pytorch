@@ -38,9 +38,9 @@ class Points:
     self.normals = normals
     self.features = features
     self.labels = labels
-    self.device = points.device
     self.batch_id = batch_id
     self.batch_size = batch_size
+    self.device = points.device
     self.batch_npt = None   # valid after `merge_points`
 
   def orient_normal(self, axis: str = 'x'):
@@ -135,20 +135,38 @@ class Points:
       esp (float): The margin.
     '''
 
-    mask_min = torch.all(self.points > min + esp, dim=1)
-    mask_max = torch.all(self.points < max - esp, dim=1)
-    mask = torch.logical_and(mask_min, mask_max)
+    mask = self.inbox_mask(min + esp, max - esp)
+    tmp = self.__getitem__(mask)
+    self.__dict__.update(tmp.__dict__)
+    return mask
 
-    self.points = self.points[mask]
+  def __getitem__(self, mask: torch.Tensor):
+    r''' Slices the point cloud according a given :attr:`mask`.
+    '''
+
+    dummy_pts = torch.zeros(1, 3, device=self.device)
+    out = Points(dummy_pts, batch_size=self.batch_size)
+
+    out.points = self.points[mask]
     if self.normals is not None:
-      self.normals = self.normals[mask]
+      out.normals = self.normals[mask]
     if self.features is not None:
-      self.features = self.features[mask]
+      out.features = self.features[mask]
     if self.labels is not None:
-      self.labels = self.labels[mask]
+      out.labels = self.labels[mask]
     if self.batch_id is not None:
-      self.batch_id = self.batch_id[mask]
-      self.batch_npt = None  # TODO: Update batch_npt
+      out.batch_id = self.batch_id[mask]
+    return out
+
+  def inbox_mask(self, bbmin: Union[float, torch.Tensor] = -1.0,
+                 bbmax: Union[float, torch.Tensor] = 1.0):
+    r''' Returns a mask indicating whether the points are within the specified
+    bounding box or not.
+    '''
+
+    mask_min = torch.all(self.points > bbmin, dim=1)
+    mask_max = torch.all(self.points < bbmax, dim=1)
+    mask = torch.logical_and(mask_min, mask_max)
     return mask
 
   def bbox(self):
@@ -160,7 +178,8 @@ class Points:
     bbmax = self.points.max(dim=0)
     return bbmin[0], bbmax[0]
 
-  def normalize(self, bbmin: torch.Tensor, bbmax: torch.Tensor, scale: float = 1.0):
+  def normalize(self, bbmin: torch.Tensor, bbmax: torch.Tensor,
+                scale: float = 1.0):
     r''' Normalizes the point cloud to :obj:`[-scale, scale]`.
 
     Args:
