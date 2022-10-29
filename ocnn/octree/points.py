@@ -230,40 +230,34 @@ class Points:
 
     return self.to('cpu')
 
-  def save(self, filename: str, save_batch: bool = False):
+  def save(self, filename: str, info: str = 'PNFL'):
     r''' Save the Points into npz or xyz files.
 
     Args:
       filename (str): The output filename.
-      save_batch (bool): Whether to save the batch index.
+      info (str): The infomation for saving: 'P' -> 'points', 'N' -> 'normals', 
+          'F' -> 'features', 'L' -> 'labels', 'B' -> 'batch_id'.
     '''
 
-    name = ['points']
-    out = [self.points.cpu().numpy()]
-    if self.normals is not None:
-      name.append('normals')
-      out.append(self.normals.cpu().numpy())
-    if self.features is not None:
-      name.append('features')
-      out.append(self.features.cpu().numpy())
-    if self.labels is not None:
-      name.append('labels')
-      labels = self.labels
-      if labels.dim() == 1:
-        labels = labels.unsqueeze(1)
-      out.append(labels.cpu().numpy())
-    if self.batch_id is not None and save_batch:
-      name.append('batch_id')
-      batch_id = self.batch_id
-      if batch_id.dim() == 1:
-        batch_id = batch_id.unsqueeze(1)
-      out.append(batch_id.cpu().numpy())
+    mapping = {
+        'P': ('points', self.points), 'N': ('normals', self.normals),
+        'F': ('features', self.features), 'L': ('labels', self.labels),
+        'B': ('batch_id', self.batch_id), }
+
+    names, outs = [], []
+    for key in info.upper():
+      name, out = mapping[key]
+      if out is not None:
+        names.append(name)
+        if out.dim() == 1:
+          out = out.unsqueeze(1)
+        outs.append(out.cpu().numpy())
 
     if filename.endswith('npz'):
-      out_dict = dict(zip(name, out))
+      out_dict = dict(zip(names, outs))
       np.savez(filename, **out_dict)
     elif filename.endswith('xyz'):
-      out_array = np.concatenate(out, axis=1)
+      out_array = np.concatenate(outs, axis=1)
       np.savetxt(filename, out_array, fmt='%.6f')
     else:
       raise ValueError
