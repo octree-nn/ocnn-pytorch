@@ -263,11 +263,13 @@ class Points:
       raise ValueError
 
 
-def merge_points(points: List['Points']):
+def merge_points(points: List['Points'], update_batch_info: bool = True):
   r''' Merges a list of points into one batch.
 
   Args:
-    points (List[Octree]): A list of points to merge.
+    points (List[Octree]): A list of points to merge. The batch size of each
+        points in the list is assumed to be 1, and the :obj:`batch_size`, 
+        :obj:`batch_id`, and :obj:`batch_npt` in the points are ignored.
   '''
 
   out = Points(torch.zeros(1, 3))
@@ -279,8 +281,10 @@ def merge_points(points: List['Points']):
   if points[0].labels is not None:
     out.labels = torch.cat([p.labels for p in points], dim=0)
   out.device = points[0].device
-  out.batch_size = len(points)
-  out.batch_npt = torch.Tensor([p.points.shape[0] for p in points])
-  out.batch_id = torch.cat([p.points.new_full((p.points.shape[0], 1), i)
-                            for i, p in enumerate(points)], dim=0)
+
+  if update_batch_info:
+    out.batch_size = len(points)
+    out.batch_npt = torch.Tensor([p.points.shape[0] for p in points])
+    out.batch_id = torch.cat([p.points.new_full((p.points.shape[0], 1), i)
+                              for i, p in enumerate(points)], dim=0)
   return out
