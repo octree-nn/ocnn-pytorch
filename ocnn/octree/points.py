@@ -192,11 +192,14 @@ class Points:
     box_size = (bbmax - bbmin).max() + 1.0e-6
     self.points = (self.points - center) * (2.0 * scale / box_size)
 
-  def to(self, device: Union[torch.device, str]):
+  def to(self, device: Union[torch.device, str], non_blocking: bool = False):
     r''' Moves the Points to a specified device.
 
     Args:
       device (torch.device or str): The destination device.
+      non_blocking (bool): If True and the source is in pinned memory, the copy
+          will be asynchronous with respect to the host. Otherwise, the argument
+          has no effect. Default: False.
     '''
 
     if isinstance(device, str):
@@ -209,21 +212,21 @@ class Points:
     # Construct a new Points on the specified device
     points = Points(torch.zeros(1, 3, device=device))
     points.batch_npt = self.batch_npt
-    points.points = self.points.to(device)
+    points.points = self.points.to(device, non_blocking=non_blocking)
     if self.normals is not None:
-      points.normals = self.normals.to(device)
+      points.normals = self.normals.to(device, non_blocking=non_blocking)
     if self.features is not None:
-      points.features = self.features.to(device)
+      points.features = self.features.to(device, non_blocking=non_blocking)
     if self.labels is not None:
-      points.labels = self.labels.to(device)
+      points.labels = self.labels.to(device, non_blocking=non_blocking)
     if self.batch_id is not None:
-      points.batch_id = self.batch_id.to(device)
+      points.batch_id = self.batch_id.to(device, non_blocking=non_blocking)
     return points
 
-  def cuda(self):
+  def cuda(self, non_blocking: bool = False):
     r''' Moves the Points to the GPU. '''
 
-    return self.to('cuda')
+    return self.to('cuda', non_blocking)
 
   def cpu(self):
     r''' Moves the Points to the CPU. '''

@@ -463,11 +463,14 @@ class Octree:
     points = self.points[d] * scale - 1.0
     return Points(points, self.normals[d], self.features[d])
 
-  def to(self, device: Union[torch.device, str]):
+  def to(self, device: Union[torch.device, str], non_blocking: bool = False):
     r''' Moves the octree to a specified device.
 
     Args:
       device (torch.device or str): The destination device.
+      non_blocking (bool): If True and the source is in pinned memory, the copy
+          will be asynchronous with respect to the host. Otherwise, the argument
+          has no effect. Default: False.
     '''
 
     if isinstance(device, str):
@@ -478,7 +481,8 @@ class Octree:
       return self
 
     def list_to_device(prop):
-      return [p.to(device) if isinstance(p, torch.Tensor) else None for p in prop]
+      return [p.to(device, non_blocking=non_blocking)
+              if isinstance(p, torch.Tensor) else None for p in prop]
 
     # Construct a new Octree on the specified device
     octree = Octree(self.depth, self.full_depth, self.batch_size, device)
@@ -494,10 +498,10 @@ class Octree:
     octree.batch_nnum_nempty = self.batch_nnum_nempty.clone()
     return octree
 
-  def cuda(self):
+  def cuda(self, non_blocking: bool = False):
     r''' Moves the octree to the GPU. '''
 
-    return self.to('cuda')
+    return self.to('cuda', non_blocking)
 
   def cpu(self):
     r''' Moves the octree to the CPU. '''
