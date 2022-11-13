@@ -12,7 +12,8 @@ from .octree_interp import (octree_nearest_pts, octree_linear_pts,
                             OctreeInterp, OctreeUpsample)
 from .octree_pool import (octree_max_pool, OctreeMaxPool,
                           octree_max_unpool, OctreeMaxUnpool,
-                          octree_global_pool, OctreeGlobalPool)
+                          octree_global_pool, OctreeGlobalPool,
+                          octree_avg_pool, OctreeAvgPool,)
 from .octree_conv import OctreeConv, OctreeDeconv
 from .octree_dwconv import OctreeDWConv
 from .octree_norm import OctreeInstanceNorm, OctreeBatchNorm
@@ -25,10 +26,10 @@ __all__ = [
     'octree_pad', 'octree_depad',
     'octree_nearest_pts', 'octree_linear_pts',
     'octree_max_pool', 'octree_max_unpool',
-    'octree_global_pool',
+    'octree_global_pool', 'octree_avg_pool',
     'Octree2Voxel',
     'OctreeMaxPool', 'OctreeMaxUnpool',
-    'OctreeGlobalPool',
+    'OctreeGlobalPool', 'OctreeAvgPool',
     'OctreeConv', 'OctreeDeconv',
     'OctreeDWConv',
     'OctreeInterp', 'OctreeUpsample',
