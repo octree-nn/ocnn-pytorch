@@ -9,7 +9,8 @@ import math
 import torch
 from typing import Optional
 
-__all__ = ['trunc_div', 'meshgrid', 'cumsum', 'scatter_add', 'xavier_uniform_']
+__all__ = ['trunc_div', 'meshgrid', 'cumsum', 'scatter_add', 'xavier_uniform_',
+           'resize_with_last_val', 'list2str']
 classes = __all__
 
 
@@ -130,3 +131,23 @@ def xavier_uniform_(weights: torch.Tensor):
   a = math.sqrt(3.0) * std  # Calculate uniform bounds from standard deviation
 
   torch.nn.init.uniform_(weights, -a, a)
+
+
+def resize_with_last_val(list_in: list, num: int = 3):
+  r''' Resizes the number of elements of :attr:`list_in` to :attr:`num` with
+  the last element of :attr:`list_in` if its number of elements is smaller
+  than :attr:`num`.
+  '''
+
+  assert (type(list_in) is list and len(list_in) < num + 1)
+  for i in range(len(list_in), num):
+    list_in.append(list_in[-1])
+  return list_in
+
+
+def list2str(list_in: list):
+  r''' Returns a string representation of :attr:`list_in`
+  '''
+
+  out = [str(x) for x in list_in]
+  return ''.join(out)

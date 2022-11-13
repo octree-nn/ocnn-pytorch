@@ -11,7 +11,7 @@ from torch.autograd import Function
 from typing import List
 
 from ocnn.octree import Octree
-from ocnn.utils import scatter_add, xavier_uniform_
+from ocnn.utils import scatter_add, xavier_uniform_, resize_with_last_val, list2str
 from .octree2col import octree2col, col2octree
 from .octree_pad import octree_pad, octree_depad
 
@@ -24,8 +24,8 @@ class OctreeConvBase:
     super().__init__()
     self.in_channels = in_channels
     self.out_channels = out_channels
-    self.kernel_size = self.resize_with_last_val(kernel_size)
-    self.kernel = self.list2str(self.kernel_size)
+    self.kernel_size = resize_with_last_val(kernel_size)
+    self.kernel = list2str(self.kernel_size)
     self.stride = stride
     self.nempty = nempty
     self.max_buffer = max_buffer  # about 200M
@@ -34,24 +34,6 @@ class OctreeConvBase:
     self.in_conv = in_channels if self.is_conv_layer() else out_channels
     self.out_conv = out_channels if self.is_conv_layer() else in_channels
     self.weights_shape = (self.kdim, self.in_conv, self.out_conv)
-
-  def resize_with_last_val(self, list_in, num=3):
-    r''' Resizes the number of elements of :attr:`list_in` to :attr:`num` with
-    the last element of :attr:`list_in` if its number of elements is smaller
-    than :attr:`num`.
-    '''
-
-    assert (type(list_in) is list and len(list_in) < num + 1)
-    for i in range(len(list_in), num):
-      list_in.append(list_in[-1])
-    return list_in
-
-  def list2str(self, list_in):
-    r''' Returns a string representation of :attr:`list_in`
-    '''
-
-    out = [str(x) for x in list_in]
-    return ''.join(out)
 
   def is_conv_layer(self):
     r''' Returns :obj:`True` to indicate this is a convolution layer.
@@ -178,7 +160,8 @@ class OctreeConvBase:
 
     return out
 
-  def weight_gemm(self, out: torch.Tensor, data: torch.Tensor, grad: torch.Tensor):
+  def weight_gemm(
+          self, out: torch.Tensor, data: torch.Tensor, grad: torch.Tensor):
     r''' Computes the gradient of the weight matrix.
     '''
 
