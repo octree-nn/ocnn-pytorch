@@ -136,8 +136,8 @@ class OctreePoolBase(torch.nn.Module):
     self.nempty = nempty
 
   def extra_repr(self) -> str:
-    return ('kernel={}, stride={}, nempty={}').format(
-            self.kernel, self.stride, self.nempty)  # noqa
+    return ('kernel_size={}, stride={}, nempty={}').format(
+            self.kernel_size, self.stride, self.nempty)  # noqa
 
 
 class OctreeMaxPool(OctreePoolBase):
