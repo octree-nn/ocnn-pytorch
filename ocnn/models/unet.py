@@ -53,8 +53,8 @@ class UNet(torch.nn.Module):
     # channel = self.decoder_channel[self.decoder_stages]
     self.octree_interp = ocnn.nn.OctreeInterp(interp, nempty)
     self.header = torch.nn.Sequential(
-        ocnn.modules.Conv1x1BnRelu(self.decoder_channel[-1], 64),
-        ocnn.modules.Conv1x1(64, self.out_channels, use_bias=True))
+        ocnn.modules.Conv1x1BnRelu(self.decoder_channel[-1], self.head_channel),
+        ocnn.modules.Conv1x1(self.head_channel, self.out_channels, use_bias=True))
 
   def config_network(self):
     r''' Configure the network channels and Resblock numbers.
@@ -64,6 +64,7 @@ class UNet(torch.nn.Module):
     self.decoder_channel = [256, 256, 128, 96, 96]
     self.encoder_blocks = [2, 3, 4, 6]
     self.decoder_blocks = [2, 2, 2, 2]
+    self.head_channel = 64
     self.bottleneck = 1
     self.resblk = ocnn.modules.OctreeResBlock2
 
