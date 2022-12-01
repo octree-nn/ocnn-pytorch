@@ -37,7 +37,7 @@ class Transform:
 
   def __init__(self, depth: int, full_depth: int, distort: bool, angle: list,
                interval: list, scale: float, uniform: bool, jitter: float,
-               orient_normal: str = '', **kwargs):
+               flip: list, orient_normal: str = '', **kwargs):
     super().__init__()
 
     # for octree building
@@ -51,6 +51,7 @@ class Transform:
     self.scale = scale
     self.uniform = uniform
     self.jitter = jitter
+    self.flip = flip
 
     # for other transformations
     self.orient_normal = orient_normal
@@ -79,7 +80,8 @@ class Transform:
 
     # The augmentations including rotation, scaling, and jittering.
     if self.distort:
-      rng_angle, rng_scale, rng_jitter = self.rnd_parameters()
+      rng_angle, rng_scale, rng_jitter, rnd_flip = self.rnd_parameters()
+      points.flip(rnd_flip)
       points.rotate(rng_angle)
       points.translate(rng_jitter)
       points.scale(rng_scale)
@@ -115,8 +117,13 @@ class Transform:
       rnd_scale[1] = rnd_scale[0]
       rnd_scale[2] = rnd_scale[0]
 
+    rnd_flip = ''
+    for i, c in enumerate('xyz'):
+      if torch.rand([1]) < self.flip[i]:
+        rnd_flip = rnd_flip + c
+
     rnd_jitter = torch.rand(3) * (2 * self.jitter) - self.jitter
-    return rnd_angle, rnd_scale, rnd_jitter
+    return rnd_angle, rnd_scale, rnd_jitter, rnd_flip
 
 
 class CollateBatch:
