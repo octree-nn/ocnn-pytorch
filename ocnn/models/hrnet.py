@@ -41,6 +41,8 @@ class TransFunc(torch.nn.Module):
     self.in_channels = in_channels
     self.out_channels = out_channels
     self.nempty = nempty
+    self.maxpool = ocnn.nn.OctreeMaxPool(nempty=nempty)
+    self.upsample = ocnn.nn.OctreeUpsample(method='nearest', nempty=nempty)
     if in_channels != out_channels:
       self.conv1x1 = ocnn.modules.Conv1x1BnRelu(in_channels, out_channels)
 
@@ -49,7 +51,7 @@ class TransFunc(torch.nn.Module):
     out = data
     if in_depth > out_depth:
       for d in range(in_depth, out_depth, -1):
-        out = ocnn.nn.octree_max_pool(out, octree, d, self.nempty)
+        out = self.maxpool(out, octree, d)
       if self.in_channels != self.out_channels:
         out = self.conv1x1(out)
 
@@ -57,7 +59,7 @@ class TransFunc(torch.nn.Module):
       if self.in_channels != self.out_channels:
         out = self.conv1x1(out)
       for d in range(in_depth, out_depth, 1):
-        out = ocnn.nn.octree_upsample(out, octree, d, self.nempty)
+        out = self.upsample(out, octree, d)
     return out
 
 
