@@ -43,6 +43,10 @@ class Points:
     self.device = points.device
     self.batch_npt = None   # valid after `merge_points`
 
+  @property
+  def npt(self):
+    return self.points.shape[0]
+
   def orient_normal(self, axis: str = 'x'):
     r''' Orients the point normals along a given axis.
 
@@ -288,7 +292,7 @@ def merge_points(points: List['Points'], update_batch_info: bool = True):
 
   if update_batch_info:
     out.batch_size = len(points)
-    out.batch_npt = torch.Tensor([p.points.shape[0] for p in points])
-    out.batch_id = torch.cat([p.points.new_full((p.points.shape[0], 1), i)
+    out.batch_npt = torch.Tensor([p.npt for p in points])
+    out.batch_id = torch.cat([p.points.new_full((p.npt, 1), i)
                               for i, p in enumerate(points)], dim=0)
   return out
