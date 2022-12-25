@@ -89,8 +89,7 @@ class Transitions(torch.nn.Module):
 
     out = [None] * num
     for j in range(num):
-      # In the original tensorflow implmentation, the relu is added here,
-      # instead of Line 77
+      # In the original tensorflow implmentation, a relu is added after the sum.
       out[j] = torch.stack(features[j], dim=0).sum(dim=0)
     return out
 
