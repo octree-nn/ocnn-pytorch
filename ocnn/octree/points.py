@@ -292,7 +292,7 @@ def merge_points(points: List['Points'], update_batch_info: bool = True):
 
   if update_batch_info:
     out.batch_size = len(points)
-    out.batch_npt = torch.Tensor([p.npt for p in points])
+    out.batch_npt = torch.Tensor([p.npt for p in points]).long()
     out.batch_id = torch.cat([p.points.new_full((p.npt, 1), i)
                               for i, p in enumerate(points)], dim=0)
   return out
