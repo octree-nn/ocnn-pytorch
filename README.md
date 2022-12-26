@@ -36,7 +36,7 @@ research community.
 ## Key benefits of ocnn-pytorch
 
 - **Simplicity**. The ocnn-pytorch is based on pure PyTorch, it is portable and
-  can be intalled with a simple command:`pip install ocnn`. Other sparse
+  can be installed with a simple command:`pip install ocnn`. Other sparse
   convolution frameworks heavily rely on C++ and CUDA, and it is complicated to
   configure the compiling environment.
 
