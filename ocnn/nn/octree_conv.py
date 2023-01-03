@@ -308,6 +308,15 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
     use_bias (bool): If True, add a bias term to the convolution.
     max_buffer (int): The maximum number of elements in the buffer, used when
         :attr:`direct_method` is False.
+
+  .. note::
+    Each non-empty octree node has exactly 8 children nodes, among which some
+    children nodes are non-empty and some are empty. If :attr:`nempty` is true,
+    the convolution is performed on non-empty octree nodes only, which is exactly
+    the same as SparseConvNet and MinkowsiNet; if :attr:`nempty` is false, the
+    convolution is performed on all octree nodes, which is essential for shape
+    reconstruction tasks and can also be used in classification and segmentation
+    (with slightly better performance and larger memory cost).
   '''
 
   def __init__(self, in_channels: int, out_channels: int,
