@@ -7,13 +7,12 @@
 
 import torch
 
-from ..octree import Octree, key2xyz
-from .octree_pad import octree_depad
+from ocnn.octree import Octree
 
 
 def octree2voxel(data: torch.Tensor, octree: Octree, depth: int,
                  nempty: bool = False):
-  r''' Converts the input feature to full-voxel-based representation.
+  r''' Converts the input feature to the full-voxel-based representation.
 
   Args:
     data (torch.Tensor): The input feature.
@@ -23,22 +22,17 @@ def octree2voxel(data: torch.Tensor, octree: Octree, depth: int,
         octree nodes.
   '''
 
-  key = octree.keys[depth]
-  if nempty:
-    key = octree_depad(key, octree, depth)
-  x, y, z, b = key2xyz(key, depth)
+  x, y, z, b = octree.xyzb(depth, nempty)
 
   num = 1 << depth
   channel = data.shape[1]
-  batch_size = octree.batch_size
-  size = (batch_size, num, num, num, channel)
-  vox = torch.zeros(size, dtype=data.dtype, device=data.device)
+  vox = data.new_zeros([octree.batch_size, num, num, num, channel])
   vox[b, x, y, z] = data
   return vox
 
 
 class Octree2Voxel(torch.nn.Module):
-  r''' Converts the input feature to full-voxel-based representation
+  r''' Converts the input feature to the full-voxel-based representation.
 
   Please refer to :func:`octree2voxel` for details.
   '''
