@@ -69,7 +69,7 @@ MODEL:
   feature: ND   # N -> Normal (3 channels);
                 # D -> Local displacement (1 channel)
   nempty: False
-  stages: 3
+  stages: 3     # !!! `stages` should increase with `depth` accordingly
   channel: 4
   nout: 40
 

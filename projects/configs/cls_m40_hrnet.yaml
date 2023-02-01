@@ -10,7 +10,7 @@ SOLVER:
   run: train
   type: sgd
 
-  logdir: logs/m40/d6
+  logdir: logs/m40/hrnet
   max_epoch: 280
   test_every_epoch: 5
 

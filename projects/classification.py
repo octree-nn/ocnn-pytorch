@@ -5,9 +5,8 @@
 # Written by Peng-Shuai Wang
 # --------------------------------------------------------
 
-import torch
-import torch.nn.functional as F
 import ocnn
+import torch
 from thsolver import Solver
 
 from datasets import get_modelnet40_dataset
@@ -38,12 +37,16 @@ class ClsSolver(Solver):
     data = octree_feature(octree)
     return data
 
+  def loss_function(self, logit, label):
+    criterion = torch.nn.CrossEntropyLoss()
+    loss = criterion(logit, label.long())
+    return loss
+
   def forward(self, batch):
     octree, label = batch['octree'].cuda(), batch['label'].cuda()
     data = self.get_input_feature(octree)
     logits = self.model(data, octree, octree.depth)
-    log_softmax = F.log_softmax(logits, dim=1)
-    loss = F.nll_loss(log_softmax, label)
+    loss = self.loss_function(logits, label)
     pred = torch.argmax(logits, dim=1)
     accu = pred.eq(label).float().mean()
     return loss, accu
