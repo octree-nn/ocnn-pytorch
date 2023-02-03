@@ -68,7 +68,7 @@ def xyz2key(x: torch.Tensor, y: torch.Tensor, z: torch.Tensor,
     y (torch.Tensor): The y coordinate.
     z (torch.Tensor): The z coordinate.
     b (torch.Tensor or int): The batch index of the coordinates, and should be 
-        smaller than 1024. If :attr:`b` is :obj:`torch.Tensor`, the size of
+        smaller than 32768. If :attr:`b` is :obj:`torch.Tensor`, the size of
         :attr:`b` must be the same as :attr:`x`, :attr:`y`, and :attr:`z`.
     depth (int): The depth of the shuffled key, and must be smaller than 17 (< 17).
   '''
