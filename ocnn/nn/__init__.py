@@ -18,6 +18,7 @@ from .octree_conv import OctreeConv, OctreeDeconv
 from .octree_dwconv import OctreeDWConv
 from .octree_norm import OctreeInstanceNorm, OctreeBatchNorm
 from .octree_drop import OctreeDropPath
+from .octree_align import search_value, octree_align
 
 
 __all__ = [
@@ -35,6 +36,7 @@ __all__ = [
     'OctreeInterp', 'OctreeUpsample',
     'OctreeInstanceNorm', 'OctreeBatchNorm',
     'OctreeDropPath',
+    'search_value', 'octree_align',
 ]
 
 classes = __all__
