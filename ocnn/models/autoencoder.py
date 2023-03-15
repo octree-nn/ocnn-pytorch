@@ -77,7 +77,7 @@ class AutoEncoder(torch.nn.Module):
     assert out.size(1) == self.channel_in
     return out
 
-  def ae_encoder(self, octree: Octree):
+  def encoder(self, octree: Octree):
     r''' The encoder network of the AutoEncoder.
     '''
 
@@ -94,7 +94,7 @@ class AutoEncoder(torch.nn.Module):
     shape_code = self.proj(convs[full_depth]).tanh()
     return shape_code
 
-  def ae_decoder(self, shape_code: torch.Tensor, octree: Octree,
+  def decoder(self, shape_code: torch.Tensor, octree: Octree,
                  update_octree: bool = False):
     r''' The decoder network of the AutoEncoder.
     '''
@@ -136,7 +136,7 @@ class AutoEncoder(torch.nn.Module):
     '''
 
     octree_out = self.init_octree(shape_code)
-    out = self.ae_decoder(shape_code, octree_out, update_octree=True)
+    out = self.decoder(shape_code, octree_out, update_octree=True)
     return out
 
   def init_octree(self, shape_code: torch.Tensor):
@@ -158,8 +158,8 @@ class AutoEncoder(torch.nn.Module):
   def forward(self, octree: Octree, update_octree: bool):
     r''''''
 
-    shape_code = self.ae_encoder(octree)
+    shape_code = self.encoder(octree)
     if update_octree:
       octree = self.init_octree(shape_code)
-    out = self.ae_decoder(shape_code, octree, update_octree)
+    out = self.decoder(shape_code, octree, update_octree)
     return out

@@ -11,6 +11,8 @@ from .segnet import SegNet
 from .unet import UNet
 from .hrnet import HRNet
 from .autoencoder import AutoEncoder
+from .ounet import OUNet
+
 
 __all__ = [
     'LeNet',
@@ -19,6 +21,7 @@ __all__ = [
     'UNet',
     'HRNet',
     'AutoEncoder',
+    'OUNet'
 ]
 
 classes = __all__
