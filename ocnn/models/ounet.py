@@ -11,13 +11,15 @@ import torch
 import torch.nn
 
 from ocnn.octree import Octree
+from ocnn.models.autoencoder import AutoEncoder
 
 
-class OUNet(ocnn.models.AutoEncoder):
+class OUNet(AutoEncoder):
 
   def __init__(self, channel_in: int, channel_out: int, depth: int,
                full_depth: int = 2, feature: str = 'ND'):
-    super().__init__(channel_in, channel_out, depth, full_depth, feature)
+    super().__init__(channel_in, channel_out, depth, full_depth, feature,
+                     code_channel=-1)  # !set code_channe=-1
     self.proj = None  # remove this module used in AutoEncoder
 
   def encoder(self, octree):
@@ -47,7 +49,7 @@ class OUNet(ocnn.models.AutoEncoder):
         deconv = self.upsample[i-1](deconv, octree_out, d-1)
         skip = ocnn.nn.octree_align(convs[d], octree_in, octree_out, d)
         deconv = deconv + skip  # output-guided skip connections
-      deconv = self.decoder_blks[i](deconv, octree_out)
+      deconv = self.decoder_blks[i](deconv, octree_out, d)
 
       # predict the splitting label
       logit = self.predict[i](deconv)

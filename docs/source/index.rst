@@ -25,6 +25,7 @@ Currently, this type of 3D convolution is known as Sparse Convolution in the res
   notes/classification
   notes/segmentation
   notes/autoencoder
+  notes/completion
 
 
 .. toctree::

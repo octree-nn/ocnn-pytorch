@@ -47,10 +47,10 @@ class Transform:
     octree_gt = self.points2octree(points_gt)
 
     points_in = Points(torch.from_numpy(points_noise).float())
-    points_in, _ = ocnn.clip_points(points_in, [-1.0]*3, [1.0]*3)
+    points_in.clip(min=-1, max=1)
     octree_in = self.points2octree(points_in)
 
-    return {'octree_in': octree_in, 'points_in': points_in,
+    return {'octree': octree_in,    'points': points_in,
             'octree_gt': octree_gt, 'points_gt': points_gt}
 
 
