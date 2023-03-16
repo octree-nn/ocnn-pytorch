@@ -14,6 +14,10 @@ from thsolver import Solver, get_config
 
 from datasets import get_ae_shapenet_dataset
 
+# The following line is to fix `RuntimeError: received 0 items of ancdata`.
+# Refer: https://github.com/pytorch/pytorch/issues/973
+torch.multiprocessing.set_sharing_strategy('file_system')
+
 
 class AutoEncoderSolver(Solver):
 
@@ -27,7 +31,7 @@ class AutoEncoderSolver(Solver):
 
   def get_ground_truth_signal(self, octree):
     flags = self.FLAGS.MODEL
-    octree_feature = ocnn.modules.InputFeature(flags.feature, nempty=True)
+    octree_feature = ocnn.modules.InputFeature('ND', nempty=True)
     data = octree_feature(octree)
     return data
 
@@ -82,9 +86,7 @@ class AutoEncoderSolver(Solver):
       if pos != -1: filename = filename[:pos]  # remove the suffix
       filename_in = os.path.join(self.logdir, filename + '.in.xyz')
       filename_out = os.path.join(self.logdir, filename + '.out.xyz')
-
-      folder = os.path.dirname(filename_in)
-      if not os.path.exists(folder): os.makedirs(folder)
+      os.makedirs(os.path.dirname(filename_in), exist_ok=True)
 
       points_in[i].save(filename_in)
       np.savetxt(filename_out, points_out[i].cpu().numpy(), fmt='%.6f')

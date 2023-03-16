@@ -11,8 +11,7 @@ ShapeNet
    `ShapeNet <https://shapenet.org/>`__. The point clouds are in the format of
    `ply`, which can be visualized via viewers like meshlab. Clone the
    ``ocnn-pytorch`` repository, and enter the subdirectory ``projects``, then
-   run the following
-   command.
+   run the following command.
 
    .. code-block:: none
 
