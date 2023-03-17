@@ -19,7 +19,7 @@ ShapeNet
 
 
 #. Run the following command to train the network. The training log and weights
-   can be downloaded `here <todo>`__.
+   can be downloaded `here <https://1drv.ms/u/s!Ago-xIr0OR2-f0Vdyu9F-mB09SY?e=4C9Apk>`__.
 
    .. code-block:: none
 
@@ -28,7 +28,7 @@ ShapeNet
 
 #. Run the following command to get the predictions on the testing dataest. The 
    parameter following ``SOLVER.ckpt`` can be freely modified to test different
-   trained weights. And the results are in the folder ``logs/ae_shapenet/ae_eval``.
+   trained weights. And the results are in the folder ``logs/completion/shapenet_eval``.
 
    .. code-block:: none
 

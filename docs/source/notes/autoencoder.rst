@@ -19,7 +19,7 @@ ShapeNet
 
 
 #. Run the following command to train the network. The training log and weights
-   can be downloaded `here <https://1drv.ms/u/s!Ago-xIr0OR2-cgSYpuccOEaCmUU?e=A4gtyq>`__.
+   can be downloaded `here <https://1drv.ms/u/s!Ago-xIr0OR2-eSg3Qxu1oNUo9ZY?e=vibpol>`__.
 
    .. code-block:: none
 
