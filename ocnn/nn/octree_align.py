@@ -20,9 +20,13 @@ def search_value(value: torch.Tensor, key: torch.Tensor, query: torch.Tensor):
     query (torch.Tensor): The query tensor, which also contains shuffled keys.
   '''
 
+  # deal with out-of-bound queries, the indices of these queries
+  # returned by torch.searchsorted equal to `key.shape[0]`
+  out_of_bound = query > key[-1]
+
   # search
   idx = torch.searchsorted(key, query)
-  idx[idx == key.shape[0]] = -1  # deal with out-of-bound queries
+  idx[out_of_bound] = -1   # to avoid overflow in the following line
   found = key[idx] == query
 
   # assign the found value to the output
