@@ -26,13 +26,13 @@ ShapeNet
       python completion.py --config configs/completion.yaml
 
 
-.. #. Run the following command to get the predictions on the testing dataest. The 
-..    parameter following ``SOLVER.ckpt`` can be freely modified to test different
-..    trained weights. And the results are in the folder ``logs/ae_shapenet/ae_eval``.
+#. Run the following command to get the predictions on the testing dataest. The 
+   parameter following ``SOLVER.ckpt`` can be freely modified to test different
+   trained weights. And the results are in the folder ``logs/ae_shapenet/ae_eval``.
 
-..    .. code-block:: none
+   .. code-block:: none
 
-..       python autoencoder.py --config configs/ae_shapenet.yaml             \
-..              SOLVER.run evaluate  SOLVER.alias eval                       \
-..              SOLVER.ckpt logs/ae_shapenet/ae/checkpoints/00300.model.pth
+      python completion.py --config configs/completion.yaml               \
+             SOLVER.run evaluate  SOLVER.alias eval                       \
+             SOLVER.ckpt logs/completion/shapenet/checkpoints/00300.model.pth
 
