@@ -453,15 +453,35 @@ class Octree:
 
     return torch.cat(features, dim=1)
 
-  def to_points(self):
+  def to_points(self, rescale: bool = True):
     r''' Converts averaged points in the octree to a point cloud.
+
+    Args:
+      rescale (bool): rescale the xyz coordinates to [-1, 1] if True.
     '''
 
-    d = self.depth
-    scale = 2 ** (1-d)
-    # normalize to [-1, 1] since the average points are in range [0, 2^d]
-    points = self.points[d] * scale - 1.0
-    return Points(points, self.normals[d], self.features[d])
+    depth = self.depth
+    batch_size = self.batch_size
+
+    # by default, use the average points generated when building the octree
+    # from the input point cloud
+    xyz = self.points[depth]
+    batch_id = self.batch_id(depth, nempty=True)
+
+    # xyz is None when the octree is predicted by a neural network
+    if xyz is None:
+      x, y, z, batch_id = self.xyzb(depth, nempty=True)
+      xyz = torch.stack([x, y, z], dim=1) + 0.5
+
+    # normalize xyz to [-1, 1] since the average points are in range [0, 2^d]
+    if rescale:
+      scale = 2 ** (1 - depth)
+      xyz = self.points[depth] * scale - 1.0
+
+    # construct Points
+    out = Points(xyz, self.normals[depth], self.features[depth],
+                 batch_id=batch_id, batch_size=batch_size)
+    return out
 
   def to(self, device: Union[torch.device, str], non_blocking: bool = False):
     r''' Moves the octree to a specified device.

@@ -10,8 +10,9 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import ocnn
-from thsolver import Solver, get_config
 
+from ocnn.octree import Octree
+from thsolver import Solver, get_config
 from datasets import get_ae_shapenet_dataset
 
 # The following line is to fix `RuntimeError: received 0 items of ancdata`.
@@ -91,7 +92,7 @@ class AutoEncoderSolver(Solver):
       points_in[i].save(filename_in)
       np.savetxt(filename_out, points_out[i].cpu().numpy(), fmt='%.6f')
 
-  def octree2pts(self, octree: ocnn.octree.Octree):
+  def octree2pts(self, octree: Octree):
     depth = octree.depth
     batch_size = octree.batch_size
 
