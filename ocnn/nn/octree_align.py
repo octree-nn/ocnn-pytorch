@@ -26,7 +26,7 @@ def search_value(value: torch.Tensor, key: torch.Tensor, query: torch.Tensor):
 
   # search
   idx = torch.searchsorted(key, query)
-  idx[out_of_bound] = -1   # to avoid overflow in the following line
+  idx[out_of_bound] = -1   # to avoid overflow when executing the following line
   found = key[idx] == query
 
   # assign the found value to the output

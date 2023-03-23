@@ -156,7 +156,7 @@ class Octree:
     self.device = point_cloud.device
     assert point_cloud.batch_size == self.batch_size, 'Inconsistent batch_size'
 
-    # normalize points from [-1, 1] to [0, 2^depth]. #[Lable:S]
+    # normalize points from [-1, 1] to [0, 2^depth]. #[L:Scale]
     scale = 2 ** (self.depth - 1)
     points = (point_cloud.points + 1.0) * scale
 
@@ -211,7 +211,7 @@ class Octree:
 
     # average the signal for the last octree layer
     d = self.depth
-    points = scatter_add(points, idx, dim=0)  # points is rescaled in [Lable:S]
+    points = scatter_add(points, idx, dim=0)  # points is rescaled in [L:Scale]
     self.points[d] = points / counts.unsqueeze(1)
     if point_cloud.normals is not None:
       normals = scatter_add(point_cloud.normals, idx, dim=0)
@@ -407,7 +407,7 @@ class Octree:
     if stride == 1:
       neigh = self.neighs[depth]
     elif stride == 2:
-      # clone neigh to avoid self.neigh[depth] being modified (such as in L282)
+      # clone neigh to avoid self.neigh[depth] being modified
       neigh = self.neighs[depth][::8].clone()
     else:
       raise ValueError('Unsupported stride {}'.format(stride))
