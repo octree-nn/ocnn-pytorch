@@ -73,6 +73,8 @@ MODEL:
   name: segnet
   feature: ND   # N -> Normal(3 channels);
                 # D -> Local displacement(1 channel)
+  upsample: 'nearest'   # The method used for upsampling
+  interp:   'linear'    # The interplation method: linear or nearest
   stages: 3
   channel: 4
   nout: 4

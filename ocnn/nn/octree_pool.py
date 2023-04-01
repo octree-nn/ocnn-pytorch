@@ -162,6 +162,9 @@ class OctreeMaxUnpool(OctreePoolBase):
   Please refer to :func:`octree_max_unpool` for details.
   '''
 
+  def __init__(self, nempty: bool = False):
+    super().__init__(kernel_size=[2], stride=2, nempty=nempty)
+
   def forward(self, data: torch.Tensor, indices: torch.Tensor, octree: Octree,
               depth: int):
     r''''''
