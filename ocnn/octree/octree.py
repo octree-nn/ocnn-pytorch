@@ -577,8 +577,8 @@ def merge_octrees(octrees: List['Octree']):
     # children
     children = [None] * octree.batch_size
     for i in range(octree.batch_size):
-      child = octrees[i].children[d]
-      mask = child >= 0
+      child = octrees[i].children[d].clone()  # !! `clone` is used here to avoid
+      mask = child >= 0                       # !! modifying the original octrees
       child[mask] = child[mask] + nnum_cum[d, i]
       children[i] = child
     octree.children[d] = torch.cat(children, dim=0)
