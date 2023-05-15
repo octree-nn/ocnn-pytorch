@@ -140,12 +140,13 @@ class ClsHeader(torch.nn.Module):
   def forward(self, data: List[torch.Tensor], octree: Octree, depth: int):
     full_depth = 2
     num = len(data)
+    outs = [x for x in data]  # avoid modifying the input data
     for i in range(num):
       depth_i = depth - i
       for d in range(depth_i, full_depth, -1):
-        data[i] = ocnn.nn.octree_max_pool(data[i], octree, d, self.nempty)
+        outs[i] = ocnn.nn.octree_max_pool(outs[i], octree, d, self.nempty)
 
-    out = torch.cat(data, dim=1)
+    out = torch.cat(outs, dim=1)
     out = self.conv1x1(out)
     out = self.global_pool(out, octree, full_depth)
     logit = self.header(out)
