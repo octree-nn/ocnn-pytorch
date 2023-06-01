@@ -8,6 +8,8 @@
 SOLVER:
   gpu: 0,
   run: train
+  best_val: max:mIoU_part
+
   logdir: logs/scannet/D10_2cm
   max_epoch: 600
   test_every_epoch: 10

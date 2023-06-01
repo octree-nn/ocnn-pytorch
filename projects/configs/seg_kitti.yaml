@@ -9,6 +9,8 @@ SOLVER:
   gpu: 0,
   run: train
   logdir: logs/kitti/D12_5cm
+  best_val: max:mIoU_part
+
   max_epoch: 20
   test_every_epoch: 1
   log_per_iter: 50

@@ -117,11 +117,9 @@ class SegSolver(Solver):
       instc_i = avg['test/intsc_%d' % i]
       union_i = avg['test/union_%d' % i]
       iou_part += instc_i / (union_i + 1.0e-10)
-    iou_part = iou_part / (num_class - mask)
 
-    tqdm.write('=> Epoch: %d, test/mIoU_part: %f' % (epoch, iou_part))
-    if self.summary_writer:
-      self.summary_writer.add_scalar('test/mIoU_part', iou_part, epoch)
+    iou_part = iou_part / (num_class - mask)
+    avg_tracker.update({'test/mIoU_part': torch.Tensor([iou_part])})
 
   def loss_function(self, logit, label):
     criterion = torch.nn.CrossEntropyLoss()

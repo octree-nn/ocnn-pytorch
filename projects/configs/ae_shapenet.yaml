@@ -8,6 +8,7 @@
 SOLVER:
   gpu: 0,
   run: train
+  best_val: max:mIoU
 
   logdir: logs/ae_shapenet/ae
   max_epoch: 300

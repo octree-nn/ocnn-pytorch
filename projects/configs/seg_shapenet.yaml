@@ -9,6 +9,7 @@ SOLVER:
   gpu: 0,
   run: train
   type: sgd
+  best_val: max:mIoU
 
   logdir: logs/seg_shapenet/02691156_airplane_d5
   max_epoch: 300
