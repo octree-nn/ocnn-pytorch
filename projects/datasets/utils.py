@@ -34,8 +34,42 @@ class ReadPly:
     if self.has_label:
       label = vtx['label']
       output['labels'] = label.astype(np.int32)
-
     return output
+
+
+class ReadNpz:
+
+  def __init__(self, has_normal: bool = True, has_color: bool = False,
+               has_label: bool = False):
+    self.has_normal = has_normal
+    self.has_color = has_color
+    self.has_label = has_label
+
+  def __call__(self, filename: str):
+    raw = np.load(filename)
+
+    output = dict()
+    output['points'] = raw['points'].astype(np.float32)
+    if self.has_normal:
+      output['normals'] = raw['normals'].astype(np.float32)
+    if self.has_color:
+      output['colors'] = raw['colors'].astype(np.float32)
+    if self.has_label:
+      output['labels'] = raw['labels'].astype(np.int32)
+    return output
+
+
+class ReadFile:
+
+  def __init__(self, has_normal: bool = True, has_color: bool = False,
+               has_label: bool = False):
+    self.read_npz = ReadNpz(has_normal, has_color, has_label)
+    self.read_ply = ReadPly(has_normal, has_color, has_label)
+
+  def __call__(self, filename: str):
+    func = {'npz': self.read_npz, 'ply': self.read_ply}
+    suffix = filename.split('.')[-1]
+    return func[suffix](filename)
 
 
 class Transform(ocnn.dataset.Transform):

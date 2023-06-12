@@ -7,69 +7,80 @@
 
 import os
 import argparse
-import numpy as np
+import json
 import wget
 import zipfile
-from pathlib import Path
+import pandas as pd
+import numpy as np
 from tqdm import tqdm
 from plyfile import PlyData, PlyElement
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--path_in', type=str, default='data/scannet/ScanNet_data')
-parser.add_argument('--path_out', type=str, default='data/scannet')
-parser.add_argument('--path_pred', type=str, default='logs/scannet/D9_2cm_eval')
-parser.add_argument('--filelist', type=str, default='scannetv2_test_new.txt')
-parser.add_argument('--label_remap', type=str, default='true')
-parser.add_argument('--generate_chunks', type=str, default='false')
+parser.add_argument('--path_in', type=str, default='data/scannet.ply/train')
+parser.add_argument('--path_out', type=str, default='data/scannet.ply')
+parser.add_argument('--suffix_out', type=str, default='.ply')
+parser.add_argument('--align_axis', action='store_true')
+parser.add_argument('--scannet200', action='store_true')
+parser.add_argument('--path_pred', type=str, default='logs/scannet/pred_eval')
+parser.add_argument('--filelist', type=str, default='scannetv2_test.txt')
 parser.add_argument('--run', type=str, default='process_scannet',  # noqa
     help='Choose from `process_scannet`, `generate_output_seg` and `calc_iou`')
 args = parser.parse_args()
 
-label_remap = args.label_remap.lower() == 'true'
 
 suffix = '_vh_clean_2.ply'
-subsets = {'train': 'scans', 'test': 'scans_test'}
-class_labels = ('wall', 'floor', 'cabinet', 'bed', 'chair',
-                'sofa', 'table', 'door', 'window', 'bookshelf',
-                'picture', 'counter', 'desk', 'curtain',
-                'refrigerator', 'shower curtain', 'toilet', 'sink',
-                'bathtub', 'otherfurniture')
-class_ids = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-             12, 14, 16, 24, 28, 33, 34, 36, 39)
-label_dict = dict(zip(class_ids, np.arange(0, 21)))
-ilabel_dict = dict(zip(np.arange(0, 21), class_ids))
+suffix_aggr = '_vh_clean.aggregation.json'
+suffix_segs = '_vh_clean_2.0.010000.segs.json'
+meta_data = os.path.join(args.path_out, 'scannetv2-labels.combined.tsv')
+class_ids20 = (  # !!! the first element 0 represents unlabeled points  !!!
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 24, 28, 33, 34, 36, 39)
+class_ids200 = (  # !!! the first element 0 represents unlabeled points  !!!
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 21, 22,
+    23, 24, 26, 27, 28, 29, 31, 32, 33, 34, 35, 36, 38, 39, 40, 41, 42, 44, 45,
+    46, 47, 48, 49, 50, 51, 52, 54, 55, 56, 57, 58, 59, 62, 63, 64, 65, 66, 67,
+    68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 82, 84, 86, 87, 88, 89,
+    90, 93, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 110,
+    112, 115, 116, 118, 120, 121, 122, 125, 128, 130, 131, 132, 134, 136, 138,
+    139, 140, 141, 145, 148, 154, 155, 156, 157, 159, 161, 163, 165, 166, 168,
+    169, 170, 177, 180, 185, 188, 191, 193, 195, 202, 208, 213, 214, 221, 229,
+    230, 232, 233, 242, 250, 261, 264, 276, 283, 286, 300, 304, 312, 323, 325,
+    331, 342, 356, 370, 392, 395, 399, 408, 417, 488, 540, 562, 570, 572, 581,
+    609, 748, 776, 1156, 1163, 1164, 1165, 1166, 1167, 1168, 1169, 1170, 1171,
+    1172, 1173, 1174, 1175, 1176, 1178, 1179, 1180, 1181, 1182, 1183, 1184,
+    1185, 1186, 1187, 1188, 1189, 1190, 1191)
+
+class_ids = class_ids200 if args.scannet200 else class_ids20
+label_dict = np.zeros(2048, dtype=np.int32)
+label_dict[np.array(class_ids)] = np.arange(len(class_ids))
+ilabel_dict = np.array(class_ids)
 
 
 def download_filelists():
   path_out = args.path_out
-  zip_file = os.path.join(path_out, 'filelist.zip')
-  if not os.path.exists(path_out):
-    os.makedirs(path_out)
+  os.makedirs(path_out, exist_ok=True)
 
   # download via wget
-  url = 'https://www.dropbox.com/s/g168492gu88zxh6/scannet_filelist.zip?dl=1'
-  print('-> Download the filelist.')
-  wget.download(url, zip_file)
+  zip_file = os.path.join(path_out, 'filelist.zip')
+  if not os.path.exists(zip_file):
+    url = 'https://www.dropbox.com/s/3b068cw4uofaxtx/scannet_filelist.zip?dl=1'
+    print('-> Download the filelist from dropbox: %s' % url)
+    wget.download(url, zip_file)
 
   # unzip
   with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+    print('-> Unzip the filelist to %s' % path_out)
     zip_ref.extractall(path_out)
 
 
-def read_ply(filename, compute_normal=True):
-  with open(filename, 'rb') as fid:
-    plydata = PlyData.read(fid)
+def read_ply(filename):
+  plydata = PlyData.read(filename)
   vertex, face = plydata['vertex'].data, plydata['face'].data
-
   props = [vertex[name].astype(np.float32) for name in vertex.dtype.names]
   vertex = np.stack(props[:3], axis=1)
   props = np.stack(props[3:], axis=1)
   face = np.stack(face['vertex_indices'], axis=0)
-
-  nv = vertex_normal(vertex, face) if compute_normal else np.zeros_like(vertex)
-  vertex_with_props = np.concatenate([vertex, nv, props], axis=1)
-  return vertex_with_props
+  return vertex, face, props
 
 
 def face_normal(vertex, face):
@@ -114,7 +125,62 @@ def save_ply(point_cloud, filename):
 
   # write ply
   PlyData([el]).write(filename)
-  print('Save:', filename)
+
+
+def save_npz(point_cloud, filename):
+  output = {'points': point_cloud[:, :3].astype(np.float32),
+            'normals': point_cloud[:, 3:6].astype(np.float32),
+            'colors': point_cloud[:, 6:9].astype(np.float32), }
+  if point_cloud.shape[1] == 10:
+    output['labels'] = point_cloud[:, 9].astype(np.int32)
+  np.savez(filename, **output)
+
+
+def align_to_axis(filename_ply, vertex):
+  filename = filename_ply.replace(suffix, '.txt')
+  with open(filename) as fid:
+    for line in fid:
+      (key, val) = line.split(" = ")
+      if key == 'axisAlignment':
+        rot = np.fromstring(val, sep=' ').reshape(4, 4)
+        vertex = np.matmul(vertex, rot[:3, :3].T) + rot[:3, 3]
+        break
+  return vertex
+
+
+def generate_point_labels20(filename_ply):
+  filename_label = filename_ply[:-4] + '.labels.ply'
+  _, _, label = read_ply(filename_label)
+  return label[:, -1].astype(np.int32)
+
+
+def generate_point_labels200(filename_ply, label_table):
+  filename_segs = filename_ply.replace(suffix, suffix_segs)
+  with open(filename_segs) as f:
+    segs = json.load(f)
+    seg_indices = np.array(segs['segIndices'])
+
+  filename_aggr = filename_ply.replace(suffix, suffix_aggr)
+  with open(filename_aggr) as f:
+    aggregation = json.load(f)
+    seg_groups = np.array(aggregation['segGroups'])
+
+  label = np.zeros(seg_indices.shape[0], dtype=np.int32)
+  for group in seg_groups:
+    label_id = label_table[label_table['raw_category'] == group['label']]['id']
+    label_group = int(label_id.iloc[0]) if len(label_id) > 0 else 0
+    if label_group not in class_ids200: label_group = 0
+    segments = np.array(group['segments'])  # all segments in one group
+    point_idx = np.where(np.isin(seg_indices, segments))[0]
+    label[point_idx] = label_group
+  return label
+
+
+def generate_point_labels(filename_ply, label_table):
+  if args.scannet200:
+    return generate_point_labels200(filename_ply, label_table)
+  else:
+    return generate_point_labels20(filename_ply)
 
 
 def generate_chunks(filename, point_cloud, cropsize=10.0, stride=5.0):
@@ -148,55 +214,46 @@ def generate_chunks(filename, point_cloud, cropsize=10.0, stride=5.0):
 
 def process_scannet():
   download_filelists()
+  label_table = pd.read_csv(meta_data, sep='\t', header=0)
 
-  for path_out, path_in in subsets.items():
-    curr_path_out = Path(args.path_out) / path_out
-    curr_path_out.mkdir(parents=True, exist_ok=True)
+  subsets = {'train': 'scans', 'test': 'scans_test'}
+  for folder_out, folder_in in tqdm(subsets.items(), ncols=80):
+    path_in = os.path.join(args.path_in, folder_in)
+    path_out = os.path.join(args.path_out, folder_out)
+    os.makedirs(path_out, exist_ok=True)
 
-    filenames = (Path(args.path_in) / path_in).glob('*/*' + suffix)
-    for filename in filenames:
-      pointcloud = read_ply(filename)
-      # Make sure alpha value is meaningless.
-      assert np.unique(pointcloud[:, -1]).size == 1
+    scene_ids = os.listdir(path_in)
+    for scene_id in tqdm(scene_ids, ncols=80):
+      filename_ply = os.path.join(path_in, scene_id, scene_id + suffix)
+      filename_out = os.path.join(path_out, scene_id + args.suffix_out)
+      if os.path.exists(filename_out):
+        tqdm.write('Skip: %s' % filename_out)
+        continue
 
-      # Load label file
-      label = np.zeros((pointcloud.shape[0], 1))
-      filename_label = filename.parent / (filename.stem + '.labels.ply')
-      if filename_label.is_file():
-        label_data = read_ply(filename_label, compute_normal=False)
-        # Sanity check that the pointcloud and its label has same vertices.
-        assert pointcloud.shape[0] == label_data.shape[0]
-        assert np.allclose(pointcloud[:, :3], label_data[:, :3])
+      # Load pointcloud file
+      vertex, face, props = read_ply(filename_ply)
+      assert np.unique(props[:, -1]).size == 1
+      if args.align_axis:
+        vertex = align_to_axis(filename_ply, vertex)
+      nv = vertex_normal(vertex, face)
+      pointcloud = np.concatenate([vertex, nv, props], axis=1)
 
-        label = label_data[:, -1:]
-        filename_out = curr_path_out / (filename.name[:-len(suffix)] + '.txt')
-        np.savetxt(filename_out, label, fmt='%d')
-        if label_remap:  # remap the files
-          for i in range(label.shape[0]):
-            label[i] = label_dict.get(int(label[i]), 0)
+      # Generate point cloud label
+      if folder_out == 'train':
+        label = generate_point_labels(filename_ply, label_table)
 
-      filename_out = curr_path_out / (filename.name[:-len(suffix)] + '.ply')
-      processed = np.concatenate((pointcloud[:, :-1], label), axis=-1)
-      # save the original file
-      save_ply(processed, filename_out)
-      # save the cropped chunks in the 10x10x10 box
-      if args.generate_chunks.lower() == 'true':
-        generate_chunks(filename_out, processed)
+        # save the original label
+        filename_txt = filename_out[:-4] + '.txt'
+        np.savetxt(filename_txt, label, fmt='%d')
 
+        # map the original label to the new label
+        label_new = label_dict[label]
+        pointcloud[:, -1] = label_new
 
-def fix_bug_files():
-  bug_files = {
-      'train/scene0270_00.ply': 50,
-      'train/scene0270_02.ply': 50,
-      'train/scene0384_00.ply': 149}
-  for files, bug_index in bug_files.items():
-    print(files)
-    for f in Path(args.path_out).glob(files):
-      pointcloud = read_ply(f)
-      bug_mask = pointcloud[:, -1] == bug_index
-      print(f'Fixing {f} bugged label {bug_index} x {bug_mask.sum()}')
-      pointcloud[bug_mask, -1] = 0
-      save_ply(pointcloud, f)
+      # save the file
+      save_file = save_ply if args.suffix_out == '.ply' else save_npz
+      save_file(pointcloud, filename_out)
+      tqdm.write('Save: %s' % filename_out)
 
 
 def generate_output_seg():
@@ -208,7 +265,7 @@ def generate_output_seg():
   filename_scans = []
   with open(args.filelist, 'r') as fid:
     for line in fid:
-      filename_scans.append(line.split()[0])
+      filename_scans.append(line.split()[0][:-4])
 
   # process
   probs = {}
@@ -218,7 +275,6 @@ def generate_output_seg():
     prob0 = pred['prob']
 
     # merge `chunk_x`
-    filename_scan = filename_scan[:-4]  # remove '.ply'
     if 'chunk' in filename_scan:
       filename_mask = filename_scan + '.mask.npy'
       mask = np.load(os.path.join(args.path_in, filename_mask))
@@ -230,16 +286,14 @@ def generate_output_seg():
     probs[filename_scan] = probs.get(filename_scan, 0) + prob0
 
   # output
-  if not os.path.exists(args.path_out):
-    os.makedirs(args.path_out)
-
+  os.makedirs(args.path_out, exist_ok=True)
   for filename, prob in tqdm(probs.items(), ncols=80):
     filename_label = filename + '.txt'
+    filename_npy = filename + '.npy'
     label = np.argmax(prob, axis=1)
-    # map the predicted label to the original label
-    for i in range(label.shape[0]):
-      label[i] = ilabel_dict[label[i]]
+    label = ilabel_dict[label]
     np.savetxt(os.path.join(args.path_out, filename_label), label, fmt='%d')
+    # np.save(os.path.join(args.path_out, filename_npy), prob)
 
 
 def calc_iou():
@@ -257,9 +311,7 @@ def calc_iou():
     label_gt = np.loadtxt(os.path.join(args.path_in, filename))
 
     # omit labels out of class_ids[1:]
-    mask = np.zeros_like(label_gt).astype(bool)
-    for i in range(label_gt.shape[0]):
-      mask[i] = label_gt[i] in class_ids[1:]
+    mask = np.isin(label_gt, class_ids[1:])
     label_pred = label_pred[mask]
     label_gt = label_gt[mask]
 

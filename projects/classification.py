@@ -5,12 +5,15 @@
 # Written by Peng-Shuai Wang
 # --------------------------------------------------------
 
-import ocnn
 import torch
-from thsolver import Solver
+import ocnn
 
+from thsolver import Solver
 from datasets import get_modelnet40_dataset
 
+# The following line can be used to fix `RuntimeError: received 0 items of ancdata`.
+# Refer: https://github.com/pytorch/pytorch/issues/973
+# torch.multiprocessing.set_sharing_strategy('file_system')
 
 class ClsSolver(Solver):
 

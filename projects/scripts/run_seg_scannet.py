@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--run', type=str, required=False, default='train')
 parser.add_argument('--alias', type=str, required=False, default='scannet')
 parser.add_argument('--gpu', type=str, required=False, default='0')
+parser.add_argument('--port', type=str, required=False, default='10001')
 parser.add_argument('--ckpt', type=str, required=False, default='\'\'')
 args = parser.parse_args()
 
@@ -27,7 +28,8 @@ def train():
       'python segmentation.py',
       '--config configs/seg_scannet.yaml',
       'SOLVER.gpu  {},'.format(args.gpu),
-      'SOLVER.alias  {}'.format(args.alias), ]
+      'SOLVER.alias  {}'.format(args.alias), 
+      'SOLVER.dist_url tcp://localhost:{}'.format(args.port), ]
   execute_command(cmds)
 
 
@@ -37,6 +39,7 @@ def train_all():
       '--config configs/seg_scannet.yaml',
       'SOLVER.gpu  {},'.format(args.gpu),
       'SOLVER.alias  {}'.format(args.alias),
+      'SOLVER.dist_url tcp://localhost:{}'.format(args.port), 
       'DATA.train.filelist data/scannet/scannetv2_train_val.txt', ]
   execute_command(cmds)
 

@@ -5,21 +5,24 @@
 # Written by Peng-Shuai Wang
 # --------------------------------------------------------
 
+
+import ocnn
 import torch
-import numpy as np
+import random
 import scipy.interpolate
 import scipy.ndimage
-import random
-from thsolver import Dataset
+import numpy as np
 from ocnn.octree import Points
 from ocnn.dataset import CollateBatch
+from thsolver import Dataset
+from typing import List
 
-from .utils import ReadPly, Transform
+from .utils import ReadFile, Transform
 
 
 def color_distort(color, trans_range_ratio, jitter_std):
 
-  def _color_autocontrast(color, rand_blend_factor=True, blend_factor=0.5):
+  def _color_autocontrast(color):
     assert color.shape[1] >= 3
     lo = color[:, :3].min(0, keepdims=True)
     hi = color[:, :3].max(0, keepdims=True)
@@ -28,7 +31,7 @@ def color_distort(color, trans_range_ratio, jitter_std):
     scale = 255 / (hi - lo)
     contrast_feats = (color[:, :3] - lo) * scale
 
-    blend_factor = random.random() if rand_blend_factor else blend_factor
+    blend_factor = random.random()
     color[:, :3] = (1 - blend_factor) * color + blend_factor * contrast_feats
     return color
 
@@ -95,13 +98,16 @@ class ScanNetTransform(Transform):
   def __init__(self, flags):
     super().__init__(flags)
 
-    # self.scale_factor = 5.12    # depth 9
-    self.scale_factor = 10.24     # depth 10
+    # The `self.scale_factor` is used to normalize the input point cloud to the
+    # range of [-1, 1]. If this parameter is modified, the `self.elastic_params`
+    # and the `jittor` in the data augmentation should be scaled accordingly.
+    # self.scale_factor = 5.12    # depth 9: voxel size 2cm
+    self.scale_factor = 10.24     # depth 10: voxel size 2cm; depth 11: voxel size 1cm
     self.color_trans_ratio = 0.10
     self.color_jit_std = 0.05
-    self.elastic_params = np.array([[0.2, 0.4], [0.8, 1.6]], np.float32)
+    self.elastic_params = np.array([[0.1, 0.2], [0.4, 0.8]], np.float32)
 
-  def preprocess(self, sample, idx=None):
+  def __call__(self, sample, idx=None):
 
     # normalize points
     xyz = sample['points']
@@ -117,15 +123,23 @@ class ScanNetTransform(Transform):
       color = color_distort(color, self.color_trans_ratio, self.color_jit_std)
       xyz = elastic_distort(xyz, self.elastic_params)
 
-    return Points(torch.from_numpy(xyz), torch.from_numpy(sample['normals']),
-                  torch.from_numpy(color), torch.from_numpy(sample['labels']))
+    # construct points
+    points = Points(torch.from_numpy(xyz), torch.from_numpy(sample['normals']),
+                    torch.from_numpy(color), torch.from_numpy(sample['labels']))
+
+    # transform provided by `ocnn`,
+    # including rotatation, translation, scaling, and flipping
+    output = self.transform(points, idx)   # points and inbox_mask
+    points, inbox_mask = output['points'], output['inbox_mask']
+
+    return {'points': points, 'inbox_mask': inbox_mask}
 
 
 def get_scannet_dataset(flags):
   transform = ScanNetTransform(flags)
-  read_ply = ReadPly(has_normal=True, has_color=True, has_label=True)
-  collate_batch = CollateBatch(merge_points=True)
+  read_file = ReadFile(has_normal=True, has_color=True, has_label=True)
+  collate_batch = CollateBatch()
 
   dataset = Dataset(flags.location, flags.filelist, transform,
-                    read_file=read_ply)
+                    read_file=read_file)
   return dataset, collate_batch

@@ -37,8 +37,8 @@ DATA:
     uniform: True
 
     # data loading
-    location: data/scannet/train
-    filelist: data/scannet/scannetv2_train.txt
+    location: data/scannet.ply/train
+    filelist: data/scannet.ply/scannetv2_train.txt
     batch_size: 4
     shuffle: True
     # num_workers: 0
@@ -58,8 +58,8 @@ DATA:
     uniform: True
 
     # data loading
-    location: data/scannet/train
-    filelist: data/scannet/scannetv2_val.txt
+    location: data/scannet.ply/train
+    filelist: data/scannet.ply/scannetv2_val.txt
     batch_size: 1
     shuffle: False
     # num_workers: 0

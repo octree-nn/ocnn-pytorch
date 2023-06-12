@@ -7,10 +7,10 @@
 
 import os
 import torch
+import ocnn
 import numpy as np
 from tqdm import tqdm
-import ocnn
-from thsolver import Solver, get_config
+from thsolver import Solver
 
 from datasets import (get_seg_shapenet_dataset, get_scannet_dataset,
                       get_kitti_dataset)
@@ -49,9 +49,26 @@ class SegSolver(Solver):
     data = octree_feature(octree)
     return data
 
+  def process_batch(self, batch, flags):
+    def points2octree(points):
+      octree = ocnn.octree.Octree(flags.depth, flags.full_depth)
+      octree.build_octree(points)
+      return octree
+
+    if 'octree' in batch:
+      batch['octree'] = batch['octree'].cuda(non_blocking=True)
+      batch['points'] = batch['points'].cuda(non_blocking=True)
+    else:
+      points = [pts.cuda(non_blocking=True) for pts in batch['points']]
+      octrees = [points2octree(pts) for pts in points]
+      octree = ocnn.octree.merge_octrees(octrees)
+      octree.construct_all_neigh()
+      batch['points'] = ocnn.octree.merge_points(points)
+      batch['octree'] = octree
+    return batch
+
   def model_forward(self, batch):
-    octree = batch['octree'].cuda()
-    points = batch['points'].cuda()
+    octree, points = batch['octree'], batch['points']
     data = self.get_input_feature(octree)
     query_pts = torch.cat([points.points, points.batch_id], dim=1)
 
@@ -60,11 +77,14 @@ class SegSolver(Solver):
     return logit[label_mask], points.labels[label_mask]
 
   def train_step(self, batch):
+    batch = self.process_batch(batch, self.FLAGS.DATA.train)
     logit, label = self.model_forward(batch)
     loss = self.loss_function(logit, label)
-    return {'train/loss': loss}
+    accu = self.accuracy(logit, label)
+    return {'train/loss': loss, 'train/accu': accu}
 
   def test_step(self, batch):
+    batch = self.process_batch(batch, self.FLAGS.DATA.test)
     with torch.no_grad():
       logit, label = self.model_forward(batch)
     loss = self.loss_function(logit, label)
@@ -79,28 +99,37 @@ class SegSolver(Solver):
     return dict(zip(names, tensors))
 
   def eval_step(self, batch):
+    batch = self.process_batch(batch, self.FLAGS.DATA.test)
     with torch.no_grad():
       logit, _ = self.model_forward(batch)
     prob = torch.nn.functional.softmax(logit, dim=1)
 
-    # The point cloud may be clipped when doing data augmentation. The
-    # `inbox_mask` indicates which points are clipped. The `prob_all_pts`
-    # contains the prediction for all points.
-    inbox_mask = batch['inbox_mask'][0].cuda()
-    assert len(batch['inbox_mask']) == 1, 'The batch_size must be 1'
-    prob_all_pts = prob.new_zeros([inbox_mask.shape[0], prob.shape[1]])
-    prob_all_pts[inbox_mask] = prob
+    # split predictions
+    inbox_masks = batch['inbox_mask']
+    npts = batch['points'].batch_npt.tolist()
+    probs = torch.split(prob, npts)
 
-    # Aggregate predictions across different epochs
-    filename = batch['filename'][0]
-    self.eval_rst[filename] = self.eval_rst.get(filename, 0) + prob_all_pts
+    # merge predictions
+    batch_size = len(inbox_masks)
+    for i in range(batch_size):
+      # The point cloud may be clipped when doing data augmentation. The
+      # `inbox_mask` indicates which points are clipped. The `prob_all_pts`
+      # contains the prediction for all points.
+      prob = probs[i].cpu()
+      inbox_mask = inbox_masks[i].to(prob.device)
+      prob_all_pts = prob.new_zeros([inbox_mask.shape[0], prob.shape[1]])
+      prob_all_pts[inbox_mask] = prob
 
-    # Save the prediction results in the last epoch
-    if self.FLAGS.SOLVER.eval_epoch - 1 == batch['epoch']:
-      full_filename = os.path.join(self.logdir, filename + '.eval.npz')
-      curr_folder = os.path.dirname(full_filename)
-      if not os.path.exists(curr_folder): os.makedirs(curr_folder)
-      np.savez(full_filename, prob=self.eval_rst[filename].cpu().numpy())
+      # Aggregate predictions across different epochs
+      filename = batch['filename'][i]
+      self.eval_rst[filename] = self.eval_rst.get(filename, 0) + prob_all_pts
+
+      # Save the prediction results in the last epoch
+      if self.FLAGS.SOLVER.eval_epoch - 1 == batch['epoch']:
+        full_filename = os.path.join(self.logdir, filename[:-4] + '.eval.npz')
+        curr_folder = os.path.dirname(full_filename)
+        if not os.path.exists(curr_folder): os.makedirs(curr_folder)
+        np.savez(full_filename, prob=self.eval_rst[filename].cpu().numpy())
 
   def result_callback(self, avg_tracker, epoch):
     r''' Calculate the part mIoU for PartNet and ScanNet.
@@ -117,9 +146,10 @@ class SegSolver(Solver):
       instc_i = avg['test/intsc_%d' % i]
       union_i = avg['test/union_%d' % i]
       iou_part += instc_i / (union_i + 1.0e-10)
-
     iou_part = iou_part / (num_class - mask)
+
     avg_tracker.update({'test/mIoU_part': torch.Tensor([iou_part])})
+    tqdm.write('=> Epoch: %d, test/mIoU_part: %f' % (epoch, iou_part))
 
   def loss_function(self, logit, label):
     criterion = torch.nn.CrossEntropyLoss()
@@ -148,11 +178,6 @@ class SegSolver(Solver):
     # Calculate the shape IoU for ShapeNet
     IoU /= valid_part_num + esp
     return IoU, intsc, union
-
-  @classmethod
-  def update_configs(cls):
-    FLAGS = get_config()
-    FLAGS.LOSS.mask = -1           # mask the invalid labels
 
 
 if __name__ == "__main__":

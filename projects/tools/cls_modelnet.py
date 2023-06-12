@@ -35,10 +35,8 @@ root_folder = os.path.join(abs_path, 'data/ModelNet40')
 
 
 def download_m40():
-
   # download via wget
-  if not os.path.exists(root_folder):
-    os.makedirs(root_folder)
+  os.makedirs(root_folder, exist_ok=True)
   url = 'http://modelnet.cs.princeton.edu/ModelNet40.zip'
   filename = os.path.join(root_folder, 'ModelNet40.zip')
   if not os.path.exists(filename):
@@ -47,8 +45,7 @@ def download_m40():
 
   # unzip
   flag_floder = os.path.join(root_folder, 'flags')
-  if not os.path.exists(flag_floder):
-    os.makedirs(flag_floder)
+  os.makedirs(flag_floder, exist_ok=True)
   flag_file = os.path.join(flag_floder, 'unzip_succ')
   if not os.path.exists(flag_file):
     print('-> Unzip the dataset.')
@@ -84,7 +81,7 @@ def _get_point_folder():
 def get_filelist(root_folder, train=True, suffix='off', ratio=1.0):
   filelist, category = [], []
   folders = sorted(os.listdir(root_folder))
-  assert len(folders) == 40
+  assert (len(folders) == 40)
   for idx, folder in enumerate(folders):
     subfolder = 'train' if train else 'test'
     current_folder = os.path.join(root_folder, folder, subfolder)
@@ -113,7 +110,6 @@ def move_files(src_folder, des_folder, suffix):
 
 
 def convert_mesh_to_points():
-
   print('-> Sample points on meshes.')
   # Delete the following 3 files from training set since the scale of these
   # meshes is too large and the virtualscanner can not deal with them.
@@ -180,7 +176,6 @@ def convert_mesh_to_points():
 
 
 def generate_points_filelist():
-
   print('-> Generate filelists')
   points_folder = _get_point_folder()
   list_folder = os.path.join(root_folder, 'filelist')
