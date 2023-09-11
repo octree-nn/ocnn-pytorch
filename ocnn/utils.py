@@ -8,6 +8,7 @@
 import math
 import torch
 from typing import Optional
+from packaging import version
 
 __all__ = ['trunc_div', 'meshgrid', 'cumsum', 'scatter_add', 'xavier_uniform_',
            'resize_with_last_val', 'list2str']
@@ -19,8 +20,7 @@ def trunc_div(input, other):
   division towards zero and is equivalent to C-style integer  division.
   '''
 
-  version = torch.__version__.split('.')
-  larger_than_170 = int(version[0]) > 0 and int(version[1]) > 7
+  larger_than_170 = version.parse(torch.__version__) > version.parse('1.7')
 
   if larger_than_170:
     return torch.div(input, other, rounding_mode='trunc')
@@ -32,8 +32,7 @@ def meshgrid(*tensors, indexing: Optional[str] = None):
   r''' Wraps :func:`torch.meshgrid` for compatibility.
   '''
 
-  version = torch.__version__.split('.')
-  larger_than_190 = int(version[0]) > 0 and int(version[1]) > 9
+  larger_than_190 = version.parse(torch.__version__) > version.parse('1.9')
 
   if larger_than_190:
     return torch.meshgrid(*tensors, indexing=indexing)
