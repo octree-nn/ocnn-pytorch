@@ -10,8 +10,11 @@ import torch
 from typing import Optional
 from packaging import version
 
+import ocnn
+
+
 __all__ = ['trunc_div', 'meshgrid', 'cumsum', 'scatter_add', 'xavier_uniform_',
-           'resize_with_last_val', 'list2str']
+           'resize_with_last_val', 'list2str', 'build_example_octree']
 classes = __all__
 
 
@@ -145,8 +148,24 @@ def resize_with_last_val(list_in: list, num: int = 3):
 
 
 def list2str(list_in: list):
-  r''' Returns a string representation of :attr:`list_in`
+  r''' Returns a string representation of :attr:`list_in`.
   '''
 
   out = [str(x) for x in list_in]
   return ''.join(out)
+
+
+def build_example_octree(depth: int = 5, full_depth: int = 2):
+  r''' Builds an example octree on CPU from 3 points.
+  '''
+  # initialize the point cloud
+  points = torch.Tensor([[-1, -1, -1], [0, 0, -1], [0.0625, 0.0625, -1]])
+  normals = torch.Tensor([[1, 0, 0], [-1, 0, 0], [0, 1, 0]])
+  features = torch.Tensor([[1, -1], [2, -2], [3, -3]])
+  labels = torch.Tensor([[0], [2], [2]])
+  point_cloud = ocnn.octree.Points(points, normals, features, labels)
+
+  # build octree
+  octree = ocnn.octree.Octree(depth, full_depth)
+  octree.build_octree(point_cloud)
+  return octree
