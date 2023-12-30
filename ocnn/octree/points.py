@@ -42,6 +42,25 @@ class Points:
     self.batch_size = batch_size
     self.device = points.device
     self.batch_npt = None   # valid after `merge_points`
+    self.check_input()
+
+  def check_input(self):
+    r''' Checks the input arguments.
+    '''
+
+    assert self.points.dim() == 2 and self.points.size(1) == 3
+    if self.normals is not None:
+      assert self.normals.dim() == 2 and self.normals.size(1) == 3
+      assert self.normals.size(0) == self.points.size(0)
+    if self.features is not None:
+      assert self.features.dim() == 2
+      assert self.features.size(0) == self.points.size(0)
+    if self.labels is not None:
+      assert self.labels.dim() == 2
+      assert self.labels.size(0) == self.points.size(0)
+    if self.batch_id is not None:
+      assert self.batch_id.dim() == 2 and self.batch_id.size(1) == 1
+      assert self.batch_id.size(0) == self.points.size(0)
 
   @property
   def npt(self):
@@ -243,7 +262,7 @@ class Points:
 
     Args:
       filename (str): The output filename.
-      info (str): The infomation for saving: 'P' -> 'points', 'N' -> 'normals', 
+      info (str): The infomation for saving: 'P' -> 'points', 'N' -> 'normals',
           'F' -> 'features', 'L' -> 'labels', 'B' -> 'batch_id'.
     '''
 
@@ -276,7 +295,7 @@ def merge_points(points: List['Points'], update_batch_info: bool = True):
 
   Args:
     points (List[Octree]): A list of points to merge. The batch size of each
-        points in the list is assumed to be 1, and the :obj:`batch_size`, 
+        points in the list is assumed to be 1, and the :obj:`batch_size`,
         :obj:`batch_id`, and :obj:`batch_npt` in the points are ignored.
   '''
 
