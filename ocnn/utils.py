@@ -20,9 +20,9 @@ def trunc_div(input, other):
   division towards zero and is equivalent to C-style integer  division.
   '''
 
-  larger_than_170 = version.parse(torch.__version__) > version.parse('1.7')
+  larger_than_171 = version.parse(torch.__version__) > version.parse('1.7.1')
 
-  if larger_than_170:
+  if larger_than_171:
     return torch.div(input, other, rounding_mode='trunc')
   else:
     return torch.floor_divide(input, other)
@@ -32,9 +32,9 @@ def meshgrid(*tensors, indexing: Optional[str] = None):
   r''' Wraps :func:`torch.meshgrid` for compatibility.
   '''
 
-  larger_than_190 = version.parse(torch.__version__) > version.parse('1.9')
+  larger_than_191 = version.parse(torch.__version__) > version.parse('1.9.1')
 
-  if larger_than_190:
+  if larger_than_191:
     return torch.meshgrid(*tensors, indexing=indexing)
   else:
     return torch.meshgrid(*tensors)
@@ -63,7 +63,7 @@ def cumsum(data: torch.Tensor, dim: int, exclusive: bool = False):
 
 
 def broadcast(src: torch.Tensor, other: torch.Tensor, dim: int):
-  r''' Broadcast :attr:`src` according to :attr:`other`, originally from the 
+  r''' Broadcast :attr:`src` according to :attr:`other`, originally from the
   library `pytorch_scatter`.
   '''
 
