@@ -121,7 +121,7 @@ def xavier_uniform_(weights: torch.Tensor):
   :obj:`torch.nn.init.xavier_uniform_`.
 
   :obj:`torch.nn.init.xavier_uniform_` initialize a tensor with shape
-  :obj:`(out_c, in_c, kdim)`. It can not be used in :class:`ocnn.nn.OctreeConv`
+  :obj:`(out_c, in_c, kdim)`, which can not be used in :class:`ocnn.nn.OctreeConv`
   since the the shape of :attr:`OctreeConv.weights` is :obj:`(kdim, in_c,
   out_c)`.
   '''
