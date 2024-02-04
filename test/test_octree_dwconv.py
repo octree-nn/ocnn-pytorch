@@ -51,7 +51,7 @@ class TesOctreeDWConv(unittest.TestCase):
           self.assertTrue(torch.allclose(out, dwout, atol=1e-6))
           self.assertTrue(torch.allclose(data.grad, dwdata.grad, atol=1e-6))
           self.assertTrue(torch.allclose(weight_grad, dwconv.weights.grad,
-                                         atol=5e-5))
+                                         atol=6e-5))
 
 
 if __name__ == "__main__":

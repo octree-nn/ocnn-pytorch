@@ -14,7 +14,7 @@ from ocnn.nn import OctreeConv, OctreeDeconv
 from ocnn.octree import Octree
 
 
-bn_momentum, bn_eps = 0.01, 0.001    # the default value of Tensorflow 1.x
+# bn_momentum, bn_eps = 0.01, 0.001  # the default value of Tensorflow 1.x
 # bn_momentum, bn_eps = 0.1, 1e-05   # the default value of pytorch
 
 
@@ -41,7 +41,7 @@ class OctreeConvBn(torch.nn.Module):
     super().__init__()
     self.conv = OctreeConv(
         in_channels, out_channels, kernel_size, stride, nempty)
-    self.bn = torch.nn.BatchNorm1d(out_channels, bn_eps, bn_momentum)
+    self.bn = torch.nn.BatchNorm1d(out_channels) #, bn_eps, bn_momentum)
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
     r''''''
@@ -63,7 +63,7 @@ class OctreeConvBnRelu(torch.nn.Module):
     super().__init__()
     self.conv = OctreeConv(
         in_channels, out_channels, kernel_size, stride, nempty)
-    self.bn = torch.nn.BatchNorm1d(out_channels, bn_eps, bn_momentum)
+    self.bn = torch.nn.BatchNorm1d(out_channels) #, bn_eps, bn_momentum)
     self.relu = torch.nn.ReLU(inplace=True)
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
@@ -87,7 +87,7 @@ class OctreeDeconvBnRelu(torch.nn.Module):
     super().__init__()
     self.deconv = OctreeDeconv(
         in_channels, out_channels, kernel_size, stride, nempty)
-    self.bn = torch.nn.BatchNorm1d(out_channels, bn_eps, bn_momentum)
+    self.bn = torch.nn.BatchNorm1d(out_channels) #, bn_eps, bn_momentum)
     self.relu = torch.nn.ReLU(inplace=True)
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
@@ -124,7 +124,7 @@ class Conv1x1Bn(torch.nn.Module):
   def __init__(self, in_channels: int, out_channels: int):
     super().__init__()
     self.conv = Conv1x1(in_channels, out_channels, use_bias=False)
-    self.bn = torch.nn.BatchNorm1d(out_channels, bn_eps, bn_momentum)
+    self.bn = torch.nn.BatchNorm1d(out_channels) #, bn_eps, bn_momentum)
 
   def forward(self, data: torch.Tensor):
     r''''''
@@ -141,7 +141,7 @@ class Conv1x1BnRelu(torch.nn.Module):
   def __init__(self, in_channels: int, out_channels: int):
     super().__init__()
     self.conv = Conv1x1(in_channels, out_channels, use_bias=False)
-    self.bn = torch.nn.BatchNorm1d(out_channels, bn_eps, bn_momentum)
+    self.bn = torch.nn.BatchNorm1d(out_channels) #, bn_eps, bn_momentum)
     self.relu = torch.nn.ReLU(inplace=True)
 
   def forward(self, data: torch.Tensor):
@@ -161,7 +161,7 @@ class FcBnRelu(torch.nn.Module):
     super().__init__()
     self.flatten = torch.nn.Flatten(start_dim=1)
     self.fc = torch.nn.Linear(in_channels, out_channels, bias=False)
-    self.bn = torch.nn.BatchNorm1d(out_channels, bn_eps, bn_momentum)
+    self.bn = torch.nn.BatchNorm1d(out_channels) #, bn_eps, bn_momentum)
     self.relu = torch.nn.ReLU(inplace=True)
 
   def forward(self, data):
@@ -187,7 +187,7 @@ class InputFeature(torch.nn.Module):
         :attr:`feature`, the global coordinates are extracted (3 channels). If
         :attr:`F` is in :attr:`feature`, other features (like colors) are
         extracted (k channels).
-    nempty (bool): If false, gets the features of all octree nodes. 
+    nempty (bool): If false, gets the features of all octree nodes.
   '''
 
   def __init__(self, feature: str = 'NDF', nempty: bool = False):
