@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 from typing import Union, List
 
-from ocnn.utils import meshgrid, scatter_add, cumsum, trunc_div
+from ocnn.utils import range_grid, scatter_add, cumsum, trunc_div
 from .points import Points
 from .shuffled_key import xyz2key, key2xyz
 
@@ -73,8 +73,8 @@ class Octree:
 
     # construct the look up tables for neighborhood searching
     device = self.device
-    center_grid = self.rng_grid(2, 3)    # (8, 3)
-    displacement = self.rng_grid(-1, 1)  # (27, 3)
+    center_grid = range_grid(2, 3, device)    # (8, 3)
+    displacement = range_grid(-1, 1, device)  # (27, 3)
     neigh_grid = center_grid.unsqueeze(1) + displacement  # (8, 27, 3)
     parent_grid = trunc_div(neigh_grid, 2)
     child_grid = neigh_grid % 2
@@ -315,16 +315,17 @@ class Octree:
     '''
 
     if depth <= self.full_depth:
+      device = self.device
       nnum = 1 << (3 * depth)
-      key = torch.arange(nnum, dtype=torch.long, device=self.device)
+      key = torch.arange(nnum, dtype=torch.long, device=device)
       x, y, z, _ = key2xyz(key, depth)
       xyz = torch.stack([x, y, z], dim=-1)  # (N,  3)
-      grid = self.rng_grid(min=-1, max=1)   # (27, 3)
+      grid = range_grid(-1, 1, device)   # (27, 3)
       xyz = xyz.unsqueeze(1) + grid         # (N, 27, 3)
       xyz = xyz.view(-1, 3)                 # (N*27, 3)
       neigh = xyz2key(xyz[:, 0], xyz[:, 1], xyz[:, 2], depth=depth)
 
-      bs = torch.arange(self.batch_size, dtype=torch.int32, device=self.device)
+      bs = torch.arange(self.batch_size, dtype=torch.int32, device=device)
       neigh = neigh + bs.unsqueeze(1) * nnum  # (N*27,) + (B, 1) -> (B, N*27)
 
       bound = 1 << depth
@@ -527,15 +528,6 @@ class Octree:
     r''' Moves the octree to the CPU. '''
 
     return self.to('cpu')
-
-  def rng_grid(self, min, max):
-    r''' Builds a mesh grid in :obj:`[min, max]` (:attr:`max` included).
-    '''
-
-    rng = torch.arange(min, max+1, dtype=torch.long, device=self.device)
-    grid = meshgrid(rng, rng, rng, indexing='ij')
-    grid = torch.stack(grid, dim=-1).view(-1, 3)  # (27, 3)
-    return grid
 
 
 def merge_octrees(octrees: List['Octree']):

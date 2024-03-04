@@ -43,6 +43,37 @@ def meshgrid(*tensors, indexing: Optional[str] = None):
     return torch.meshgrid(*tensors)
 
 
+def range_grid(min: int, max: int, device: torch.device = 'cpu'):
+  r''' Builds a 3D mesh grid in :obj:`[min, max]` (:attr:`max` included).
+
+  Args:
+    min (int): The minimum value of the grid.
+    max (int): The maximum value of the grid.
+    device (torch.device, optional): The device to place the grid on.
+
+  Returns:
+    torch.Tensor: A 3D mesh grid tensor of shape (N, 3), where N is the total
+                  number of grid points.
+
+  Example:
+    >>> grid = range_grid(0, 1)
+    >>> print(grid)
+    tensor([[0, 0, 0],
+            [0, 0, 1],
+            [0, 1, 0],
+            [0, 1, 1],
+            [1, 0, 0],
+            [1, 0, 1],
+            [1, 1, 0],
+            [1, 1, 1]])
+  '''
+
+  rng = torch.arange(min, max+1, dtype=torch.long, device=device)
+  grid = meshgrid(rng, rng, rng, indexing='ij')
+  grid = torch.stack(grid, dim=-1).view(-1, 3)
+  return grid
+
+
 def cumsum(data: torch.Tensor, dim: int, exclusive: bool = False):
   r''' Extends :func:`torch.cumsum` with the input argument :attr:`exclusive`.
 
