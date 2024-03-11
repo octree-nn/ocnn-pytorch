@@ -384,10 +384,10 @@ class Octree:
     # pytorch-1.9.1, since `key` is always 1-D sorted sequence.
     idx = torch.bucketize(query, key)
 
-    valid = idx < key.shape[0]  # invalid if out of bound
+    valid = idx < key.shape[0]      # valid if NOT out-of-bound
     found = key[idx[valid]] == query[valid]
-    valid[valid.clone()] = found
-    idx[valid.logical_not()] = -1
+    valid[valid.clone()] = found    # valid if found
+    idx[valid.logical_not()] = -1   # set to -1 if invalid
     return idx
 
   def get_neigh(self, depth: int, kernel: str = '333', stride: int = 1,
