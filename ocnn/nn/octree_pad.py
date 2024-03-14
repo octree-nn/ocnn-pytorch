@@ -7,7 +7,7 @@
 
 import torch
 
-from ..octree import Octree
+from ocnn.octree import Octree
 
 
 def octree_pad(data: torch.Tensor, octree: Octree, depth: int, val: float = 0.0):

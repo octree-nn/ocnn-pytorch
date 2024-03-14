@@ -9,9 +9,10 @@ import torch
 import torch.nn.functional as F
 from typing import Union, List
 
+import ocnn
+from ocnn.octree.points import Points
+from ocnn.octree.shuffled_key import xyz2key, key2xyz
 from ocnn.utils import range_grid, scatter_add, cumsum, trunc_div
-from .points import Points
-from .shuffled_key import xyz2key, key2xyz
 
 
 class Octree:
@@ -429,30 +430,50 @@ class Octree:
     else:
       raise ValueError('Unsupported kernel {}'.format(kernel))
 
-  def get_input_feature(self):
-    r''' Gets the initial input features.
+  def get_input_feature(self, feature: str, nempty: bool = False):
+    r''' Returns the initial input feature stored in octree.
+
+    Args:
+      feature (str): A string used to indicate which features to extract from
+          the input octree. If the character :obj:`N` is in :attr:`feature`, the
+          normal signal is extracted (3 channels). Similarly, if :obj:`D` is in
+          :attr:`feature`, the local displacement is extracted (1 channels). If
+          :obj:`L` is in :attr:`feature`, the local coordinates of the averaged
+          points in each octree node is extracted (3 channels). If :attr:`P` is
+          in :attr:`feature`, the global coordinates are extracted (3 channels).
+          If :attr:`F` is in :attr:`feature`, other features (like colors) are
+          extracted (k channels).
+      nempty (bool): If false, gets the features of all octree nodes.
     '''
 
-    # normals
     features = list()
     depth = self.depth
-    has_normal = self.normals[depth] is not None
-    if has_normal:
+    feature = feature.upper()
+    if 'N' in feature:
       features.append(self.normals[depth])
 
-    # local points
-    points = self.points[depth].frac() - 0.5
-    if has_normal:
-      dis = torch.sum(points * self.normals[depth], dim=1, keepdim=True)
-      features.append(dis)
-    else:
-      features.append(points)
+    if 'L' in feature or 'D' in feature:
+      local_points = self.points[depth].frac() - 0.5
 
-    # features
-    if self.features[depth] is not None:
+    if 'D' in feature:
+      dis = torch.sum(local_points * self.normals[depth], dim=1, keepdim=True)
+      features.append(dis)
+
+    if 'L' in feature:
+      features.append(local_points)
+
+    if 'P' in feature:
+      scale = 2 ** (1 - depth)   # normalize [0, 2^depth] -> [-1, 1]
+      global_points = self.points[depth] * scale - 1.0
+      features.append(global_points)
+
+    if 'F' in feature:
       features.append(self.features[depth])
 
-    return torch.cat(features, dim=1)
+    out = torch.cat(features, dim=1)
+    if not nempty:
+      out = ocnn.nn.octree_pad(out, self, depth)
+    return out
 
   def to_points(self, rescale: bool = True):
     r''' Converts averaged points in the octree to a point cloud.
