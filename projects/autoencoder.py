@@ -30,7 +30,6 @@ class AutoEncoderSolver(Solver):
   def get_dataset(self, flags):
     return get_ae_shapenet_dataset(flags)
 
-
   def compute_loss(self, octree: ocnn.octree.Octree, model_out: dict):
     # octree splitting loss
     output = dict()

@@ -50,8 +50,9 @@ class Transform:
     points_in.clip(min=-1, max=1)
     octree_in = self.points2octree(points_in)
 
-    return {'octree': octree_in,    'points': points_in,
+    return {'octree': octree_in, 'points': points_in,
             'octree_gt': octree_gt, 'points_gt': points_gt}
+
 
 class ReadFile:
   def __init__(self, has_normal: bool = True):
