@@ -24,17 +24,12 @@ class AutoEncoderSolver(Solver):
 
   def get_model(self, flags):
     return ocnn.models.AutoEncoder(
-        flags.channel, flags.nout, flags.depth, flags.full_depth,
+        flags.channel, flags.channel_out, flags.depth, flags.full_depth,
         feature=flags.feature)
 
   def get_dataset(self, flags):
     return get_ae_shapenet_dataset(flags)
 
-  def get_ground_truth_signal(self, octree):
-    flags = self.FLAGS.MODEL
-    octree_feature = ocnn.modules.InputFeature('ND', nempty=True)
-    data = octree_feature(octree)
-    return data
 
   def compute_loss(self, octree: ocnn.octree.Octree, model_out: dict):
     # octree splitting loss
@@ -48,7 +43,7 @@ class AutoEncoderSolver(Solver):
 
     # octree regression loss
     signal = model_out['signal']
-    signal_gt = self.get_ground_truth_signal(octree)
+    signal_gt = octree.get_input_feature('ND', nempty=True)
     output['loss_reg'] = torch.mean(torch.sum((signal_gt - signal)**2, dim=1))
 
     # total loss

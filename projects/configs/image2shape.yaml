@@ -8,7 +8,7 @@
 SOLVER:
   gpu: 0,
   run: train
-  best_val: max:mIoU
+  best_val: min:loss
 
   logdir: logs/image2shape/image2shape
   max_epoch: 300
@@ -23,7 +23,7 @@ SOLVER:
 
   # learning rate
   lr_type: poly
-  milestones: (160,240)
+  milestones: (160,240) # not used for `poly`
 
 DATA:
   train:
@@ -42,7 +42,7 @@ DATA:
     filelist: data/ShapeNetV1/filelist/image2shape.train.txt
     batch_size: 32
     shuffle: True
-    num_workers: 0
+    # num_workers: 0
 
   test:
     name: image2shape
@@ -60,7 +60,7 @@ DATA:
     filelist: data/ShapeNetV1/filelist/image2shape.test.txt
     batch_size: 16
     shuffle: False
-    num_workers: 0
+    # num_workers: 0
 
 MODEL:
   name: image2shape

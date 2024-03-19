@@ -8,7 +8,7 @@
 SOLVER:
   gpu: 0,
   run: train
-  best_val: max:mIoU
+  best_val: min:loss
 
   logdir: logs/ae_shapenet/ae
   max_epoch: 300
@@ -23,12 +23,12 @@ SOLVER:
 
   # learning rate
   lr_type: poly
-  milestones: (160,240)
+  milestones: (160,240) # not used for `poly`
 
 DATA:
   train:
     name: shapenet
-    points_scale: 128
+    points_scale: 0.5
 
     # octree building
     depth: 6
@@ -38,15 +38,15 @@ DATA:
     distort: False
 
     # data loading
-    location: data/ae_shapenet/shape.npz
-    filelist: data/ae_shapenet/filelist_train.npz.txt
+    location: data/ShapeNetV1/shape.ply
+    filelist: data/ShapeNetV1/train.txt
     batch_size: 32
     shuffle: True
     # num_workers: 0
 
   test:
     name: shapenet
-    points_scale: 128
+    points_scale: 0.5
 
     # octree building
     depth: 6
@@ -56,8 +56,8 @@ DATA:
     distort: False
 
     # data loading
-    location: data/ae_shapenet/shape.npz
-    filelist: data/ae_shapenet/filelist_test.npz.txt
+    location: data/ShapeNetV1/shape.ply
+    filelist: data/ShapeNetV1/test.txt
     batch_size: 16
     shuffle: False
     # num_workers: 0
@@ -66,6 +66,7 @@ MODEL:
   name: autoencoder
   feature: ND   # N -> Normal (3 channels); D -> Local displacement (1 channel)
   channel: 4
-  nout: 4
+  channel_out: 4
+
   depth: 6
   full_depth: 2

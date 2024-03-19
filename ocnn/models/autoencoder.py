@@ -26,7 +26,7 @@ class AutoEncoder(torch.nn.Module):
   '''
 
   def __init__(self, channel_in: int, channel_out: int, depth: int,
-               full_depth: int = 2, feature: str = 'ND', code_channel: int = 128):
+               full_depth: int = 2, feature: str = 'ND'):
     super().__init__()
     self.channel_in = channel_in
     self.channel_out = channel_out
@@ -34,8 +34,8 @@ class AutoEncoder(torch.nn.Module):
     self.full_depth = full_depth
     self.feature = feature
     self.resblk_num = 2
+    self.code_channel = 128
     self.channels = [512, 512, 256, 256, 128, 128, 32, 32, 16, 16]
-    self.code_channel = code_channel if code_channel > 0 else self.channels[full_depth]
 
     # encoder
     self.conv1 = ocnn.modules.OctreeConvBnRelu(
@@ -68,22 +68,14 @@ class AutoEncoder(torch.nn.Module):
         ocnn.modules.Conv1x1BnRelu(channel_in, num_hidden),
         ocnn.modules.Conv1x1(num_hidden, channel_out, use_bias=True))
 
-  def get_input_feature(self, octree: Octree):
-    r''' Get the input feature from the input `octree`.
-    '''
-
-    octree_feature = ocnn.modules.InputFeature(self.feature, nempty=False)
-    out = octree_feature(octree)
-    assert out.size(1) == self.channel_in
-    return out
-
   def encoder(self, octree: Octree):
     r''' The encoder network of the AutoEncoder.
     '''
 
     convs = dict()
     depth, full_depth = self.depth, self.full_depth
-    data = self.get_input_feature(octree)
+    data = octree.get_input_feature(self.feature, nempty=False)
+    assert data.size(1) == self.channel_in
     convs[depth] = self.conv1(data, octree, depth)
     for i, d in enumerate(range(depth, full_depth-1, -1)):
       convs[d] = self.encoder_blks[i](convs[d], octree, d)
