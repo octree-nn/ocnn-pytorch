@@ -17,7 +17,7 @@ from .utils import ReadPly, Transform
 class ModelNetTransform(Transform):
 
   def preprocess(self, sample: dict, idx: int):
-    points = super().preprocess(sample, idx)
+    sample = super().preprocess(sample, idx)
 
     # Use the following lines to normalize the points into one unit sphere in
     # [-0.8, 0.8] if the shapes have not been normalized in the dataset
@@ -27,7 +27,7 @@ class ModelNetTransform(Transform):
     # points.normalize(bbmin, bbmax, scale=0.8)
     # points.scale(torch.Tensor([0.8, 0.8, 0.8]))
 
-    return points
+    return sample
 
 
 def read_file(filename: str):

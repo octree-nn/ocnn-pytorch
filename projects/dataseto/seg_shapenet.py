@@ -20,13 +20,13 @@ class ShapeNetTransform(Transform):
     xyz = torch.from_numpy(sample['points']).float()
     normal = torch.from_numpy(sample['normals']).float()
     labels = torch.from_numpy(sample['labels']).float()
-    points = Points(xyz, normal, labels=labels)
+    points = Points(xyz, normal, labels=labels.unsqueeze(1))
 
     # !NOTE: Normalize the points into one unit sphere in [-0.8, 0.8]
     bbmin, bbmax = points.bbox()
     points.normalize(bbmin, bbmax, scale=0.8)
 
-    return points
+    return {'points': points}
 
 
 def get_seg_shapenet_dataset(flags):

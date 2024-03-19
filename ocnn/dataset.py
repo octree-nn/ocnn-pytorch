@@ -17,7 +17,7 @@ classes = __all__
 
 class Transform:
   r''' A boilerplate class which transforms an input data for :obj:`ocnn`.
-  The input data is first converted to :class:`Points`, then randomly transformed 
+  The input data is first converted to :class:`Points`, then randomly transformed
   (if enabled), and converted to an :class:`Octree`.
 
   Args:
@@ -26,7 +26,7 @@ class Transform:
         :attr:`full_depth` are forced to be full.
     distort (bool): If true, performs the data augmentation.
     angle (list): A list of 3 float values to generate random rotation angles.
-    interval (list): A list of 3 float values to represent the interval of 
+    interval (list): A list of 3 float values to represent the interval of
         rotation angles.
     scale (float): The maximum relative scale factor.
     uniform (bool): If true, performs uniform scaling.
@@ -59,8 +59,8 @@ class Transform:
   def __call__(self, sample: dict, idx: int):
     r''''''
 
-    points = self.preprocess(sample, idx)
-    output = self.transform(points, idx)
+    output = self.preprocess(sample, idx)
+    output = self.transform(output, idx)
     output['octree'] = self.points2octree(output['points'])
     return output
 
@@ -69,16 +69,17 @@ class Transform:
     transformations, like normalization.
     '''
 
-    xyz = torch.from_numpy(sample['points'])
-    normals = torch.from_numpy(sample['normals'])
-    points = Points(xyz, normals)
-    return points
+    xyz = torch.from_numpy(sample.pop('points'))
+    normals = torch.from_numpy(sample.pop('normals'))
+    sample['points'] = Points(xyz, normals)
+    return sample
 
-  def transform(self, points: Points, idx: int):
+  def transform(self, sample: dict, idx: int):
     r''' Applies the general transformations provided by :obj:`ocnn`.
     '''
 
     # The augmentations including rotation, scaling, and jittering.
+    points = sample['points']
     if self.distort:
       rng_angle, rng_scale, rng_jitter, rnd_flip = self.rnd_parameters()
       points.flip(rnd_flip)
@@ -91,7 +92,8 @@ class Transform:
 
     # !!! NOTE: Clip the point cloud to [-1, 1] before building the octree
     inbox_mask = points.clip(min=-1, max=1)
-    return {'points': points, 'inbox_mask': inbox_mask}
+    sample.update({'points': points, 'inbox_mask': inbox_mask})
+    return sample
 
   def points2octree(self, points: Points):
     r''' Converts the input :attr:`points` to an octree.

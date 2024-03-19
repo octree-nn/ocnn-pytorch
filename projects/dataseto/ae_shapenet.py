@@ -26,7 +26,7 @@ class ShapeNetTransform(Transform):
     points = points * (2.0 / self.points_scale) - 1.0   # scale to [-1.0, 1.0]
 
     point_cloud = Points(points, normals)
-    return point_cloud
+    return {'points': point_cloud}
 
 
 class ReadFile:

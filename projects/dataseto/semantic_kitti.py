@@ -67,8 +67,10 @@ class KittiTransform(Transform):
     labels = sample['labels']
     labels = self.label_map[labels & 0xFFFF].astype(np.float32)
 
-    return Points(torch.from_numpy(xyz), None,
-                  torch.from_numpy(density), torch.from_numpy(labels))
+    points = Points(
+        torch.from_numpy(xyz), None, torch.from_numpy(density),
+        torch.from_numpy(labels).unsqueeze(1))
+    return {'points': points}
 
 
 def read_file(filename):

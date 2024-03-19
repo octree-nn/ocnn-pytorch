@@ -124,15 +124,14 @@ class ScanNetTransform(Transform):
       xyz = elastic_distort(xyz, self.elastic_params)
 
     # construct points
-    points = Points(torch.from_numpy(xyz), torch.from_numpy(sample['normals']),
-                    torch.from_numpy(color), torch.from_numpy(sample['labels']))
+    points = Points(
+        torch.from_numpy(xyz), torch.from_numpy(sample['normals']),
+        torch.from_numpy(color), torch.from_numpy(sample['labels']).unsqueeze(1))
 
     # transform provided by `ocnn`,
     # including rotatation, translation, scaling, and flipping
-    output = self.transform(points, idx)   # points and inbox_mask
-    points, inbox_mask = output['points'], output['inbox_mask']
-
-    return {'points': points, 'inbox_mask': inbox_mask}
+    output = self.transform({'points': points}, idx)  # points & inbox_mask
+    return output
 
 
 def get_scannet_dataset(flags):
