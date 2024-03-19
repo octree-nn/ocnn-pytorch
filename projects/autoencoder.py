@@ -110,16 +110,6 @@ class AutoEncoderSolver(Solver):
     points = torch.split(point_cloud, points_num)
     return points
 
-  @classmethod
-  def update_configs(cls):
-    FLAGS = get_config()
-
-    FLAGS.DATA.train.points_scale = 128.0
-    FLAGS.DATA.test = FLAGS.DATA.train.clone()
-
-    FLAGS.MODEL.depth = 6
-    FLAGS.MODEL.full_depth = 2
-
 
 if __name__ == '__main__':
   AutoEncoderSolver.main()
