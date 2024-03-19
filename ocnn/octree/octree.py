@@ -612,3 +612,25 @@ def merge_octrees(octrees: List['Octree']):
       octree.points[d] = torch.cat(points, dim=0)
 
   return octree
+
+
+def init_octree(depth: int, full_depth: int = 2, batch_size: int = 1,
+                device: Union[torch.device, str] = 'cpu'):
+  r'''
+  Initializes an Octree to :attr:`full_depth`.
+
+  Args:
+    depth (int): The depth of the octree.
+    full_depth (int): The octree layers with a depth small than
+        :attr:`full_depth` are forced to be full.
+    batch_size (int, optional): The batch size.
+    device (torch.device or str): The device to use for computation.
+
+  Returns:
+    Octree: The initialized Octree object.
+  '''
+
+  octree = Octree(depth, full_depth, batch_size, device)
+  for d in range(full_depth+1):
+    octree.octree_grow_full(depth=d)
+  return octree

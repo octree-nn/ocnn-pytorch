@@ -143,16 +143,14 @@ class AutoEncoder(torch.nn.Module):
     r''' Initialize a full octree for decoding.
 
     Args:
-      shape_code (torch.Tensor): The shape code for decoding, used to getting 
+      shape_code (torch.Tensor): The shape code for decoding, used to get
           the `batch_size` and `device` to initialize the output octree.
     '''
 
-    device = shape_code.device
     node_num = 2 ** (3 * self.full_depth)
     batch_size = shape_code.size(0) // node_num
-    octree = Octree(self.depth, self.full_depth, batch_size, device)
-    for d in range(self.full_depth+1):
-      octree.octree_grow_full(depth=d)
+    octree = ocnn.octree.init_octree(
+        self.depth, self.full_depth, batch_size, shape_code.device)
     return octree
 
   def forward(self, octree: Octree, update_octree: bool):
