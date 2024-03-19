@@ -46,6 +46,7 @@ DATA:
 
   test:
     name: shapenet
+    points_scale: 128
 
     # octree building
     depth: 6

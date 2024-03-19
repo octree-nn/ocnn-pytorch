@@ -12,7 +12,7 @@ import numpy as np
 from tqdm import tqdm
 from thsolver import Solver
 
-from datasets import (get_seg_shapenet_dataset, get_scannet_dataset,
+from dataseto import (get_seg_shapenet_dataset, get_scannet_dataset,
                       get_kitti_dataset)
 
 # The following line is to fix `RuntimeError: received 0 items of ancdata`.
