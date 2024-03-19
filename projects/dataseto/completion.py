@@ -5,7 +5,7 @@ import numpy as np
 from ocnn.octree import Octree, Points
 from ocnn.dataset import CollateBatch
 from thsolver import Dataset
-from .ae_shapenet import ReadFile
+from .utils import ReadPly
 
 
 class Transform:
@@ -52,6 +52,20 @@ class Transform:
 
     return {'octree': octree_in,    'points': points_in,
             'octree_gt': octree_gt, 'points_gt': points_gt}
+
+class ReadFile:
+  def __init__(self, has_normal: bool = True):
+    self.has_normal = has_normal
+    self.read_ply = ReadPly(has_normal, has_color=False, has_label=False)
+
+  def __call__(self, filename):
+    if filename.endswith('.npz'):
+      raw = np.load(filename)
+    elif filename.endswith('.ply'):
+      raw = self.read_ply(filename)
+    else:
+      raise ValueError
+    return raw
 
 
 def get_completion_dataset(flags):

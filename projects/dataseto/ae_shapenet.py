@@ -31,17 +31,10 @@ class ShapeNetTransform(Transform):
 
 class ReadFile:
   def __init__(self, has_normal: bool = True):
-    self.has_normal = has_normal
     self.read_ply = ReadPly(has_normal, has_color=False, has_label=False)
 
   def __call__(self, filename):
-    if filename.endswith('.npz'):
-      raw = np.load(filename)
-    elif filename.endswith('.ply'):
-      raw = self.read_ply(filename)
-    else:
-      raise ValueError
-    return raw
+    return self.read_ply(filename + '.ply')
 
 
 def get_ae_shapenet_dataset(flags):

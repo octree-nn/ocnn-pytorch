@@ -38,8 +38,8 @@ DATA:
     distort: False
 
     # data loading
-    location: data/ShapeNetV1/shape.ply
-    filelist: data/ShapeNetV1/train.txt
+    location: data/ShapeNetV1/points.ply
+    filelist: data/ShapeNetV1/filelist/train.txt
     batch_size: 32
     shuffle: True
     # num_workers: 0
@@ -56,8 +56,8 @@ DATA:
     distort: False
 
     # data loading
-    location: data/ShapeNetV1/shape.ply
-    filelist: data/ShapeNetV1/test.txt
+    location: data/ShapeNetV1/points.ply
+    filelist: data/ShapeNetV1/filelist/test.txt
     batch_size: 16
     shuffle: False
     # num_workers: 0
