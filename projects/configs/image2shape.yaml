@@ -1,0 +1,69 @@
+# --------------------------------------------------------
+# Octree-based Sparse Convolutional Neural Networks
+# Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
+# Licensed under The MIT License [see LICENSE for details]
+# Written by Peng-Shuai Wang
+# --------------------------------------------------------
+
+SOLVER:
+  gpu: 0,
+  run: train
+  best_val: max:mIoU
+
+  logdir: logs/image2shape/image2shape
+  max_epoch: 300
+  test_every_epoch: 20
+  log_per_iter: 50
+  ckpt_num: 20
+
+  # optimizer
+  type: adamw
+  weight_decay: 0.01  # default value of adamw
+  lr: 0.001           # default value of adamw
+
+  # learning rate
+  lr_type: poly
+  milestones: (160,240)
+
+DATA:
+  train:
+    name: image2shape
+
+    # octree building
+    depth: 6
+    full_depth: 2
+    points_scale: 0.5
+
+    # no data augmentations
+    distort: False
+
+    # data loading
+    location: data/ShapeNetV1/points.ply
+    filelist: data/ShapeNetV1/filelist/image2shape.train.txt
+    batch_size: 32
+    shuffle: True
+    num_workers: 0
+
+  test:
+    name: image2shape
+
+    # octree building
+    depth: 6
+    full_depth: 2
+    points_scale: 0.5
+
+    # no data augmentations
+    distort: False
+
+    # data loading
+    location: data/ShapeNetV1/points.ply
+    filelist: data/ShapeNetV1/filelist/image2shape.test.txt
+    batch_size: 16
+    shuffle: False
+    num_workers: 0
+
+MODEL:
+  name: image2shape
+  depth: 6
+  full_depth: 2
+  channel_out: 4

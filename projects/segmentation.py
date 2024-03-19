@@ -73,8 +73,9 @@ class SegSolver(Solver):
     query_pts = torch.cat([points.points, points.batch_id], dim=1)
 
     logit = self.model(data, octree, octree.depth, query_pts)
-    label_mask = points.labels > self.FLAGS.LOSS.mask  # filter labels
-    return logit[label_mask], points.labels[label_mask]
+    labels = points.labels.squeeze(1)
+    label_mask = labels > self.FLAGS.LOSS.mask  # filter labels
+    return logit[label_mask], labels[label_mask]
 
   def train_step(self, batch):
     batch = self.process_batch(batch, self.FLAGS.DATA.train)

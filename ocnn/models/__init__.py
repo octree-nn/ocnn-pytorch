@@ -12,6 +12,7 @@ from .unet import UNet
 from .hrnet import HRNet
 from .autoencoder import AutoEncoder
 from .ounet import OUNet
+from .image2shape import Image2Shape
 
 
 __all__ = [
@@ -21,7 +22,8 @@ __all__ = [
     'UNet',
     'HRNet',
     'AutoEncoder',
-    'OUNet'
+    'OUNet',
+    'Image2Shape',
 ]
 
 classes = __all__

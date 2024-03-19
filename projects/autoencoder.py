@@ -114,7 +114,7 @@ class AutoEncoderSolver(Solver):
   def update_configs(cls):
     FLAGS = get_config()
 
-    FLAGS.DATA.train.points_scale = 128
+    FLAGS.DATA.train.points_scale = 128.0
     FLAGS.DATA.test = FLAGS.DATA.train.clone()
 
     FLAGS.MODEL.depth = 6
