@@ -24,7 +24,7 @@ setup(
     packages=find_packages(exclude=['test']),
     include_package_data=True,
     zip_safe=False,
-    install_requires=['torch', 'numpy', 'packaging'],
+    install_requires=['torch', 'torchvision', 'numpy', 'packaging'],
     python_requires='>=3.6',
     license='MIT',
     classifiers=[
