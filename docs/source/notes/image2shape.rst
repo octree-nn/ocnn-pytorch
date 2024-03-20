@@ -5,7 +5,9 @@ Image2Shape
 ShapeNet
 ---------------------------
 
-#. Download the dataset for training and testing.
+#. Download the dataset for training and testing. Clone the
+   latest ``ocnn-pytorch`` repository, and enter the subdirectory ``projects``.
+   Place the dataset in the folder ``data/ShapeNetV1``.
 
 
 #. Run the following command to train the network. The training log and weights
