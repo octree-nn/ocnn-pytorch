@@ -39,7 +39,7 @@ DATA:
 
     # data loading
     location: data/ShapeNetV1/points.ply
-    filelist: data/ShapeNetV1/filelist/image2shape.train.txt
+    filelist: data/ShapeNetV1/filelist/train.txt
     batch_size: 32
     shuffle: True
     # num_workers: 0
@@ -57,7 +57,7 @@ DATA:
 
     # data loading
     location: data/ShapeNetV1/points.ply
-    filelist: data/ShapeNetV1/filelist/image2shape.test.txt
+    filelist: data/ShapeNetV1/filelist/test.txt
     batch_size: 16
     shuffle: False
     # num_workers: 0

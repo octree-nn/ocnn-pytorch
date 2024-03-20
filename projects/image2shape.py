@@ -7,11 +7,10 @@
 
 import os
 import torch
-import torch.nn.functional as F
 import numpy as np
 import ocnn
 
-from ocnn.octree import Octree
+from torchvision.transforms import ToPILImage
 from dataseto import get_image2shape_dataset
 from autoencoder import AutoEncoderSolver
 
@@ -38,22 +37,23 @@ class Image2ShapeSolver(AutoEncoderSolver):
 
   def eval_step(self, batch):
     # forward the model
-    image = batch['image'].cuda(non_blocking=True)
-    output = self.model(image, update_octree=True)
+    image = batch['image']
+    output = self.model(image.cuda(non_blocking=True), update_octree=True)
     points_out = self.octree2pts(output['octree_out'])
 
     # save the output point clouds
-    points_in = batch['points']
     filenames = batch['filename']
     for i, filename in enumerate(filenames):
       pos = filename.rfind('.')
       if pos != -1: filename = filename[:pos]  # remove the suffix
-      filename_in = os.path.join(self.logdir, filename + '.in.xyz')
+      filename_img = os.path.join(self.logdir, filename + '.img.png')
       filename_out = os.path.join(self.logdir, filename + '.out.xyz')
-      os.makedirs(os.path.dirname(filename_in), exist_ok=True)
+      folder = os.path.dirname(filename_img)
+      if not os.path.exists(folder): os.makedirs(folder)
 
       # NOTE: it consumes much time to save point clouds to hard disks
-      points_in[i].save(filename_in)
+      image_pil = ToPILImage()(image[i])  # convert to PIL image
+      image_pil.save(filename_img)
       np.savetxt(filename_out, points_out[i].cpu().numpy(), fmt='%.6f')
 
 

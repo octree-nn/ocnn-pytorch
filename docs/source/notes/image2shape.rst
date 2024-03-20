@@ -24,5 +24,5 @@ ShapeNet
 
       python image2shape.py --config configs/image2shape.yaml             \
              SOLVER.run evaluate  SOLVER.alias eval                       \
-             SOLVER.ckpt logs/image2shape/ae/checkpoints/00300.model.pth
+             SOLVER.ckpt logs/image2shape/image2shape/checkpoints/00300.model.pth
 
