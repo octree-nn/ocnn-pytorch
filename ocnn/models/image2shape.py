@@ -23,19 +23,21 @@ class Image2Shape(torch.nn.Module):
     full_depth (int): The full depth of the octree.
   '''
 
-  def __init__(self, channel_out: int, depth: int, full_depth: int = 2):
+  def __init__(self, channel_out: int, depth: int, full_depth: int = 2,
+               code_channel: int = 32):
     super().__init__()
     self.depth = depth
     self.full_depth = full_depth
     self.channel_out = channel_out
     self.resblk_num = 2
     self.channels = [512, 512, 256, 256, 128, 128, 64, 64, 32, 32]
-    self.code_channel = 8
+    self.code_channel = code_channel
 
     # encoder
     self.resnet18 = resnet18()
     channel = self.code_channel * 2 ** (3 * full_depth)
-    self.resnet18.fc = ocnn.modules.Conv1x1BnRelu(512, channel)
+    # self.resnet18.fc = ocnn.modules.Conv1x1BnRelu(512, channel)
+    self.resnet18.fc = torch.nn.Linear(512, channel, bias=True)
 
     # decoder
     self.channels[full_depth] = self.code_channel  # update `channels`
