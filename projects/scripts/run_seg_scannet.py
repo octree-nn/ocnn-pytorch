@@ -28,8 +28,8 @@ def train():
       'python segmentation.py',
       '--config configs/seg_scannet.yaml',
       'SOLVER.gpu  {},'.format(args.gpu),
-      'SOLVER.alias  {}'.format(args.alias), 
-      'SOLVER.dist_url tcp://localhost:{}'.format(args.port), ]
+      'SOLVER.alias  {}'.format(args.alias),
+      'SOLVER.port {}'.format(args.port), ]
   execute_command(cmds)
 
 
@@ -39,7 +39,7 @@ def train_all():
       '--config configs/seg_scannet.yaml',
       'SOLVER.gpu  {},'.format(args.gpu),
       'SOLVER.alias  {}'.format(args.alias),
-      'SOLVER.dist_url tcp://localhost:{}'.format(args.port), 
+      'SOLVER.port {}'.format(args.port),
       'DATA.train.filelist data/scannet/scannetv2_train_val.txt', ]
   execute_command(cmds)
 
