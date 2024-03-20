@@ -556,6 +556,9 @@ def merge_octrees(octrees: List['Octree']):
 
   Args:
     octrees (List[Octree]): A list of octrees to merge.
+
+  Returns:
+    Octree: The merged octree.
   '''
 
   # init and check
@@ -617,7 +620,7 @@ def merge_octrees(octrees: List['Octree']):
 def init_octree(depth: int, full_depth: int = 2, batch_size: int = 1,
                 device: Union[torch.device, str] = 'cpu'):
   r'''
-  Initializes an Octree to :attr:`full_depth`.
+  Initializes an octree to :attr:`full_depth`.
 
   Args:
     depth (int): The depth of the octree.
