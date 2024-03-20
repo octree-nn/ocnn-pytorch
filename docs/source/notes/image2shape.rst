@@ -9,11 +9,12 @@ ShapeNet
 
 
 #. Run the following command to train the network. The training log and weights
-   can be downloaded `here <todo>`__.
+   can be downloaded `here <todo>`__. The training process takes 14 hours on 4
+   Nvidia 2080 GPUs.
 
    .. code-block:: none
 
-      python image2shape.py --config configs/image2shape.yaml
+      python image2shape.py --config configs/image2shape.yaml SOLVER.gpu 0,1,2,3
 
 
 #. Run the following command to get the predictions on the testing dataest. The
