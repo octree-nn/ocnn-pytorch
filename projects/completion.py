@@ -7,7 +7,7 @@
 
 import ocnn
 
-from dataseto import get_completion_dataset
+from datascts import get_completion_dataset
 from autoencoder import AutoEncoderSolver
 
 
