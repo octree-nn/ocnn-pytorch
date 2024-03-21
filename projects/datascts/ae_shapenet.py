@@ -11,7 +11,8 @@ from ocnn.octree import Points
 from ocnn.dataset import CollateBatch
 from thsolver import Dataset
 
-from .utils import ReadPly, Transform
+from .utils import Transform
+from .image2shape import ReadPoints
 
 
 class ShapeNetTransform(Transform):
@@ -29,17 +30,9 @@ class ShapeNetTransform(Transform):
     return {'points': point_cloud}
 
 
-class ReadFile:
-  def __init__(self, has_normal: bool = True):
-    self.read_ply = ReadPly(has_normal, has_color=False, has_label=False)
-
-  def __call__(self, filename):
-    return self.read_ply(filename + '.ply')
-
-
 def get_ae_shapenet_dataset(flags):
   transform = ShapeNetTransform(flags)
-  read_file = ReadFile(has_normal=True)
+  read_file = ReadPoints(has_normal=True, filetype=flags.filetype)
   collate_batch = CollateBatch(merge_points=False)
   dataset = Dataset(flags.location, flags.filelist, transform,
                     read_file=read_file, in_memory=flags.in_memory)

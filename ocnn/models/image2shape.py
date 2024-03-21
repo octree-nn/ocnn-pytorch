@@ -36,7 +36,6 @@ class Image2Shape(torch.nn.Module):
     # encoder
     self.resnet18 = resnet18()
     channel = self.code_channel * 2 ** (3 * full_depth)
-    # self.resnet18.fc = ocnn.modules.Conv1x1BnRelu(512, channel)
     self.resnet18.fc = torch.nn.Linear(512, channel, bias=True)
 
     # decoder

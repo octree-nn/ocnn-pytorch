@@ -34,19 +34,35 @@ class Image2ShapeTransform(Transform):
     return {'points': point_cloud, 'image': image}
 
 
-class ReadFile:
-  def __init__(self, has_normal: bool = True):
-    self.has_normal = has_normal
+class ReadPoints:
+  def __init__(self, has_normal: bool = True, filetype: str = 'ply'):
     self.read_ply = ReadPly(has_normal, has_color=False, has_label=False)
+    self.filetype = filetype
 
   def __call__(self, filename):
-    # read points from a ply file
-    filename_ply = filename + '.ply'
-    output = self.read_ply(filename_ply)
+    if self.filetype == 'ply':
+      out = self.read_ply(filename + '.ply')
+    elif self.filetype == 'npz':
+      raw = np.load(filename + '.npz')
+      out = {key: raw[key].astype(np.float32) for key in raw.keys()}
+    else:
+      raise ValueError('Unknown file type: ' + self.filetype)
+    return out
+
+
+class ReadFile:
+  def __init__(self, has_normal: bool = True, filetype: str = 'ply'):
+    self.has_normal = has_normal
+    self.filetype = filetype
+    self.read_points = ReadPoints(has_normal, filetype)
+
+  def __call__(self, filename):
+    # read points
+    output = self.read_points(filename)
 
     # read images from a png file
     rnd_idx = np.random.randint(0, 24)
-    folder_img = filename_ply.replace('points.ply', 'renderings')[:-4]
+    folder_img = filename.replace('points.' + self.filetype, 'renderings')
     filename_img = folder_img + ('/rendering/%02d.png' % rnd_idx)
     output['image'] = Image.open(filename_img).convert('RGB')  # rgba -> rgb
     return output
@@ -66,7 +82,7 @@ class Image2ShapeCollateBatch(CollateBatch):
 
 def get_image2shape_dataset(flags):
   transform = Image2ShapeTransform(flags)
-  read_file = ReadFile(has_normal=True)
+  read_file = ReadFile(has_normal=True, filetype=flags.filetype)
   collate_batch = Image2ShapeCollateBatch(merge_points=False)
   dataset = Dataset(flags.location, flags.filelist, transform,
                     read_file=read_file, in_memory=flags.in_memory)

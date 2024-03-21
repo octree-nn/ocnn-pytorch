@@ -1,11 +1,12 @@
 import os
 import trimesh
 import argparse
+import numpy as np
 import trimesh.sample
 from tqdm import tqdm
+from plyfile import PlyData
 
 import utils
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--run', type=str, required=True,
@@ -46,6 +47,33 @@ def mesh2points():
       # save to disk
       filename_ply = os.path.join(pts_path, filename[:-3] + 'ply')
       utils.save_points_to_ply(filename_ply, points, normals)
+
+
+def ply2npz():
+  print('-> Sample points on meshes.')
+  ply_folder = os.path.join(root_folder, 'points.ply')
+  npz_folder = os.path.join(root_folder, 'points.npz')
+
+  for category in categories:
+    print('Processing ' + category)
+    ply_path = os.path.join(ply_folder, category)
+    npz_path = os.path.join(npz_folder, category)
+    os.makedirs(npz_path, exist_ok=True)
+    filenames = sorted(os.listdir(ply_path))
+    for filename in tqdm(filenames, ncols=80):
+      filename_ply = os.path.join(ply_path, filename)
+      points, normals = read_ply(filename_ply)
+      filename_npz = os.path.join(npz_path, filename[:-3] + 'npz')
+      np.savez(filename_npz, points=points.astype(np.float16),
+               normals=normals.astype(np.float16))
+
+
+def read_ply(filename: str):
+  plydata = PlyData.read(filename)
+  vtx = plydata['vertex']
+  points = np.stack([vtx['x'], vtx['y'], vtx['z']], axis=1)
+  normals = np.stack([vtx['nx'], vtx['ny'], vtx['nz']], axis=1)
+  return points, normals
 
 
 def create_filelist():

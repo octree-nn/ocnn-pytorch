@@ -9,6 +9,7 @@ SOLVER:
   gpu: 0,
   run: train
   best_val: min:loss
+  port: 10001         # the port used for multi-gpu training
 
   logdir: logs/ae_shapenet/ae
   max_epoch: 300
@@ -38,8 +39,9 @@ DATA:
     distort: False
 
     # data loading
-    location: data/ShapeNetV1/points.ply
+    location: data/ShapeNetV1/points.npz
     filelist: data/ShapeNetV1/filelist/train.txt
+    filetype: npz  # file type of the point clouds
     batch_size: 32
     shuffle: True
     # num_workers: 0
@@ -56,8 +58,9 @@ DATA:
     distort: False
 
     # data loading
-    location: data/ShapeNetV1/points.ply
+    location: data/ShapeNetV1/points.npz
     filelist: data/ShapeNetV1/filelist/test.txt
+    filetype: npz  # file type of the point clouds
     batch_size: 16
     shuffle: False
     # num_workers: 0
