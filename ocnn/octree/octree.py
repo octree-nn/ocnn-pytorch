@@ -502,7 +502,7 @@ class Octree:
 
     # construct Points
     out = Points(xyz, self.normals[depth], self.features[depth],
-                 batch_id=batch_id, batch_size=batch_size)
+                 batch_id=batch_id.unsqueeze(1), batch_size=batch_size)
     return out
 
   def to(self, device: Union[torch.device, str], non_blocking: bool = False):
