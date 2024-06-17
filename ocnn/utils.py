@@ -186,15 +186,18 @@ def list2str(list_in: list):
   return ''.join(out)
 
 
-def build_example_octree(depth: int = 5, full_depth: int = 2):
-  r''' Builds an example octree on CPU from 3 points.
+def build_example_octree(depth: int = 5, full_depth: int = 2, pt_num: int = 3):
+  r''' Builds an example octree on CPU from at most 3 points.
   '''
   # initialize the point cloud
   points = torch.Tensor([[-1, -1, -1], [0, 0, -1], [0.0625, 0.0625, -1]])
   normals = torch.Tensor([[1, 0, 0], [-1, 0, 0], [0, 1, 0]])
   features = torch.Tensor([[1, -1], [2, -2], [3, -3]])
   labels = torch.Tensor([[0], [2], [2]])
-  point_cloud = ocnn.octree.Points(points, normals, features, labels)
+
+  assert pt_num <= 3 and pt_num > 0
+  point_cloud = ocnn.octree.Points(
+      points[:pt_num], normals[:pt_num], features[:pt_num], labels[:pt_num])
 
   # build octree
   octree = ocnn.octree.Octree(depth, full_depth)
