@@ -494,7 +494,6 @@ class Octree:
     if xyz is None:
       x, y, z, batch_id = self.xyzb(depth, nempty=True)
       xyz = torch.stack([x, y, z], dim=1) + 0.5
-      rescale = True
 
     # normalize xyz to [-1, 1] since the average points are in range [0, 2^d]
     if rescale:
