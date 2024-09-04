@@ -498,7 +498,7 @@ class Octree:
     # normalize xyz to [-1, 1] since the average points are in range [0, 2^d]
     if rescale:
       scale = 2 ** (1 - depth)
-      xyz = self.points[depth] * scale - 1.0
+      xyz = xyz * scale - 1.0
 
     # construct Points
     out = Points(xyz, self.normals[depth], self.features[depth],
