@@ -1,4 +1,3 @@
-import ocnn
 import torch
 import numpy as np
 

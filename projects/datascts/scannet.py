@@ -6,7 +6,6 @@
 # --------------------------------------------------------
 
 
-import ocnn
 import torch
 import random
 import scipy.interpolate
@@ -15,7 +14,6 @@ import numpy as np
 from ocnn.octree import Points
 from ocnn.dataset import CollateBatch
 from thsolver import Dataset
-from typing import List
 
 from .utils import ReadFile, Transform
 
