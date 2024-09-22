@@ -56,8 +56,10 @@ class Points:
       assert self.features.dim() == 2
       assert self.features.size(0) == self.points.size(0)
     if self.labels is not None:
-      assert self.labels.dim() == 2
+      assert self.labels.dim() == 2 or self.labels.dim() == 1
       assert self.labels.size(0) == self.points.size(0)
+      if self.labels.dim() == 1:
+        self.labels = self.labels.unsqueeze(1)
     if self.batch_id is not None:
       assert self.batch_id.dim() == 2 and self.batch_id.size(1) == 1
       assert self.batch_id.size(0) == self.points.size(0)
