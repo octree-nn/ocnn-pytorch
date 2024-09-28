@@ -4,6 +4,7 @@
 
 [![Documentation Status](https://readthedocs.org/projects/ocnn-pytorch/badge/?version=latest)](https://ocnn-pytorch.readthedocs.io/en/latest/?badge=latest)
 [![Downloads](https://static.pepy.tech/badge/ocnn)](https://pepy.tech/project/ocnn)
+[![Downloads](https://static.pepy.tech/badge/ocnn/month)](https://pepy.tech/project/ocnn)
 [![PyPI](https://img.shields.io/pypi/v/ocnn)](https://pypi.org/project/ocnn/)
 
 This repository contains the **pure PyTorch**-based implementation of
