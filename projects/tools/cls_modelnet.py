@@ -13,7 +13,7 @@ import trimesh
 import argparse
 import trimesh.sample
 import numpy as np
-import cyminiball
+# import cyminiball
 from tqdm import tqdm
 
 import utils
@@ -161,13 +161,13 @@ def convert_mesh_to_points():
       radius = (bbmax - bbmin).max() * 0.5 + 1.0e-6
       points = (points - center) * (1.0 / radius)
 
-      # normalize with miniball
-      center, radius2, info = cyminiball.compute(points, details=True)
-      radius = np.sqrt(radius2)
-      if info['is_valid']:
-        points = (points - center) * (1.0 / radius)
-      else:
-        tqdm.write('WARNING: The miniball fails - ' + filename)
+      # # normalize with miniball
+      # center, radius2, info = cyminiball.compute(points, details=True)
+      # radius = np.sqrt(radius2)
+      # if info['is_valid']:
+      #   points = (points - center) * (1.0 / radius)
+      # else:
+      #   tqdm.write('WARNING: The miniball fails - ' + filename)
 
     # save to disk
     filename_ply = os.path.join(ply_folder, filename[:-3] + 'ply')
