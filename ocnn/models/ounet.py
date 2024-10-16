@@ -23,12 +23,13 @@ class OUNet(AutoEncoder):
     self.proj = None  # remove this module used in AutoEncoder
 
   def encoder(self, octree):
-    r''' The encoder network for extracting heirarchy features. 
+    r''' The encoder network for extracting heirarchy features.
     '''
 
     convs = dict()
     depth, full_depth = self.depth, self.full_depth
-    data = self.get_input_feature(octree)
+    data = octree.get_input_feature(self.feature, nempty=False)
+    assert data.size(1) == self.channel_in
     convs[depth] = self.conv1(data, octree, depth)
     for i, d in enumerate(range(depth, full_depth-1, -1)):
       convs[d] = self.encoder_blks[i](convs[d], octree, d)
