@@ -10,7 +10,9 @@ import torch.utils.checkpoint
 
 from ocnn.octree import Octree
 from ocnn.nn import OctreeMaxPool
-from ocnn.modules import Conv1x1BnRelu, OctreeConvBnRelu, Conv1x1Bn, OctreeConvBn
+from ocnn.modules import (Conv1x1BnRelu, OctreeConvBnRelu, Conv1x1Bn,
+                          OctreeConvBn, OctreeConvGnRelu, Conv1x1Gn,
+                          OctreeConvGn,)
 
 
 class OctreeResBlock(torch.nn.Module):
@@ -93,6 +95,38 @@ class OctreeResBlock2(torch.nn.Module):
     conv2 = self.conv3x3b(conv1, octree, depth)
     if self.in_channels != self.out_channels:
       data = self.conv1x1(data)
+    out = self.relu(conv2 + data)
+    return out
+
+
+class OctreeResBlockGn(torch.nn.Module):
+
+  def __init__(self, in_channels: int, out_channels: int, stride: int = 1,
+               bottleneck: int = 4, nempty: bool = False, group: int = 32):
+    super().__init__()
+    self.in_channels = in_channels
+    self.out_channels = out_channels
+    self.stride = stride
+    channelb = int(out_channels / bottleneck)
+
+    if self.stride == 2:
+      self.maxpool = OctreeMaxPool(self.depth)
+    self.conv3x3a = OctreeConvGnRelu(in_channels, channelb, group, nempty=nempty)
+    self.conv3x3b = OctreeConvGn(channelb, out_channels, group, nempty=nempty)
+    if self.in_channels != self.out_channels:
+      self.conv1x1 = Conv1x1Gn(in_channels, out_channels, group)
+    self.relu = torch.nn.ReLU(inplace=True)
+
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''''''
+
+    if self.stride == 2:
+      data = self.maxpool(data, octree, depth)
+      depth = depth - 1
+    conv1 = self.conv3x3a(data, octree, depth)
+    conv2 = self.conv3x3b(conv1, octree, depth)
+    if self.in_channels != self.out_channels:
+      data = self.conv1x1(data, octree, depth)
     out = self.relu(conv2 + data)
     return out
 
