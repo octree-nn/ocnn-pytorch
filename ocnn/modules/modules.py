@@ -9,7 +9,7 @@ import torch
 import torch.utils.checkpoint
 from typing import List
 
-from ocnn.nn import OctreeConv, OctreeDeconv
+from ocnn.nn import OctreeConv, OctreeDeconv, OctreeGroupNorm
 from ocnn.octree import Octree
 
 
@@ -40,7 +40,7 @@ class OctreeConvBn(torch.nn.Module):
     super().__init__()
     self.conv = OctreeConv(
         in_channels, out_channels, kernel_size, stride, nempty)
-    self.bn = torch.nn.BatchNorm1d(out_channels) #, bn_eps, bn_momentum)
+    self.bn = torch.nn.BatchNorm1d(out_channels)
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
     r''''''
@@ -62,7 +62,7 @@ class OctreeConvBnRelu(torch.nn.Module):
     super().__init__()
     self.conv = OctreeConv(
         in_channels, out_channels, kernel_size, stride, nempty)
-    self.bn = torch.nn.BatchNorm1d(out_channels) #, bn_eps, bn_momentum)
+    self.bn = torch.nn.BatchNorm1d(out_channels)
     self.relu = torch.nn.ReLU(inplace=True)
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
@@ -86,7 +86,7 @@ class OctreeDeconvBnRelu(torch.nn.Module):
     super().__init__()
     self.deconv = OctreeDeconv(
         in_channels, out_channels, kernel_size, stride, nempty)
-    self.bn = torch.nn.BatchNorm1d(out_channels) #, bn_eps, bn_momentum)
+    self.bn = torch.nn.BatchNorm1d(out_channels)
     self.relu = torch.nn.ReLU(inplace=True)
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
@@ -123,7 +123,7 @@ class Conv1x1Bn(torch.nn.Module):
   def __init__(self, in_channels: int, out_channels: int):
     super().__init__()
     self.conv = Conv1x1(in_channels, out_channels, use_bias=False)
-    self.bn = torch.nn.BatchNorm1d(out_channels) #, bn_eps, bn_momentum)
+    self.bn = torch.nn.BatchNorm1d(out_channels)
 
   def forward(self, data: torch.Tensor):
     r''''''
@@ -140,7 +140,7 @@ class Conv1x1BnRelu(torch.nn.Module):
   def __init__(self, in_channels: int, out_channels: int):
     super().__init__()
     self.conv = Conv1x1(in_channels, out_channels, use_bias=False)
-    self.bn = torch.nn.BatchNorm1d(out_channels) #, bn_eps, bn_momentum)
+    self.bn = torch.nn.BatchNorm1d(out_channels)
     self.relu = torch.nn.ReLU(inplace=True)
 
   def forward(self, data: torch.Tensor):
@@ -160,7 +160,7 @@ class FcBnRelu(torch.nn.Module):
     super().__init__()
     self.flatten = torch.nn.Flatten(start_dim=1)
     self.fc = torch.nn.Linear(in_channels, out_channels, bias=False)
-    self.bn = torch.nn.BatchNorm1d(out_channels) #, bn_eps, bn_momentum)
+    self.bn = torch.nn.BatchNorm1d(out_channels)
     self.relu = torch.nn.ReLU(inplace=True)
 
   def forward(self, data):
@@ -169,6 +169,116 @@ class FcBnRelu(torch.nn.Module):
     out = self.flatten(data)
     out = self.fc(out)
     out = self.bn(out)
+    out = self.relu(out)
+    return out
+
+
+class OctreeConvGn(torch.nn.Module):
+  r''' A sequence of :class:`OctreeConv` and :obj:`OctreeGroupNorm`.
+
+  Please refer to :class:`ocnn.nn.OctreeConv` for details on the parameters.
+  '''
+
+  def __init__(self, in_channels: int, out_channels: int, group: int,
+               kernel_size: List[int] = [3], stride: int = 1,
+               nempty: bool = False):
+    super().__init__()
+    self.conv = OctreeConv(
+        in_channels, out_channels, kernel_size, stride, nempty)
+    self.gn = OctreeGroupNorm(out_channels, group=group, nempty=nempty)
+
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''''''
+
+    out = self.conv(data, octree, depth)
+    out = self.gn(out, octree, depth)
+    return out
+
+
+class OctreeConvGnRelu(torch.nn.Module):
+  r''' A sequence of :class:`OctreeConv`, :obj:`OctreeGroupNorm`, and :obj:`Relu`.
+
+  Please refer to :class:`ocnn.nn.OctreeConv` for details on the parameters.
+  '''
+
+  def __init__(self, in_channels: int, out_channels: int, group: int,
+               kernel_size: List[int] = [3], stride: int = 1,
+               nempty: bool = False):
+    super().__init__()
+    self.stride = stride
+    self.conv = OctreeConv(
+        in_channels, out_channels, kernel_size, stride, nempty)
+    self.gn = OctreeGroupNorm(out_channels, group=group, nempty=nempty)
+    self.relu = torch.nn.ReLU(inplace=True)
+
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''''''
+
+    out = self.conv(data, octree, depth)
+    out = self.gn(out, octree, depth if self.stride == 1 else depth - 1)
+    out = self.relu(out)
+    return out
+
+
+class OctreeDeconvGnRelu(torch.nn.Module):
+  r''' A sequence of :class:`OctreeDeconv`, :obj:`OctreeGroupNorm`, and :obj:`Relu`.
+
+  Please refer to :class:`ocnn.nn.OctreeConv` for details on the parameters.
+  '''
+
+  def __init__(self, in_channels: int, out_channels: int, group: int,
+               kernel_size: List[int] = [3], stride: int = 1,
+               nempty: bool = False):
+    super().__init__()
+    self.stride = stride
+    self.deconv = OctreeDeconv(
+        in_channels, out_channels, kernel_size, stride, nempty)
+    self.gn = OctreeGroupNorm(out_channels, group=group, nempty=nempty)
+    self.relu = torch.nn.ReLU(inplace=True)
+
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''''''
+
+    out = self.deconv(data, octree, depth)
+    out = self.gn(out, octree, depth if self.stride == 1 else depth + 1)
+    out = self.relu(out)
+    return out
+
+
+class Conv1x1Gn(torch.nn.Module):
+  r''' A sequence of :class:`Conv1x1`, :class:`OctreeGroupNorm`.
+  '''
+
+  def __init__(self, in_channels: int, out_channels: int, group: int,
+               nempty: bool = False):
+    super().__init__()
+    self.conv = Conv1x1(in_channels, out_channels, use_bias=False)
+    self.gn = OctreeGroupNorm(out_channels, group=group, nempty=nempty)
+
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''''''
+
+    out = self.conv(data)
+    out = self.gn(out, octree, depth)
+    return out
+
+
+class Conv1x1GnRelu(torch.nn.Module):
+  r''' A sequence of :class:`Conv1x1`, :class:`OctreeGroupNorm` and :class:`Relu`.
+  '''
+
+  def __init__(self, in_channels: int, out_channels: int, group: int,
+               nempty: bool = False):
+    super().__init__()
+    self.conv = Conv1x1(in_channels, out_channels, use_bias=False)
+    self.gn = OctreeGroupNorm(out_channels, group=group, nempty=nempty)
+    self.relu = torch.nn.ReLU(inplace=True)
+
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''''''
+
+    out = self.conv(data)
+    out = self.gn(out, octree, depth)
     out = self.relu(out)
     return out
 
