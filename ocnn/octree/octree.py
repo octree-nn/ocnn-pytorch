@@ -63,14 +63,14 @@ class Octree:
 
     # octree node numbers in each octree layers.
     # TODO: decide whether to settle them to 'gpu' or not?
-    self.nnum = torch.zeros(num, dtype=torch.int32)
-    self.nnum_nempty = torch.zeros(num, dtype=torch.int32)
+    self.nnum = torch.zeros(num, dtype=torch.long)
+    self.nnum_nempty = torch.zeros(num, dtype=torch.long)
 
     # the following properties are valid after `merge_octrees`.
     # TODO: make them valid after `octree_grow`, `octree_split` and `build_octree`
     batch_size = self.batch_size
-    self.batch_nnum = torch.zeros(num, batch_size, dtype=torch.int32)
-    self.batch_nnum_nempty = torch.zeros(num, batch_size, dtype=torch.int32)
+    self.batch_nnum = torch.zeros(num, batch_size, dtype=torch.long)
+    self.batch_nnum_nempty = torch.zeros(num, batch_size, dtype=torch.long)
 
     # construct the look up tables for neighborhood searching
     device = self.device
@@ -326,7 +326,7 @@ class Octree:
       xyz = xyz.view(-1, 3)                 # (N*27, 3)
       neigh = xyz2key(xyz[:, 0], xyz[:, 1], xyz[:, 2], depth=depth)
 
-      bs = torch.arange(self.batch_size, dtype=torch.int32, device=device)
+      bs = torch.arange(self.batch_size, dtype=torch.long, device=device)
       neigh = neigh + bs.unsqueeze(1) * nnum  # (N*27,) + (B, 1) -> (B, N*27)
 
       bound = 1 << depth
@@ -383,9 +383,10 @@ class Octree:
     # I choose `torch.bucketize` here because it has fewer dimension checks,
     # resulting in slightly better performance according to the docs of
     # pytorch-1.9.1, since `key` is always 1-D sorted sequence.
+    # https://pytorch.org/docs/1.9.1/generated/torch.searchsorted.html
     idx = torch.bucketize(query, key)
 
-    valid = idx < key.shape[0]      # valid if NOT out-of-bound
+    valid = idx < key.shape[0]      # valid if in-bound
     found = key[idx[valid]] == query[valid]
     valid[valid.clone()] = found    # valid if found
     idx[valid.logical_not()] = -1   # set to -1 if invalid
