@@ -7,6 +7,7 @@
 
 import torch
 import torch.nn
+from typing import Optional
 
 from ocnn.octree import Octree
 from ocnn.utils import scatter_add
@@ -84,3 +85,40 @@ class OctreeInstanceNorm(OctreeGroupNorm):
 
   def extra_repr(self) -> str:
     return ('in_channels={}, nempty={}').format(self.in_channels, self.nempty)
+
+
+class OctreeNorm(torch.nn.Module):
+  r''' A normalization layer for the octree. It encapsulates octree-based batch,
+  group and instance normalization.
+  '''
+
+  def __init__(self, in_channels: int, norm_type: str = 'batch_norm',
+               group: int = 32):
+    super().__init__()
+    self.in_channels = in_channels
+    self.norm_type = norm_type
+    self.group = group
+
+    self.min_group_channels = 4
+    if self.min_group_channels * self.group > in_channels:
+      self.group = in_channels // self.min_group_channels
+
+    if self.norm_type == 'batch_norm':
+      self.norm = torch.nn.BatchNorm1d(in_channels)
+    elif self.norm_type == 'group_norm':
+      self.norm = OctreeGroupNorm(in_channels, self.group)
+    elif self.norm_type == 'instance_norm':
+      self.norm = OctreeInstanceNorm(in_channels)
+    else:
+      raise ValueError
+
+  def forward(self, x: torch.Tensor, octree: Optional[Octree] = None,
+              depth: Optional[int] = None):
+    if self.norm_type == 'batch_norm':
+      output = self.norm(x)
+    elif (self.norm_type == 'group_norm' or
+          self.norm_type == 'instance_norm'):
+      output = self.norm(x, octree, depth)
+    else:
+      raise ValueError
+    return output
