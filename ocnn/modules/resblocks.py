@@ -142,9 +142,9 @@ class OctreeResBlocks(torch.nn.Module):
     self.use_checkpoint = use_checkpoint
     channels = [in_channels] + [out_channels] * resblk_num
 
-    self.resblks = torch.nn.ModuleList(
-        [resblk(channels[i], channels[i+1], 1, bottleneck, nempty)
-         for i in range(self.resblk_num)])
+    self.resblks = torch.nn.ModuleList([resblk(
+        channels[i], channels[i+1], 1, bottleneck, nempty)
+        for i in range(self.resblk_num)])
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
     r''''''
