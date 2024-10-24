@@ -290,7 +290,7 @@ class Octree:
     # node number
     nnum = self.nnum_nempty[depth-1] * 8
     self.nnum[depth] = nnum
-    self.nnum_nempty[depth] = nnum
+    self.nnum_nempty[depth] = nnum  # initialize self.nnum_nempty
 
     # update keys
     key = self.key(depth-1, nempty=True)
