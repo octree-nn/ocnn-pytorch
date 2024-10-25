@@ -152,7 +152,7 @@ class OctreeResBlocks(torch.nn.Module):
     for i in range(self.resblk_num):
       if self.use_checkpoint:
         data = torch.utils.checkpoint.checkpoint(
-            self.resblks[i], data, octree, depth)
+            self.resblks[i], data, octree, depth, use_reentrant=False)
       else:
         data = self.resblks[i](data, octree, depth)
     return data
