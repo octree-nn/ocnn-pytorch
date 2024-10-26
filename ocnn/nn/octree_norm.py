@@ -76,8 +76,8 @@ class OctreeGroupNorm(torch.nn.Module):
     return tensor
 
   def extra_repr(self) -> str:
-    return ('in_channels={}, group={}, nempty={}').format(
-            self.in_channels, self.group, self.nempty)  # noqa
+    return ('in_channels={}, group={}, nempty={}, min_group_channels={}').format(
+        self.in_channels, self.group, self.nempty, self.min_group_channels)
 
 
 class OctreeInstanceNorm(OctreeGroupNorm):
@@ -85,7 +85,8 @@ class OctreeInstanceNorm(OctreeGroupNorm):
   '''
 
   def __init__(self, in_channels: int, nempty: bool = False):
-    super().__init__(in_channels=in_channels, group=in_channels, nempty=nempty)
+    super().__init__(in_channels=in_channels, group=in_channels, nempty=nempty,
+                     min_group_channels=1)  # NOTE: group=in_channels
 
   def extra_repr(self) -> str:
     return ('in_channels={}, nempty={}').format(self.in_channels, self.nempty)
