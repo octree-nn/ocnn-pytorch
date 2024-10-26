@@ -7,7 +7,6 @@
 
 import torch
 import torch.nn
-from typing import Optional
 
 import ocnn
 from ocnn.octree import Octree

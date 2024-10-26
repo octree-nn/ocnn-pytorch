@@ -29,7 +29,7 @@ class SegNet(torch.nn.Module):
         [ocnn.modules.OctreeConvBnRelu(channels[i], channels[i+1], nempty=nempty)
          for i in range(stages)])
     self.pools = torch.nn.ModuleList(
-        [ocnn.nn.OctreeMaxPool(nempty, return_indices) for i in range(stages)])
+        [ocnn.nn.OctreeMaxPool(nempty, return_indices) for _ in range(stages)])
 
     self.bottleneck = ocnn.modules.OctreeConvBnRelu(channels[-1], channels[-1])
 
@@ -38,7 +38,7 @@ class SegNet(torch.nn.Module):
         [ocnn.modules.OctreeConvBnRelu(channels[i], channels[i+1], nempty=nempty)
          for i in range(0, stages)])
     self.unpools = torch.nn.ModuleList(
-        [ocnn.nn.OctreeMaxUnpool(nempty) for i in range(stages)])
+        [ocnn.nn.OctreeMaxUnpool(nempty) for _ in range(stages)])
 
     self.octree_interp = ocnn.nn.OctreeInterp(interp, nempty)
     self.header = torch.nn.Sequential(
