@@ -287,6 +287,23 @@ class Octree:
       update_neigh (bool): If True, construct the neighborhood indices.
     '''
 
+    # increase the octree depth if required
+    if depth > self.depth:
+      assert depth == self.depth + 1
+      self.depth = depth
+      self.keys.append(None)
+      self.children.append(None)
+      self.neighs.append(None)
+      self.features.append(None)
+      self.normals.append(None)
+      self.points.append(None)
+      zero = torch.zeros(1, dtype=torch.long)
+      self.nnum = torch.cat([self.nnum, zero])
+      self.nnum_nempty = torch.cat([self.nnum_nempty, zero])
+      zero = zero.view(1, 1)
+      self.batch_nnum = torch.cat([self.batch_nnum, zero], dim=0)
+      self.batch_nnum_nempty = torch.cat([self.batch_nnum_nempty, zero], dim=0)
+
     # node number
     nnum = self.nnum_nempty[depth-1] * 8
     self.nnum[depth] = nnum
