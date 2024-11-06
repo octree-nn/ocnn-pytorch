@@ -35,7 +35,9 @@ class Octree:
     and :obj:`points`, contain only non-empty nodes.
 
   .. note::
-    The point cloud must be in range :obj:`[-1, 1]`.
+    The point cloud must be strictly in range :obj:`[-1, 1]`. A good practice
+    is to normalize it into :obj:`[-0.99, 0.99]` or :obj:`[0.9, 0.9]` to retain
+    some margin.
   '''
 
   def __init__(self, depth: int, full_depth: int = 2, batch_size: int = 1,
@@ -176,7 +178,7 @@ class Octree:
     for d in range(self.depth, self.full_depth, -1):
       # compute parent key, i.e. keys of layer (d -1)
       pkey = node_key >> 3
-      pkey, pidx, pcounts = torch.unique_consecutive(
+      pkey, pidx, _ = torch.unique_consecutive(
           pkey, return_inverse=True, return_counts=True)
 
       # augmented key
