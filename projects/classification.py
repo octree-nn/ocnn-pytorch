@@ -9,7 +9,7 @@ import torch
 import ocnn
 
 from thsolver import Solver
-from datascts import get_modelnet40_dataset
+from datasets import get_modelnet40_dataset
 
 # The following line can be used to fix `RuntimeError: received 0 items of ancdata`.
 # Refer: https://github.com/pytorch/pytorch/issues/973

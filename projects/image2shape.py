@@ -11,7 +11,7 @@ import numpy as np
 import ocnn
 
 from torchvision.transforms import ToPILImage
-from datascts import get_image2shape_dataset
+from datasets import get_image2shape_dataset
 from autoencoder import AutoEncoderSolver
 
 # The following line is to fix `RuntimeError: received 0 items of ancdata`.

@@ -14,6 +14,7 @@ SOLVER:
   logdir: logs/m40/d5
   max_epoch: 300
   test_every_epoch: 5
+  log_per_iter: 50
 
   # lr_type: cos
   weight_decay: 0.0005
