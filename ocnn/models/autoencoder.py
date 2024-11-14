@@ -33,8 +33,9 @@ class AutoEncoder(torch.nn.Module):
     self.full_depth = full_depth
     self.feature = feature
     self.resblk_num = 2
-    self.code_channel = 64  # dim-of-code = code_channel * 2**(3*full_depth)
     self.channels = [512, 512, 256, 256, 128, 128, 32, 32, 16, 16]
+    # dim-of-code = code_channel * 2**(3*full_depth)
+    self.code_channel = self.channels[full_depth]
 
     # encoder
     self.conv1 = ocnn.modules.OctreeConvBnRelu(

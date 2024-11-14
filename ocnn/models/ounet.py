@@ -18,8 +18,7 @@ class OUNet(AutoEncoder):
 
   def __init__(self, channel_in: int, channel_out: int, depth: int,
                full_depth: int = 2, feature: str = 'ND'):
-    super().__init__(channel_in, channel_out, depth, full_depth, feature,
-                     code_channel=-1)  # !set code_channe=-1
+    super().__init__(channel_in, channel_out, depth, full_depth, feature)
     self.proj = None  # remove this module used in AutoEncoder
 
   def encoder(self, octree):

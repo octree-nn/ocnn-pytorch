@@ -12,7 +12,7 @@ import zipfile
 import ssl
 import numpy as np
 from tqdm import tqdm
-from plyfile import PlyData, PlyElement
+from plyfile import PlyData
 
 
 parser = argparse.ArgumentParser()
