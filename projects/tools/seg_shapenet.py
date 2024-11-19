@@ -49,11 +49,14 @@ def download_shapenet_segmentation():
   print('-> Download the dataset')
   if not os.path.exists(root_folder):
     os.makedirs(root_folder)
-  url = 'https://shapenet.cs.stanford.edu/media/' + zip_name + '.zip'
+  # url = 'https://shapenet.cs.stanford.edu/media/' + zip_name + '.zip'
+  url = ('https://huggingface.co/datasets/wangps/shapenet_segmentation/'
+         'resolve/main/%s.zip?download=true') % zip_name
   filename = os.path.join(root_folder, zip_name + '.zip')
   wget.download(url, filename)
 
   # unzip
+  print('\n-> Unzip the dataset')
   with zipfile.ZipFile(filename, 'r') as zip_ref:
     zip_ref.extractall(root_folder)
 
