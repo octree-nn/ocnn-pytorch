@@ -18,7 +18,6 @@ sparse voxels for efficiency and uses the `octree` data structure to organize
 and index these sparse voxels.
 
 The concept of sparse convolution in O-CNN is the same with
-[H-CNN](https://ieeexplore.ieee.org/abstract/document/8580422),
 [SparseConvNet](https://openaccess.thecvf.com/content_cvpr_2018/papers/Graham_3D_Semantic_Segmentation_CVPR_2018_paper.pdf),
 [MinkowskiNet](https://openaccess.thecvf.com/content_CVPR_2019/papers/Choy_4D_Spatio-Temporal_ConvNets_Minkowski_Convolutional_Neural_Networks_CVPR_2019_paper.pdf),
 and [SpConv](https://github.com/traveller59/spconv).
