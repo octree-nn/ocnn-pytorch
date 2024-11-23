@@ -63,9 +63,9 @@ class Points:
     if self.batch_id is not None:
       assert self.batch_id.dim() == 2 or self.batch_id.dim() == 1
       assert self.batch_id.size(0) == self.points.size(0)
-      assert self.batch_id.size(1) == 1
       if self.batch_id.dim() == 1:
         self.batch_id = self.batch_id.unsqueeze(1)
+      assert self.batch_id.size(1) == 1
 
   @property
   def npt(self):
