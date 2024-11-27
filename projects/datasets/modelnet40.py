@@ -44,7 +44,6 @@ def read_file(filename: str):
 def get_modelnet40_dataset(flags):
   transform = ModelNetTransform(flags)
   collate_batch = CollateBatch()
-
   dataset = Dataset(flags.location, flags.filelist, transform,
-                    read_file=read_file, take=flags.take)
+                    read_file, take=flags.take)
   return dataset, collate_batch

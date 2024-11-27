@@ -33,6 +33,5 @@ def get_ae_shapenet_dataset(flags):
   transform = ShapeNetTransform(flags)
   read_file = ReadPoints(has_normal=True, filetype=flags.filetype)
   collate_batch = CollateBatch(merge_points=False)
-  dataset = Dataset(flags.location, flags.filelist, transform,
-                    read_file=read_file, in_memory=flags.in_memory)
+  dataset = Dataset(flags.location, flags.filelist, transform, read_file)
   return dataset, collate_batch

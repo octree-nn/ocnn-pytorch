@@ -84,6 +84,5 @@ def get_image2shape_dataset(flags):
   transform = Image2ShapeTransform(flags)
   read_file = ReadFile(has_normal=True, filetype=flags.filetype)
   collate_batch = Image2ShapeCollateBatch(merge_points=False)
-  dataset = Dataset(flags.location, flags.filelist, transform,
-                    read_file=read_file, in_memory=flags.in_memory)
+  dataset = Dataset(flags.location, flags.filelist, transform, read_file)
   return dataset, collate_batch

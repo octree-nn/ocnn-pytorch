@@ -88,6 +88,5 @@ def read_file(filename):
 def get_kitti_dataset(flags):
   transform = KittiTransform(flags)
   collate_batch = CollateBatch(merge_points=True)
-  dataset = Dataset(flags.location, flags.filelist, transform,
-                    read_file=read_file, in_memory=flags.in_memory)
+  dataset = Dataset(flags.location, flags.filelist, transform, read_file)
   return dataset, collate_batch
