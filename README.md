@@ -9,8 +9,10 @@
 
 This repository contains the **pure PyTorch**-based implementation of
 [O-CNN](https://wang-ps.github.io/O-CNN.html). The code has been tested with
-`Pytorch>=1.6.0`, and `Pytorch>=1.9.0` is preferred. The original implementation
-can be found [here](https://github.com/Microsoft/O-CNN).
+`Pytorch>=1.6.0`, and `Pytorch>=1.9.0` is preferred. The *original* implementation
+can be found [here](https://github.com/Microsoft/O-CNN), which has got
+[![stars - O-CNN](https://img.shields.io/github/stars/microsoft/O-CNN?style=social)](https://github.com/microsoft/O-CNN) and
+[![forks - O-CNN](https://img.shields.io/github/forks/microsoft/O-CNN?style=social)](https://github.com/microsoft/O-CNN).
 
 O-CNN is an octree-based sparse convolutional neural network framework for 3D
 deep learning. O-CNN constrains the CNN storage and computation into non-empty
