@@ -8,9 +8,8 @@
 [![PyPI](https://img.shields.io/pypi/v/ocnn)](https://pypi.org/project/ocnn/)
 
 This repository contains the **pure PyTorch**-based implementation of
-[O-CNN](https://wang-ps.github.io/O-CNN.html). The code has been tested with
-`Pytorch>=1.6.0`, and `Pytorch>=1.9.0` is preferred. The *original* implementation
-can be found [here](https://github.com/Microsoft/O-CNN), which has got
+[O-CNN](https://wang-ps.github.io/O-CNN.html). The code has been tested with `Pytorch>=1.6.0`, and `Pytorch>=1.9.0` is preferred.
+The *original* implementation of O-CNN is based on C++ and CUDA, and can be found [here](https://github.com/Microsoft/O-CNN), which has got
 [![stars - O-CNN](https://img.shields.io/github/stars/microsoft/O-CNN?style=social)](https://github.com/microsoft/O-CNN) and
 [![forks - O-CNN](https://img.shields.io/github/forks/microsoft/O-CNN?style=social)](https://github.com/microsoft/O-CNN).
 
@@ -23,8 +22,13 @@ The concept of sparse convolution in O-CNN is the same with
 [SparseConvNet](https://openaccess.thecvf.com/content_cvpr_2018/papers/Graham_3D_Semantic_Segmentation_CVPR_2018_paper.pdf),
 [MinkowskiNet](https://openaccess.thecvf.com/content_CVPR_2019/papers/Choy_4D_Spatio-Temporal_ConvNets_Minkowski_Convolutional_Neural_Networks_CVPR_2019_paper.pdf),
 and [SpConv](https://github.com/traveller59/spconv).
-The key difference is that our O-CNN uses the `octree` to index the sparse
-voxels, while these 3 works use the `Hash Table`.
+The key difference is that our O-CNN uses `octrees` to index the sparse
+voxels, while these 3 works use `Hash Tables`.
+However, I believe that `octrees` may be the right choice for sparse convolution.
+With `octrees`, I can implement the sparse convolution with pure PyTorch.
+More importantly, with `octrees`, I can also build efficient transformers
+for 3D data -- [OctFormer](https://github.com/octree-nn/octformer), which is almost
+impossible with `Hash Tables`.
 
 Our O-CNN is published in SIGGRAPH 2017, SparseConvNet is published in CVPR 2018,
 and MinkowskiNet is published in
