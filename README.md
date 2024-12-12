@@ -8,37 +8,43 @@
 [![PyPI](https://img.shields.io/pypi/v/ocnn)](https://pypi.org/project/ocnn/)
 
 This repository contains the **pure PyTorch**-based implementation of
-[O-CNN](https://wang-ps.github.io/O-CNN.html). The code has been tested with `Pytorch>=1.6.0`, and `Pytorch>=1.9.0` is preferred.
-The *original* implementation of O-CNN is based on C++ and CUDA, and can be found [here](https://github.com/Microsoft/O-CNN), which has got
+[O-CNN](https://wang-ps.github.io/O-CNN.html). The code has been tested with
+`Pytorch>=1.6.0`, and `Pytorch>=1.9.0` is preferred. The *original*
+implementation of O-CNN is based on C++ and CUDA and can be found
+[here](https://github.com/Microsoft/O-CNN), which has received
 [![stars - O-CNN](https://img.shields.io/github/stars/microsoft/O-CNN?style=social)](https://github.com/microsoft/O-CNN) and
 [![forks - O-CNN](https://img.shields.io/github/forks/microsoft/O-CNN?style=social)](https://github.com/microsoft/O-CNN).
 
-O-CNN is an octree-based sparse convolutional neural network framework for 3D
-deep learning. O-CNN constrains the CNN storage and computation into non-empty
-sparse voxels for efficiency and uses the `octree` data structure to organize
-and index these sparse voxels.
+
+O-CNN is an octree-based 3D convolutional neural network framework for 3D data.
+O-CNN constrains the CNN storage and computation into non-empty sparse voxels
+for efficiency and uses the `octree` data structure to organize and index these
+sparse voxels. Currently, this type of 3D convolution is known as Sparse
+Convolution in the research community.
+
 
 The concept of sparse convolution in O-CNN is the same with
 [SparseConvNet](https://openaccess.thecvf.com/content_cvpr_2018/papers/Graham_3D_Semantic_Segmentation_CVPR_2018_paper.pdf),
-[MinkowskiNet](https://openaccess.thecvf.com/content_CVPR_2019/papers/Choy_4D_Spatio-Temporal_ConvNets_Minkowski_Convolutional_Neural_Networks_CVPR_2019_paper.pdf),
-and [SpConv](https://github.com/traveller59/spconv).
-The key difference is that our O-CNN uses `octrees` to index the sparse
-voxels, while these 3 works use `Hash Tables`.
-However, I believe that `octrees` may be the right choice for sparse convolution.
-With `octrees`, I can implement the sparse convolution with pure PyTorch.
-More importantly, with `octrees`, I can also build efficient transformers
-for 3D data -- [OctFormer](https://github.com/octree-nn/octformer), which is almost
-impossible with `Hash Tables`.
+[MinkowskiNet](https://github.com/NVIDIA/MinkowskiEngine), and
+[SpConv](https://github.com/traveller59/spconv).
+The key difference is that our O-CNN uses `octrees` to index the sparse voxels,
+while these works use `Hash Tables`. However, I believe that `octrees` may be
+the right choice for sparse convolution. With `octrees`, I can implement the
+sparse convolution with pure PyTorch. More importantly, with `octrees`, I can
+also build efficient transformers for 3D data --
+[OctFormer](https://github.com/octree-nn/octformer), which is extremely hard
+with `Hash Tables`.
 
-Our O-CNN is published in SIGGRAPH 2017, SparseConvNet is published in CVPR 2018,
-and MinkowskiNet is published in
-CVPR 2019. Actually, our O-CNN was submitted to SIGGRAPH in the end of 2016 and
-was officially accepted in March, 2017. The camera-ready version of our O-CNN was
-submitted to SIGGRAPH in April, 2017. We just did not post our paper on Arxiv
-during the review process of SIGGRAPH. Therefore, **the idea of constraining CNN
-computation into sparse non-emtpry voxels is first proposed by our O-CNN**.
-Currently, this type of 3D convolution is known as Sparse Convolution in the
-research community.
+
+Our O-CNN is published in SIGGRAPH 2017, SparseConvNet is published in CVPR
+2018, and MinkowskiNet is published in CVPR 2019. Actually, our O-CNN was
+submitted to SIGGRAPH in the end of 2016 and was officially accepted in March, 2017.
+<!-- The camera-ready version of our O-CNN was submitted to SIGGRAPH in April, 2018. -->
+We just did not post our paper on Arxiv during the review process of
+SIGGRAPH. Therefore, **the idea of constraining CNN computation into sparse
+non-emtpry voxels, i.e. the Sparse Convolution,  is first proposed by our
+O-CNN**.
+
 
 ## Key benefits of ocnn-pytorch
 
