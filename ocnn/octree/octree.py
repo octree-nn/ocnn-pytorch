@@ -153,7 +153,9 @@ class Octree:
       point_cloud (Points): The input point cloud.
 
     .. note::
-      Currently, the batch size of the point cloud must be 1.
+    The point cloud must be strictly in range :obj:`[-1, 1]`. A good practice
+    is to normalize it into :obj:`[-0.99, 0.99]` or :obj:`[0.9, 0.9]` to retain
+    some margin.
     '''
 
     self.device = point_cloud.device
