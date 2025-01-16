@@ -45,13 +45,12 @@ Therefore, **the idea of constraining CNN computation into sparse non-emtpry
 voxels, i.e. Sparse Convolution,  is first proposed by our O-CNN**.
 
 
-Inspired by the seminal work [PointCNN](https://arxiv.org/abs/1801.07791) on
-point cloud learning and developed in collaboration with
+Developed in collaboration with authors from [PointCNN](https://arxiv.org/abs/1801.07791),
 [Dr. Yangyan Li](https://yangyan.li/) and [Prof. Baoquan Chen](https://baoquanchen.info/),
-this library is designed to support point clouds from the ground up. The library
-provides essential components for converting raw point clouds into octrees to
-perform convolution operations. Of course, it also supports other 3D data
-formats, such as meshes and volumetric grids, which can be converted into
+this library supports point cloud processing from the ground up.
+The library provides essential components for converting raw point clouds into
+octrees to perform convolution operations. Of course, it also supports other 3D
+data formats, such as meshes and volumetric grids, which can be converted into
 octrees to leverage the library's capabilities.
 
 
