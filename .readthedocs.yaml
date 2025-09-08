@@ -7,6 +7,10 @@
 
 version: 2
 
+sphinx:
+  # Path to your Sphinx configuration file.
+  configuration: docs/source/conf.py
+
 build:
   os: ubuntu-22.04
   tools:
