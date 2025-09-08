@@ -240,6 +240,7 @@ class Points:
 
     # Construct a new Points on the specified device
     points = Points(torch.zeros(1, 3, device=device))
+    points.batch_size = self.batch_size
     points.batch_npt = self.batch_npt
     points.points = self.points.to(device, non_blocking=non_blocking)
     if self.normals is not None:

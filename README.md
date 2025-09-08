@@ -44,10 +44,11 @@ We just did not post our paper on Arxiv during the review process of SIGGRAPH.
 Therefore, **the idea of constraining CNN computation into sparse non-emtpry
 voxels, i.e. Sparse Convolution,  is first proposed by our O-CNN**.
 
-
+<!--
 Developed in collaboration with authors from [PointCNN](https://arxiv.org/abs/1801.07791),
 [Dr. Yangyan Li](https://yangyan.li/) and [Prof. Baoquan Chen](https://baoquanchen.info/),
-this library supports point cloud processing from the ground up.
+-->
+This library supports point cloud processing from the ground up.
 The library provides essential components for converting raw point clouds into
 octrees to perform convolution operations. Of course, it also supports other 3D
 data formats, such as meshes and volumetric grids, which can be converted into
