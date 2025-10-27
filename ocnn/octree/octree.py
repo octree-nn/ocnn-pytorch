@@ -548,10 +548,10 @@ class Octree:
       return [p.to(device, non_blocking=non_blocking)
               if isinstance(p, torch.Tensor) else None for p in prop]
 
-    # Construct a new Octree on the specified device During the initialization,
-    # self.device is used to set up the new Octree, the look-up tables,
-    # including self.lut_kernel, self.lut_parent, and self.lut_child, will be
-    # already created on the correct device.
+    # Construct a new Octree on the specified device.
+    # During the initialization, self.device is used to set up the new Octree,
+    # the look-up tables, including self.lut_kernel, self.lut_parent, and
+    # self.lut_child, will be already created on the correct device.
     octree = Octree(self.depth, self.full_depth, self.batch_size, device)
 
     # Move all the other properties to the specified device
