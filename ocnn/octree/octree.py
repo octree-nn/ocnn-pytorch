@@ -548,15 +548,23 @@ class Octree:
       return [p.to(device, non_blocking=non_blocking)
               if isinstance(p, torch.Tensor) else None for p in prop]
 
-    # Construct a new Octree on the specified device
+    # Construct a new Octree on the specified device During the initialization,
+    # self.device is used to set up the new Octree, the look-up tables,
+    # including self.lut_kernel, self.lut_parent, and self.lut_child, will be
+    # already created on the correct device.
     octree = Octree(self.depth, self.full_depth, self.batch_size, device)
+
+    # Move all the other properties to the specified device
     octree.keys = list_to_device(self.keys)
     octree.children = list_to_device(self.children)
     octree.neighs = list_to_device(self.neighs)
     octree.features = list_to_device(self.features)
     octree.normals = list_to_device(self.normals)
     octree.points = list_to_device(self.points)
-    octree.nnum = self.nnum.clone()  # TODO: whether to move nnum to the self.device?
+
+    # The following are small tensors, keep them on CPU to avoid frequent device
+    # switching, so just clone them.
+    octree.nnum = self.nnum.clone()
     octree.nnum_nempty = self.nnum_nempty.clone()
     octree.batch_nnum = self.batch_nnum.clone()
     octree.batch_nnum_nempty = self.batch_nnum_nempty.clone()
