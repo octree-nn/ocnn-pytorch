@@ -22,10 +22,10 @@ def octree_pad(data: torch.Tensor, octree: Octree, depth: int, val: float = 0.0)
     val (float): The padding value. (Default: :obj:`0.0`)
   '''
 
-  mask = octree.nempty_mask(depth)
+  idx = octree.nempty_index(depth)
   size = (octree.nnum[depth], data.shape[1])  # (N, C)
   out = torch.full(size, val, dtype=data.dtype, device=data.device)
-  out[mask] = data
+  out[idx] = data
   return out
 
 
@@ -35,5 +35,5 @@ def octree_depad(data: torch.Tensor, octree: Octree, depth: int):
   Please refer to :func:`octree_depad` for the meaning of the arguments.
   '''
 
-  mask = octree.nempty_mask(depth)
-  return data[mask]
+  idx = octree.nempty_index(depth)
+  return data[idx]

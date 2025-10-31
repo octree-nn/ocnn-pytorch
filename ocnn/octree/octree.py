@@ -63,8 +63,13 @@ class Octree:
     self.normals = [None] * num
     self.points = [None] * num
 
+    # self.nempty_masks and self.nempty_indices are for handling of non-empty
+    # nodes and are constructed on demand
+    self.nempty_masks = [None] * num
+    self.nempty_indices = [None] * num
+
     # octree node numbers in each octree layers.
-    # TODO: decide whether to settle them to 'gpu' or not?
+    # These are small 1-D tensors; just keep them on CPUs
     self.nnum = torch.zeros(num, dtype=torch.long)
     self.nnum_nempty = torch.zeros(num, dtype=torch.long)
 
@@ -144,7 +149,22 @@ class Octree:
       depth (int): The depth of the octree.
     '''
 
-    return self.children[depth] >= 0
+    if self.nempty_masks[depth] is None:
+      self.nempty_masks[depth] = self.children[depth] >= 0
+    return self.nempty_masks[depth]
+
+  def nempty_index(self, depth: int):
+    r''' Returns the indices of non-empty octree nodes.
+
+    Args:
+      depth (int): The depth of the octree.
+    '''
+
+    if self.nempty_indices[depth] is None:
+      mask = self.nempty_mask(depth)
+      rng = torch.arange(mask.shape[0], device=mask.device, dtype=torch.int32)
+      self.nempty_indices[depth] = rng[mask]
+    return self.nempty_indices[depth]
 
   def build_octree(self, point_cloud: Points):
     r''' Builds an octree from a point cloud.
@@ -240,18 +260,19 @@ class Octree:
 
     # node number
     num = 1 << (3 * depth)
-    self.nnum[depth] = num * self.batch_size
-    self.nnum_nempty[depth] = num * self.batch_size
+    batch_size = self.batch_size
+    self.nnum[depth] = num * batch_size
+    self.nnum_nempty[depth] = num * batch_size
 
     # update key
     key = torch.arange(num, dtype=torch.long, device=self.device)
-    bs = torch.arange(self.batch_size, dtype=torch.long, device=self.device)
+    bs = torch.arange(batch_size, dtype=torch.long, device=self.device)
     key = key.unsqueeze(0) | (bs.unsqueeze(1) << 48)
     self.keys[depth] = key.view(-1)
 
     # update children
     self.children[depth] = torch.arange(
-        num * self.batch_size, dtype=torch.int32, device=self.device)
+        num * batch_size, dtype=torch.int32, device=self.device)
 
     # update neigh if needed
     if update_neigh:
