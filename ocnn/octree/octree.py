@@ -63,8 +63,8 @@ class Octree:
     self.normals = [None] * num
     self.points = [None] * num
 
-    # self.nempty_masks and self.nempty_indices are for handling of non-empty
-    # nodes and are constructed on demand
+    # self.nempty_masks and self.nempty_indices are
+    # for handling of non-empty nodes and are constructed on demand
     self.nempty_masks = [None] * num
     self.nempty_indices = [None] * num
 
@@ -112,8 +112,8 @@ class Octree:
 
     key = self.keys[depth]
     if nempty:
-      mask = self.nempty_mask(depth)
-      key = key[mask]
+      idx = self.nempty_index(depth)
+      key = key[idx]
     return key
 
   def xyzb(self, depth: int, nempty: bool = False):
@@ -137,8 +137,8 @@ class Octree:
 
     batch_id = self.keys[depth] >> 48
     if nempty:
-      mask = self.nempty_mask(depth)
-      batch_id = batch_id[mask]
+      idx = self.nempty_index(depth)
+      batch_id = batch_id[idx]
     return batch_id
 
   def nempty_mask(self, depth: int):
@@ -452,18 +452,18 @@ class Octree:
     if stride == 1:
       neigh = self.neighs[depth]
     elif stride == 2:
-      # clone neigh to avoid self.neigh[depth] being modified
+      # clone neigh to avoid self.neigh[depth] being modified at [$$]
       neigh = self.neighs[depth][::8].clone()
     else:
       raise ValueError('Unsupported stride {}'.format(stride))
 
     if nempty:
-      child = self.children[depth]
       if stride == 1:
-        nempty_node = child >= 0
-        neigh = neigh[nempty_node]
+        idx = self.nempty_index(depth)
+        neigh = neigh[idx]  # create a new tensor `neigh` via indexing
       valid = neigh >= 0
-      neigh[valid] = child[neigh[valid]].long()  # remap the index
+      child = self.children[depth]
+      neigh[valid] = child[neigh[valid]].long()  # remap the index - [$$]
 
     if kernel == '333':
       return neigh
