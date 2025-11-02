@@ -73,7 +73,7 @@ class Octree:
     self.nnum = torch.zeros(num, dtype=torch.long)
     self.nnum_nempty = torch.zeros(num, dtype=torch.long)
 
-    # the following properties are valid after `merge_octrees`.
+    # the following properties are only valid after `merge_octrees`.
     # TODO: make them valid after `octree_grow`, `octree_split` and `build_octree`
     batch_size = self.batch_size
     self.batch_nnum = torch.zeros(num, batch_size, dtype=torch.long)
@@ -141,26 +141,28 @@ class Octree:
       batch_id = batch_id[idx]
     return batch_id
 
-  def nempty_mask(self, depth: int):
+  def nempty_mask(self, depth: int, reset: bool = False):
     r''' Returns a binary mask which indicates whether the cooreponding octree
     node is empty or not.
 
     Args:
       depth (int): The depth of the octree.
+      reset (bool): If True, recomputes the mask.
     '''
 
-    if self.nempty_masks[depth] is None:
+    if self.nempty_masks[depth] is None or reset:
       self.nempty_masks[depth] = self.children[depth] >= 0
     return self.nempty_masks[depth]
 
-  def nempty_index(self, depth: int):
+  def nempty_index(self, depth: int, reset: bool = False):
     r''' Returns the indices of non-empty octree nodes.
 
     Args:
       depth (int): The depth of the octree.
+      reset (bool): If True, recomputes the indices.
     '''
 
-    if self.nempty_indices[depth] is None:
+    if self.nempty_indices[depth] is None or reset:
       mask = self.nempty_mask(depth)
       rng = torch.arange(mask.shape[0], device=mask.device, dtype=torch.int32)
       self.nempty_indices[depth] = rng[mask]
@@ -245,6 +247,9 @@ class Octree:
       features = scatter_add(point_cloud.features, idx, dim=0)
       self.features[d] = features / counts.unsqueeze(1)
 
+    # reset nempty_masks and nempty_indices, which will be updated on demand
+    self.nempty_masks = [None] * (self.depth + 1)
+    self.nempty_indices = [None] * (self.depth + 1)
     return idx
 
   def octree_grow_full(self, depth: int, update_neigh: bool = True):
@@ -273,6 +278,7 @@ class Octree:
     # update children
     self.children[depth] = torch.arange(
         num * batch_size, dtype=torch.int32, device=self.device)
+    # nempty_masks and nempty_indices need not to be reset for full octrees
 
     # update neigh if needed
     if update_neigh:
@@ -302,6 +308,10 @@ class Octree:
     self.children[depth] = children.int()
     self.nnum_nempty[depth] = nnum_nempty
 
+    # reset nempty_masks and nempty_indices
+    self.nempty_masks[depth] = None
+    self.nempty_indices[depth] = None
+
   def octree_grow(self, depth: int, update_neigh: bool = True):
     r''' Grows the octree and updates the relevant properties. And in most
     cases, call :func:`Octree.octree_split` to update the splitting status of
@@ -322,6 +332,8 @@ class Octree:
       self.features.append(None)
       self.normals.append(None)
       self.points.append(None)
+      self.nempty_masks.append(None)
+      self.nempty_indices.append(None)
       zero = torch.zeros(1, dtype=torch.long)
       self.nnum = torch.cat([self.nnum, zero])
       self.nnum_nempty = torch.cat([self.nnum_nempty, zero])
@@ -685,6 +697,6 @@ def init_octree(depth: int, full_depth: int = 2, batch_size: int = 1,
   '''
 
   octree = Octree(depth, full_depth, batch_size, device)
-  for d in range(full_depth+1):
+  for d in range(full_depth + 1):
     octree.octree_grow_full(depth=d)
   return octree

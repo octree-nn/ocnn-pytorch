@@ -66,6 +66,18 @@ class TesOctree(unittest.TestCase):
     for d in range(0, 6):
       self.assertTrue((octree.children[d] == children[d]).all())
 
+    # non-empty mask test
+    for d in range(0, 6):
+      nempty_mask = octree.children[d] >= 0
+      self.assertTrue((octree.nempty_mask(d) == nempty_mask).all())
+
+    # non-empty index test
+    idxs = [
+        torch.Tensor([0]), torch.Tensor([0, 6]), torch.Tensor([0, 8]),
+        torch.Tensor([0, 8]), torch.Tensor([0, 8]), torch.Tensor([0, 8, 14]), ]
+    for d in range(0, 6):
+      self.assertTrue((octree.nempty_index(d) == idxs[d]).all())
+
     # test the signal
     normals = torch.Tensor([[1., 0., 0.], [-1., 0., 0.], [0., 1., 0.]])
     features = torch.Tensor([[1, -1], [2, -2], [3, -3]])
