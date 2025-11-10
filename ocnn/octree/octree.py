@@ -67,7 +67,7 @@ class Octree:
     # for handling of non-empty nodes and are constructed on demand
     self.nempty_masks = [None] * num
     self.nempty_indices = [None] * num
-    # self.nempty_neighs = [None] * num
+    self.nempty_neighs = [None] * num
 
     # octree node numbers in each octree layers.
     # These are small 1-D tensors; just keep them on CPUs
@@ -169,6 +169,33 @@ class Octree:
       self.nempty_indices[depth] = rng[mask]
     return self.nempty_indices[depth]
 
+  def nempty_neigh(self, depth: int, reset: bool = False):
+    r''' Returns the neighborhoods of non-empty octree nodes.
+    Args:
+
+      depth (int): The depth of the octree.
+      reset (bool): If True, recomputes the neighborhoods.
+    '''
+    if self.nempty_neighs[depth] is None or reset:
+      neigh = self.neighs[depth]
+      idx = self.nempty_index(depth)
+      neigh = self.remap_nempty_neigh(neigh[idx], depth)
+      self.nempty_neighs[depth] = neigh
+    return self.nempty_neighs[depth]
+
+  def remap_nempty_neigh(self, neigh: torch.Tensor, depth: int):
+    r''' Remaps the neighborhood indices to the non-empty octree nodes.
+
+    Args:
+      neigh (torch.Tensor): The input neighborhoods with shape :obj:`(N, 27)`.
+      depth (int): The depth of the octree.
+    '''
+
+    valid = neigh >= 0
+    child = self.children[depth]
+    neigh[valid] = child[neigh[valid]].long()  # remap the index
+    return neigh
+
   def build_octree(self, point_cloud: Points):
     r''' Builds an octree from a point cloud.
 
@@ -251,6 +278,7 @@ class Octree:
     # reset nempty_masks and nempty_indices, which will be updated on demand
     self.nempty_masks = [None] * (self.depth + 1)
     self.nempty_indices = [None] * (self.depth + 1)
+    self.nempty_neighs = [None] * (self.depth + 1)
     return idx
 
   def octree_grow_full(self, depth: int, update_neigh: bool = True):
@@ -279,7 +307,9 @@ class Octree:
     # update children
     self.children[depth] = torch.arange(
         num * batch_size, dtype=torch.int32, device=self.device)
-    # nempty_masks and nempty_indices need not to be reset for full octrees
+
+    # nempty_masks, nempty_indices, and nempty_neighs
+    # need not be reset for full octrees
 
     # update neigh if needed
     if update_neigh:
@@ -309,9 +339,11 @@ class Octree:
     self.children[depth] = children.int()
     self.nnum_nempty[depth] = nnum_nempty
 
-    # reset nempty_masks and nempty_indices
+    # reset nempty_masks, nempty_indices, and nempty_neighs as they depend on
+    # children[depth] and are invalid now
     self.nempty_masks[depth] = None
     self.nempty_indices[depth] = None
+    self.nempty_neighs[depth] = None
 
   def octree_grow(self, depth: int, update_neigh: bool = True):
     r''' Grows the octree and updates the relevant properties. And in most
@@ -335,7 +367,7 @@ class Octree:
       self.points.append(None)
       self.nempty_masks.append(None)
       self.nempty_indices.append(None)
-      # self.nempty_neighs.append(None)
+      self.nempty_neighs.append(None)
       zero = torch.zeros(1, dtype=torch.long)
       self.nnum = torch.cat([self.nnum, zero])
       self.nnum_nempty = torch.cat([self.nnum_nempty, zero])
@@ -465,21 +497,17 @@ class Octree:
           octree nodes.
     '''
 
-    if stride == 1:
+    if stride == 1 and not nempty:
       neigh = self.neighs[depth]
-    elif stride == 2:
-      # clone neigh to avoid self.neigh[depth] being modified at [$$]
+    elif stride == 2 and not nempty:
       neigh = self.neighs[depth][::8].clone()
+    elif stride == 1 and nempty:
+      neigh = self.nempty_neigh(depth)
+    elif stride == 2 and nempty:
+      neigh = self.neighs[depth][::8].clone()
+      neigh = self.remap_nempty_neigh(neigh, depth)
     else:
       raise ValueError('Unsupported stride {}'.format(stride))
-
-    if nempty:
-      if stride == 1:
-        idx = self.nempty_index(depth)
-        neigh = neigh[idx]  # create a new tensor `neigh` via indexing
-      valid = neigh >= 0
-      child = self.children[depth]
-      neigh[valid] = child[neigh[valid]].long()  # remap the index - [$$]
 
     if kernel == '333':
       return neigh
