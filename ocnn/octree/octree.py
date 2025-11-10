@@ -435,16 +435,18 @@ class Octree:
     '''
 
     key = self.key(depth, nempty)
-    # `torch.bucketize` is similar to `torch.searchsorted`.
-    # I choose `torch.bucketize` here because it has fewer dimension checks,
-    # resulting in slightly better performance according to the docs of
-    # pytorch-1.9.1, since `key` is always 1-D sorted sequence.
+    idx = torch.searchsorted(key, query)
+
+    # `torch.bucketize` can also be used here; it is similar to
+    # `torch.searchsorted`, and it has fewer dimension checks, resulting in
+    # slightly better performance for 1D sorted sequences according to the docs
+    # of pytorch-1.9.1. `key` is always a 1D sorted sequence.
     # https://pytorch.org/docs/1.9.1/generated/torch.searchsorted.html
-    idx = torch.bucketize(query, key)
+    # idx = torch.bucketize(query, key)
 
     valid = idx < key.shape[0]      # valid if in-bound
-    found = key[idx[valid]] == query[valid]
-    valid[valid.clone()] = found    # valid if found
+    vi = torch.arange(query.shape[0], device=query.device)[valid]
+    valid[vi] = key[idx[vi]] == query[vi]  # valid if found
     idx[valid.logical_not()] = -1   # set to -1 if invalid
     return idx
 
@@ -684,7 +686,7 @@ class Octree:
 
   @classmethod
   def init_octree(cls, depth: int, full_depth: int = 2, batch_size: int = 1,
-                       device: Union[torch.device, str] = 'cpu'):
+                  device: Union[torch.device, str] = 'cpu'):
     r'''
     Initializes an octree to :attr:`full_depth`.
 
