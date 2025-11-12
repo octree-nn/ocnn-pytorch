@@ -53,6 +53,18 @@ Therefore, **the idea of constraining CNN computation into sparse non-empty
 voxels, i.e. Sparse Convolution, is first proposed by our O-CNN**.
 
 
+Key benefits of ocnn-pytorch include:
+
+- **Simplicity**. The ocnn-pytorch is based on pure PyTorch, it is portable and
+  can be installed with a simple command:pip install ocnn. Other sparse
+  convolution frameworks heavily rely on C++ and CUDA, and it is complicated to
+  configure the compiling environment.
+
+- **Efficiency**. The ocnn-pytorch is very efficient compared with other sparse
+  convolution frameworks. It only takes 18 hours to train the network on ScanNet
+  for 600 epochs with 4 V100 GPUs. For reference, under the same training
+  settings, MinkowskiNet 0.4.3 takes 60 hours and MinkowskiNet 0.5.4 takes 30
+  hours.
 
 .. toctree::
   :glob:

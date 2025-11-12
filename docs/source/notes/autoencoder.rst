@@ -8,6 +8,7 @@ ShapeNet
 #. Download the dataset for training and testing `here <https://www.dropbox.com/scl/fi/fxxpdc8pnxjjrnkw1073v/ShapeNetV1.zip?rlkey=1erwximzjmy87ssk30c1gdded&dl=0>`__.
    Clone the  latest ``ocnn-pytorch`` repository, and enter the subdirectory
    ``projects``. Unzip and place the data in the folder ``data/ShapeNetV1``.
+
    .. The dataset is used by our
    .. paper on `shape completion <https://arxiv.org/abs/2006.03762>`__, which
    .. contains point clouds sampled from  meshes of 8 categories in
