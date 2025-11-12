@@ -657,9 +657,11 @@ class Octree:
     '''
 
     # init and check
-    octree = cls(depth=octrees[0].depth, full_depth=octrees[0].full_depth,
-                 batch_size=len(octrees), device=octrees[0].device)
-    for i in range(1, octree.batch_size):
+    depth = octrees[0].depth
+    batch_size = len(octrees)
+    octree = cls(depth=depth, full_depth=octrees[0].full_depth,
+                 batch_size=batch_size, device=octrees[0].device)
+    for i in range(1, batch_size):
       condition = (octrees[i].depth == octree.depth and
                    octrees[i].full_depth == octree.full_depth and
                    octrees[i].device == octree.device)
@@ -667,9 +669,9 @@ class Octree:
 
     # node num
     batch_nnum = torch.stack(
-        [octrees[i].nnum for i in range(octree.batch_size)], dim=1)
+        [octrees[i].nnum for i in range(batch_size)], dim=1)
     batch_nnum_nempty = torch.stack(
-        [octrees[i].nnum_nempty for i in range(octree.batch_size)], dim=1)
+        [octrees[i].nnum_nempty for i in range(batch_size)], dim=1)
     octree.nnum = torch.sum(batch_nnum, dim=1)
     octree.nnum_nempty = torch.sum(batch_nnum_nempty, dim=1)
     octree.batch_nnum = batch_nnum
@@ -677,17 +679,17 @@ class Octree:
     nnum_cum = cumsum(batch_nnum_nempty, dim=1, exclusive=True)
 
     # merge octre properties
-    for d in range(octree.depth+1):
+    for d in range(depth + 1):
       # key
-      keys = [None] * octree.batch_size
-      for i in range(octree.batch_size):
+      keys = [None] * batch_size
+      for i in range(batch_size):
         key = octrees[i].keys[d] & ((1 << 48) - 1)  # clear the highest bits
         keys[i] = key | (i << 48)
       octree.keys[d] = torch.cat(keys, dim=0)
 
       # children
-      children = [None] * octree.batch_size
-      for i in range(octree.batch_size):
+      children = [None] * batch_size
+      for i in range(batch_size):
         # !! `clone` is used here to avoid modifying the original octrees
         child = octrees[i].children[d].clone()
         mask = child >= 0
@@ -696,18 +698,18 @@ class Octree:
       octree.children[d] = torch.cat(children, dim=0)
 
       # features
-      if octrees[0].features[d] is not None and d == octree.depth:
-        features = [octrees[i].features[d] for i in range(octree.batch_size)]
+      if octrees[0].features[d] is not None and d == depth:
+        features = [octrees[i].features[d] for i in range(batch_size)]
         octree.features[d] = torch.cat(features, dim=0)
 
       # normals
-      if octrees[0].normals[d] is not None and d == octree.depth:
-        normals = [octrees[i].normals[d] for i in range(octree.batch_size)]
+      if octrees[0].normals[d] is not None and d == depth:
+        normals = [octrees[i].normals[d] for i in range(batch_size)]
         octree.normals[d] = torch.cat(normals, dim=0)
 
       # points
-      if octrees[0].points[d] is not None and d == octree.depth:
-        points = [octrees[i].points[d] for i in range(octree.batch_size)]
+      if octrees[0].points[d] is not None and d == depth:
+        points = [octrees[i].points[d] for i in range(batch_size)]
         octree.points[d] = torch.cat(points, dim=0)
 
     return octree
