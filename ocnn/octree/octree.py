@@ -616,10 +616,10 @@ class Octree:
               if isinstance(p, torch.Tensor) else None for p in prop]
 
     # Construct a new Octree on the specified device.
-    # During the initialization, self.device is used to set up the new Octree,
-    # the look-up tables, including self.lut_kernel, self.lut_parent, and
-    # self.lut_child, will be already created on the correct device.
-    octree = Octree(self.depth, self.full_depth, self.batch_size, device)
+    # During the initialization, self.device is used to set up the new Octree;
+    # the look-up tables (including self.lut_kernel, self.lut_parent, and
+    # self.lut_child), will be already created on the correct device.
+    octree = Octree.init_like(self, device)
 
     # Move all the other properties to the specified device
     octree.keys = list_to_device(self.keys)
@@ -659,7 +659,7 @@ class Octree:
 
     # init and check
     batch_size = len(octrees)
-    assert batch_size == self.batch_size, 'The batch_size is incorrect'
+    self.batch_size = batch_size
     for i in range(1, batch_size):
       condition = (octrees[i].depth == self.depth and
                    octrees[i].full_depth == self.full_depth and
@@ -714,15 +714,17 @@ class Octree:
     return self
 
   @classmethod
-  def init_like(cls, octree: 'Octree'):
+  def init_like(cls, octree: 'Octree', device: Union[torch.device, str, None] = None):
     r''' Initializes the octree like another octree.
 
     Args:
       octree (Octree): The reference octree.
+      device (torch.device or str): The device to use for computation.
     '''
 
+    device = device if device is not None else octree.device
     return cls(depth=octree.depth, full_depth=octree.full_depth,
-               batch_size=octree.batch_size, device=octree.device)
+               batch_size=octree.batch_size, device=device)
 
   @classmethod
   def init_octree(cls, depth: int, full_depth: int = 2, batch_size: int = 1,
@@ -754,9 +756,7 @@ def merge_octrees(octrees: List['Octree']):
     Use :meth:`Octree.merge_octrees` instead.
   '''
 
-  octree = Octree.init_like(octrees[0])
-  octree.batch_size = len(octrees)  # set the correct batch size
-  return octree.merge_octrees(octrees)
+  return Octree.init_like(octrees[0]).merge_octrees(octrees)
 
 
 def init_octree(depth: int, full_depth: int = 2, batch_size: int = 1,
