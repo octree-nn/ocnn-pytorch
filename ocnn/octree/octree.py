@@ -43,11 +43,13 @@ class Octree:
   def __init__(self, depth: int, full_depth: int = 2, batch_size: int = 1,
                device: Union[torch.device, str] = 'cpu', **kwargs):
     super().__init__()
+    # configurations for initialization
     self.depth = depth
     self.full_depth = full_depth
     self.batch_size = batch_size
     self.device = device
 
+    # properties after building the octree
     self.reset()
 
   def reset(self):
@@ -645,8 +647,7 @@ class Octree:
 
     return self.to('cpu')
 
-  @classmethod
-  def merge_octrees(cls, octrees: List['Octree']):
+  def merge_octrees(self, octrees: List['Octree']):
     r''' Merges a list of octrees into one batch.
 
     Args:
@@ -657,14 +658,12 @@ class Octree:
     '''
 
     # init and check
-    depth = octrees[0].depth
     batch_size = len(octrees)
-    octree = cls(depth=depth, full_depth=octrees[0].full_depth,
-                 batch_size=batch_size, device=octrees[0].device)
+    assert batch_size == self.batch_size, 'The batch_size is incorrect'
     for i in range(1, batch_size):
-      condition = (octrees[i].depth == octree.depth and
-                   octrees[i].full_depth == octree.full_depth and
-                   octrees[i].device == octree.device)
+      condition = (octrees[i].depth == self.depth and
+                   octrees[i].full_depth == self.full_depth and
+                   octrees[i].device == self.device)
       assert condition, 'The check of merge_octrees failed'
 
     # node num
@@ -672,20 +671,20 @@ class Octree:
         [octrees[i].nnum for i in range(batch_size)], dim=1)
     batch_nnum_nempty = torch.stack(
         [octrees[i].nnum_nempty for i in range(batch_size)], dim=1)
-    octree.nnum = torch.sum(batch_nnum, dim=1)
-    octree.nnum_nempty = torch.sum(batch_nnum_nempty, dim=1)
-    octree.batch_nnum = batch_nnum
-    octree.batch_nnum_nempty = batch_nnum_nempty
+    self.nnum = torch.sum(batch_nnum, dim=1)
+    self.nnum_nempty = torch.sum(batch_nnum_nempty, dim=1)
+    self.batch_nnum = batch_nnum
+    self.batch_nnum_nempty = batch_nnum_nempty
     nnum_cum = cumsum(batch_nnum_nempty, dim=1, exclusive=True)
 
     # merge octre properties
-    for d in range(depth + 1):
+    for d in range(self.depth + 1):
       # key
       keys = [None] * batch_size
       for i in range(batch_size):
         key = octrees[i].keys[d] & ((1 << 48) - 1)  # clear the highest bits
         keys[i] = key | (i << 48)
-      octree.keys[d] = torch.cat(keys, dim=0)
+      self.keys[d] = torch.cat(keys, dim=0)
 
       # children
       children = [None] * batch_size
@@ -695,24 +694,35 @@ class Octree:
         mask = child >= 0
         child[mask] = child[mask] + nnum_cum[d, i]
         children[i] = child
-      octree.children[d] = torch.cat(children, dim=0)
+      self.children[d] = torch.cat(children, dim=0)
 
       # features
-      if octrees[0].features[d] is not None and d == depth:
+      if octrees[0].features[d] is not None and d == self.depth:
         features = [octrees[i].features[d] for i in range(batch_size)]
-        octree.features[d] = torch.cat(features, dim=0)
+        self.features[d] = torch.cat(features, dim=0)
 
       # normals
-      if octrees[0].normals[d] is not None and d == depth:
+      if octrees[0].normals[d] is not None and d == self.depth:
         normals = [octrees[i].normals[d] for i in range(batch_size)]
-        octree.normals[d] = torch.cat(normals, dim=0)
+        self.normals[d] = torch.cat(normals, dim=0)
 
       # points
-      if octrees[0].points[d] is not None and d == depth:
+      if octrees[0].points[d] is not None and d == self.depth:
         points = [octrees[i].points[d] for i in range(batch_size)]
-        octree.points[d] = torch.cat(points, dim=0)
+        self.points[d] = torch.cat(points, dim=0)
 
-    return octree
+    return self
+
+  @classmethod
+  def init_like(cls, octree: 'Octree'):
+    r''' Initializes the octree like another octree.
+
+    Args:
+      octree (Octree): The reference octree.
+    '''
+
+    return cls(depth=octree.depth, full_depth=octree.full_depth,
+               batch_size=octree.batch_size, device=octree.device)
 
   @classmethod
   def init_octree(cls, depth: int, full_depth: int = 2, batch_size: int = 1,
@@ -744,7 +754,9 @@ def merge_octrees(octrees: List['Octree']):
     Use :meth:`Octree.merge_octrees` instead.
   '''
 
-  return Octree.merge_octrees(octrees)
+  octree = Octree.init_like(octrees[0])
+  octree.batch_size = len(octrees)  # set the correct batch size
+  return octree.merge_octrees(octrees)
 
 
 def init_octree(depth: int, full_depth: int = 2, batch_size: int = 1,
