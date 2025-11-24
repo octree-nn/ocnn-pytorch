@@ -167,7 +167,7 @@ class Octree:
 
     if self.nempty_indices[depth] is None or reset:
       mask = self.nempty_mask(depth)
-      rng = torch.arange(mask.shape[0], device=mask.device, dtype=torch.int32)
+      rng = torch.arange(mask.shape[0], device=mask.device, dtype=torch.long)
       self.nempty_indices[depth] = rng[mask]
     return self.nempty_indices[depth]
 
@@ -411,7 +411,7 @@ class Octree:
       key = torch.arange(nnum, dtype=torch.long, device=device)
       x, y, z, _ = key2xyz(key, depth)
       xyz = torch.stack([x, y, z], dim=-1)  # (N,  3)
-      grid = range_grid(-1, 1, device)   # (27, 3)
+      grid = range_grid(-1, 1, device)      # (27, 3)
       xyz = xyz.unsqueeze(1) + grid         # (N, 27, 3)
       xyz = xyz.view(-1, 3)                 # (N*27, 3)
       neigh = xyz2key(xyz[:, 0], xyz[:, 1], xyz[:, 2], depth=depth)
