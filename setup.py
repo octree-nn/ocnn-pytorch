@@ -7,7 +7,7 @@
 
 from setuptools import setup, find_packages
 
-__version__ = '2.2.7'
+__version__ = '2.2.8'
 
 with open("README.md", "r", encoding="utf-8") as fid:
   long_description = fid.read()
