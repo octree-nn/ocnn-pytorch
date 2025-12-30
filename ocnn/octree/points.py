@@ -66,6 +66,7 @@ class Points:
       if self.batch_id.dim() == 1:
         self.batch_id = self.batch_id.unsqueeze(1)
       assert self.batch_id.size(1) == 1
+      assert self.batch_size == self.batch_id.max().item() + 1
 
   @property
   def npt(self):
@@ -165,17 +166,14 @@ class Points:
     '''
 
     mask = self.inbox_mask(min + esp, max - esp)
-    tmp = self.__getitem__(mask)
-    self.__dict__.update(tmp.__dict__)
+    self.copy_from(self[mask])
     return mask
 
   def __getitem__(self, mask: torch.Tensor):
     r''' Slices the point cloud according a given :attr:`mask`.
     '''
 
-    dummy_pts = torch.zeros(1, 3, device=self.device)
-    out = Points(dummy_pts, batch_size=self.batch_size)
-
+    out = self.init_points(self.device, self.batch_size)
     out.points = self.points[mask]
     if self.normals is not None:
       out.normals = self.normals[mask]
@@ -239,8 +237,7 @@ class Points:
       return self
 
     # Construct a new Points on the specified device
-    points = Points(torch.zeros(1, 3, device=device))
-    points.batch_size = self.batch_size
+    points = self.init_points(device, self.batch_size)
     points.batch_npt = self.batch_npt
     points.points = self.points.to(device, non_blocking=non_blocking)
     if self.normals is not None:
@@ -295,29 +292,69 @@ class Points:
     else:
       raise ValueError
 
+  def copy_from(self, points: 'Points'):
+    r''' Shallow copy from another Points.
+    '''
+
+    self.points = points.points
+    self.normals = points.normals
+    self.features = points.features
+    self.labels = points.labels
+    self.batch_id = points.batch_id
+    self.batch_size = points.batch_size
+    self.device = points.device
+    self.batch_npt = points.batch_npt
+
+  def merge_points(self, points: List['Points'], update_batch_info: bool = True):
+    r''' Merges a list of points into one batch.
+
+    Args:
+      points (List[Octree]): A list of points to merge. The batch size of each
+          points in the list is assumed to be 1, and the :obj:`batch_size`,
+          :obj:`batch_id`, and :obj:`batch_npt` in the points are ignored.
+    '''
+
+    self.points = torch.cat([p.points for p in points], dim=0)
+    if points[0].normals is not None:
+      self.normals = torch.cat([p.normals for p in points], dim=0)
+    if points[0].features is not None:
+      self.features = torch.cat([p.features for p in points], dim=0)
+    if points[0].labels is not None:
+      self.labels = torch.cat([p.labels for p in points], dim=0)
+    self.device = points[0].device
+
+    if update_batch_info:
+      self.batch_size = len(points)
+      self.batch_npt = torch.Tensor([p.npt for p in points]).long()
+      self.batch_id = torch.cat([p.points.new_full((p.npt, 1), i)
+                                 for i, p in enumerate(points)], dim=0)
+    return self
+
+  @classmethod
+  def init_points(cls, device: Union[torch.device, str, None] = None,
+                  batch_size: int = 1):
+    r''' Initialzes a Points object with dummy data on a specified device.
+
+    Args:
+      device (torch.device or str or None): The device of the Points. If
+          :obj:`None`, the device is set to :obj:`cpu`.
+      batch_size (int): The batch size.
+    '''
+
+    points = torch.zeros(batch_size, 3, device=device)
+    batch_id = (torch.arange(batch_size, device=device).unsqueeze(1)
+                if batch_size > 1 else None)
+    return cls(points, batch_size=batch_size, batch_id=batch_id)
+
 
 def merge_points(points: List['Points'], update_batch_info: bool = True):
-  r''' Merges a list of points into one batch.
+  r''' A wrapper of :meth:`Points.merge_points`.
 
-  Args:
-    points (List[Octree]): A list of points to merge. The batch size of each
-        points in the list is assumed to be 1, and the :obj:`batch_size`,
-        :obj:`batch_id`, and :obj:`batch_npt` in the points are ignored.
+  .. deprecated:: 2.2.7
+     Use :meth:`Points.merge_points` instead.
   '''
 
-  out = Points(torch.zeros(1, 3))
-  out.points = torch.cat([p.points for p in points], dim=0)
-  if points[0].normals is not None:
-    out.normals = torch.cat([p.normals for p in points], dim=0)
-  if points[0].features is not None:
-    out.features = torch.cat([p.features for p in points], dim=0)
-  if points[0].labels is not None:
-    out.labels = torch.cat([p.labels for p in points], dim=0)
-  out.device = points[0].device
-
-  if update_batch_info:
-    out.batch_size = len(points)
-    out.batch_npt = torch.Tensor([p.npt for p in points]).long()
-    out.batch_id = torch.cat([p.points.new_full((p.npt, 1), i)
-                              for i, p in enumerate(points)], dim=0)
+  assert len(points) > 0, 'The input points list is empty.'
+  out = Points.init_points(points[0].device, batch_size=len(points))
+  out.merge_points(points, update_batch_info)
   return out

@@ -752,7 +752,7 @@ class Octree:
 def merge_octrees(octrees: List['Octree']):
   r''' A wrapper of :meth:`Octree.merge_octrees`.
 
-  .. deprecated::
+  .. deprecated:: 2.2.7
     Use :meth:`Octree.merge_octrees` instead.
   '''
 
@@ -763,7 +763,7 @@ def init_octree(depth: int, full_depth: int = 2, batch_size: int = 1,
                 device: Union[torch.device, str] = 'cpu'):
   r''' A wrapper of :meth:`Octree.init_octree`.
 
-  .. deprecated::
+  .. deprecated:: 2.2.7
     Use :meth:`Octree.init_octree` instead.
   '''
 
