@@ -104,6 +104,45 @@ class TestPoints(unittest.TestCase):
     self.assertTrue(torch.equal(
         point_cloud.labels, torch.Tensor([[1]])))
 
+  def test_split_points_unequal_batches(self):
+    points = torch.randn(7, 3)
+    features = torch.randn(7, 8)
+    normals = torch.randn(7, 3)
+    labels = torch.randint(0, 5, (7, 1))
+    batch_id = torch.tensor([0, 0, 1, 1, 1, 2, 2])
+    bnd = [0, 2, 5, 7]
+    point_cloud = ocnn.octree.Points(
+        points, normals, features, labels, batch_id=batch_id, batch_size=3)
+
+    outs = point_cloud.split_points()
+
+    # Verify split sizes: [2, 3, 2]
+    self.assertEqual(len(outs), 3)
+    self.assertEqual(outs[0].npt, 2)
+    self.assertEqual(outs[1].npt, 3)
+    self.assertEqual(outs[2].npt, 2)
+
+    # Verify correct points are in each split
+    for i in range(3):
+      rng = range(bnd[i], bnd[i+1])
+      self.assertTrue(torch.equal(outs[i].points, points[rng]))
+      self.assertTrue(torch.equal(outs[i].normals, normals[rng]))
+      self.assertTrue(torch.equal(outs[i].features, features[rng]))
+      self.assertTrue(torch.equal(outs[i].labels, labels[rng]))
+
+  def test_split_points_single_batch(self):
+    # Test with a single batch (should return list with one element)
+    points = torch.randn(5, 3)
+    batch_id = torch.zeros(5, 1, dtype=torch.long)
+
+    point_cloud = ocnn.octree.Points(
+        points, batch_id=batch_id, batch_size=1)
+
+    out = point_cloud.split_points()
+    self.assertEqual(len(out), 1)
+    self.assertEqual(out[0].npt, 5)
+    self.assertTrue(torch.equal(out[0].points, points))
+
 
 if __name__ == "__main__":
   os.environ['CUDA_VISIBLE_DEVICES'] = '0'

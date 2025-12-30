@@ -8,6 +8,7 @@
 import torch
 import numpy as np
 from typing import Optional, Union, List
+from ocnn.utils import cumsum
 
 
 class Points:
@@ -169,20 +170,20 @@ class Points:
     self.copy_from(self[mask])
     return mask
 
-  def __getitem__(self, mask: torch.Tensor):
-    r''' Slices the point cloud according a given :attr:`mask`.
+  def __getitem__(self, idx):
+    r''' Slices the point cloud according a given :attr:`idx`.
     '''
 
     out = self.init_points(self.device, self.batch_size)
-    out.points = self.points[mask]
+    out.points = self.points[idx]
     if self.normals is not None:
-      out.normals = self.normals[mask]
+      out.normals = self.normals[idx]
     if self.features is not None:
-      out.features = self.features[mask]
+      out.features = self.features[idx]
     if self.labels is not None:
-      out.labels = self.labels[mask]
+      out.labels = self.labels[idx]
     if self.batch_id is not None:
-      out.batch_id = self.batch_id[mask]
+      out.batch_id = self.batch_id[idx]
     return out
 
   def inbox_mask(self, bbmin: Union[float, torch.Tensor] = -1.0,
@@ -329,6 +330,29 @@ class Points:
       self.batch_id = torch.cat([p.points.new_full((p.npt, 1), i)
                                  for i, p in enumerate(points)], dim=0)
     return self
+
+  def split_points(self):
+    r''' Splits the batched points into a list of Points.
+    '''
+
+    if self.batch_npt is None:
+      self.batch_npt = torch.bincount(
+          self.batch_id.squeeze(), minlength=self.batch_size)
+
+    outs = []
+    cs = cumsum(self.batch_npt, dim=0, exclusive=True)
+    for i in range(self.batch_size):
+      rng = range(cs[i], cs[i+1])
+      out = Points.init_points(self.device, batch_size=1)
+      out.points = self.points[rng]
+      if self.normals is not None:
+        out.normals = self.normals[rng]
+      if self.features is not None:
+        out.features = self.features[rng]
+      if self.labels is not None:
+        out.labels = self.labels[rng]
+      outs.append(out)
+    return outs
 
   @classmethod
   def init_points(cls, device: Union[torch.device, str, None] = None,
