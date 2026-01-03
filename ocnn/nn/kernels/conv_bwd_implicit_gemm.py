@@ -12,7 +12,7 @@ from . import config
     key=['LOGN', 'Ci', 'Co', 'V', 'allow_tf32'],
 )
 @triton.jit
-def sparse_submanifold_conv_bwd_input_implicit_gemm_kernel(
+def conv_bwd_input_implicit_gemm_kernel(
     grad_output,
     weight,
     neighbor,
@@ -87,7 +87,7 @@ heuristics = {
 )
 @triton.heuristics(heuristics)
 @triton.jit
-def sparse_submanifold_conv_bwd_weight_implicit_gemm_kernel(
+def conv_bwd_weight_implicit_gemm_kernel(
     grad_output,
     input,
     neighbor,
@@ -151,7 +151,7 @@ def sparse_submanifold_conv_bwd_weight_implicit_gemm_kernel(
     tl.store(grad_weight_ptr, c, mask=grad_weight_mask)
 
 
-def sparse_submanifold_conv_bwd_implicit_gemm(
+def conv_bwd_implicit_gemm(
     grad_output: torch.Tensor,
     input: torch.Tensor,
     weight: torch.Tensor,
@@ -174,7 +174,7 @@ def sparse_submanifold_conv_bwd_implicit_gemm(
         grad_input = torch.empty((N, Ci), device=input.device, dtype=input.dtype)
         # Launch the kernel.
         grid = lambda META: (triton.cdiv(Ci, META['B2']) * triton.cdiv(N, META['B1']),)
-        sparse_submanifold_conv_bwd_input_implicit_gemm_kernel[grid](
+        conv_bwd_input_implicit_gemm_kernel[grid](
             grad_output,
             weight,
             neighbor,
@@ -189,7 +189,7 @@ def sparse_submanifold_conv_bwd_implicit_gemm(
         grad_weight = torch.empty((Co, V, Ci), device=weight.device, dtype=weight.dtype)
         # Launch the kernel.
         grid = lambda META: (triton.cdiv(Co, META['B1']), triton.cdiv(V * Ci, META['BV'] * META['BCi']))
-        sparse_submanifold_conv_bwd_weight_implicit_gemm_kernel[grid](
+        conv_bwd_weight_implicit_gemm_kernel[grid](
             grad_output,
             input,
             neighbor,
