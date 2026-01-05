@@ -66,7 +66,7 @@ def conv_fwd_implicit_gemm_splitk_kernel(
         neighbor_offset_n = tl.load(neighbor + offset_n * V + v).to(tl.int64)                   # (B1,)
         input_ptr = input + bk * BK + (neighbor_offset_n[:, None].to(tl.int64) * Ci + offset_k[None, :])     # (B1, BK)
         # Load the next block of input and weight.
-        neigh_mask = neighbor_offset_n != 0xffffffff
+        neigh_mask = neighbor_offset_n != -1
         k_mask = offset_k < Ci - bk * BK
         input_block = tl.load(input_ptr, mask=neigh_mask[:, None] & k_mask[None, :], other=0.0)
         weight_block = tl.load(weight_ptr, mask=k_mask[:, None], other=0.0)

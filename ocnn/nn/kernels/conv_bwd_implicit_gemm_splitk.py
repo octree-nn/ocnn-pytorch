@@ -67,7 +67,7 @@ def conv_bwd_input_implicit_gemm_splitk_kernel(
         # Calculate pointers to weight matrix.
         weight_ptr = weight + (((offset_k[:, None] + bk * BK) * V + v) * Ci + offset_ci[None, :])           # (BK, B2)
         # Load the next block of input and weight.
-        neigh_mask = neighbor_offset_n != 0xffffffff
+        neigh_mask = neighbor_offset_n != -1
         k_mask = offset_k < Co - bk * BK
         grad_output_block = tl.load(grad_output_ptr, mask=neigh_mask[:, None] & k_mask[None, :], other=0.0)
         weight_block = tl.load(weight_ptr, mask=k_mask[:, None], other=0.0)
@@ -142,11 +142,11 @@ def conv_bwd_weight_implicit_gemm_splitk_kernel(
     for k in range(k_start, k_end):
         mask = offset_k < N - k * BK
         # Calculate pointers to input matrix.
-        input_offset_n = tl.load(neighbor_ptr, mask=mask[:, None], other=0xffffffff)            # (BK, BV)
+        input_offset_n = tl.load(neighbor_ptr, mask=mask[:, None], other=-1)            # (BK, BV)
         input_ptr = input + (input_offset_n[:, :, None].to(tl.int64) * Ci + offset_ci[None, None, :])        # (BK, BV, BCi)
         # Load the next block of input and weight.
         grad_output_block = tl.load(grad_output_ptr, mask=mask[None, :], other=0.0)
-        input_block = tl.load(input_ptr, mask=input_offset_n[:, :, None] != 0xffffffff, other=0.0).reshape(BK, BV * BCi)
+        input_block = tl.load(input_ptr, mask=input_offset_n[:, :, None] != -1, other=0.0).reshape(BK, BV * BCi)
         # Accumulate along the K dimension.
         accumulator = tl.dot(grad_output_block, input_block, accumulator,
                              input_precision='tf32' if allow_tf32 else 'ieee')                  # (B1, B2)
