@@ -37,3 +37,36 @@ def get_batch_octree(device='cpu'):
   octree = ocnn.octree.merge_octrees([octree1, octree2])
   octree.construct_all_neigh()
   return octree
+
+
+def sphere_coords(resolution, channel, device='cuda'):
+  r''' This function generates random features and integer coordinates for
+  voxels on a thin spherical shell inside a cubic grid of resolution
+  `res`. It iterates in n^3 chunks to keep memory bounded, building 3D
+  meshes via `torch.meshgrid` and shifting them into global coordinates.
+
+  Args:
+    resolution: int
+      The resolution of the cubic grid.
+    channel: int
+      The number of feature channels.
+    device: str
+      The device where the tensors are allocated.
+  '''
+
+  n = 128
+  out = []
+  for i in range(0, resolution, n):
+    for j in range(0, resolution, n):
+      for k in range(0, resolution, n):
+        block = torch.stack(torch.meshgrid(
+            torch.arange(i, min(i + n, resolution), device=device),
+            torch.arange(j, min(j + n, resolution), device=device),
+            torch.arange(k, min(k + n, resolution), device=device),
+            indexing='ij'), dim=-1).int()
+        dist = ((block.float() - resolution / 2 + 0.5) ** 2).sum(dim=-1).sqrt()
+        active = (dist <= resolution / 2) & (dist >= resolution / 2 - 1.25)
+        out.append(block[active])
+  pos = torch.cat(out, dim=0)
+  feature = torch.randn(pos.shape[0], channel, device=device)
+  return pos, feature
