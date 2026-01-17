@@ -9,10 +9,9 @@ import triton
 import time
 import inspect
 from filelock import FileLock
-from .. import (
-    AUTOSAVE_AUTOTUNE_CACHE,
-    AUTOTUNE_CACHE_PATH,
-)
+
+AUTOSAVE_AUTOTUNE_CACHE = 1
+AUTOTUNE_CACHE_PATH = os.path.expanduser('~/.ocnnconvt/autotune_cache.json')
 
 
 class TritonPersistentCacheAutotuner(triton.runtime.Autotuner):
@@ -205,7 +204,7 @@ class PersistentCacheAutoTuner:
     ):
         """
         AutoTuner is a wrapper class for a kernel that automatically tunes the kernel parameters to achieve the best performance.
-        
+
         Args:
             kernel: A callable object that takes in input arguments and returns the output.
             configs: A list of Config objects that define the possible kernel parameters and their values.
@@ -226,24 +225,24 @@ class PersistentCacheAutoTuner:
         self.key_fn = key_fn
         self.warmup = warmup
         self.runs = runs
-        self.verbose = verbose or os.getenv('FLEX_GEMM_AUTOTUNER_VERBOSE', '0') == '1'
+        self.verbose = verbose
         self.kernel_arg_names = inspect.getfullargspec(kernel).args
         self.cache = {}
-        
+
     def _args_to_kwargs(self, args, kwargs):
         # Convert args to kwargs
         arg_names = self.kernel_arg_names
         arg_dict = dict(zip(arg_names, args))
         arg_dict.update(kwargs)
         return arg_dict
-    
+
     def __call__(self, *args, **kwargs):
         arg_dict = self._args_to_kwargs(args, kwargs)
-        
+
         # Determine key
         key = self.key_fn(*args, **kwargs) if self.key_fn else tuple(arg_dict[k] for k in self.key)
         key = str(key)
-        
+
         # If key changes, rerun autotune
         used_cached_result = True
         if key not in self.cache:
@@ -257,17 +256,17 @@ class PersistentCacheAutoTuner:
             if self.verbose:
                 print(f"Best config for {self.kernel.__name__} with key {key}: {best_config}")
             self.cache[key] = best_config
-            
+
         if AUTOSAVE_AUTOTUNE_CACHE and not used_cached_result:
             save_autotune_cache()
-        
+
         # Run the kernel with the best config
         return self.kernel(*args, **kwargs, **self.cache[key])
-    
+
     def _benchmark(self, args, kwargs, configs):
         best_time = float('inf')
         best_config = None
-        
+
         if len(configs) == 1:
             best_config = configs[0]
         else:
@@ -287,9 +286,9 @@ class PersistentCacheAutoTuner:
                 if elapsed < best_time:
                     best_time = elapsed
                     best_config = config
-        
+
         return best_config
-    
+
 
 def autotune(
     configs=None,
@@ -322,7 +321,7 @@ def walk_package(package_name, fn):
             walk_package(full_module_name, fn)
         else:
             fn(full_module_name)
-            
+
 
 def get_autotune_cache():
     cache = {}
@@ -339,7 +338,7 @@ def get_autotune_cache():
             elif isinstance(attr, TritonPersistentCacheAutotuner):
                 cache[device_name][cache_key] = {k: v.__dict__ for k, v in attr.cache.items()}
 
-    walk_package('flex_gemm', save_cache)
+    walk_package('ocnn.nn.kernels', save_cache)
 
     return cache
 
@@ -406,4 +405,4 @@ def load_autotune_cache(path_or_cache=None):
                         attr.cache[k] = triton.runtime.Config(None)
                         attr.cache[k].__dict__.update(v)
 
-    walk_package('flex_gemm', load_cache)
+    walk_package('ocnn.nn.kernels', load_cache)
