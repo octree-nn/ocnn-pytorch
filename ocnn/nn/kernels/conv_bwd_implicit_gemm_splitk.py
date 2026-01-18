@@ -288,6 +288,7 @@ def conv_bwd_implicit_gemm_splitk(
     weight: torch.Tensor,
     bias: torch.Tensor,
     neighbor: torch.Tensor,
+    needs_input_grad,
 ) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]:
     assert grad_output.is_contiguous(), "Matrix grad_output must be contiguous"
     assert input.shape[1] == weight.shape[2], "Incompatible dimensions"
@@ -300,7 +301,7 @@ def conv_bwd_implicit_gemm_splitk(
     grad_input, grad_weight, grad_bias = None, None, None
 
     # Grad for input
-    if input.requires_grad:
+    if needs_input_grad[0]:
         grad_input = conv_bwd_input_implicit_gemm_splitk(
             grad_output,
             weight,
@@ -308,7 +309,7 @@ def conv_bwd_implicit_gemm_splitk(
         )
 
     # Grad for weight
-    if weight.requires_grad:
+    if needs_input_grad[1]:
         grad_weight = conv_bwd_weight_implicit_gemm_splitk(
             grad_output,
             input,
@@ -316,7 +317,7 @@ def conv_bwd_implicit_gemm_splitk(
         )
 
     # Grad for bias
-    if bias is not None and bias.requires_grad:
+    if needs_input_grad[2]:
         grad_bias = grad_output.sum(0)
 
     return grad_input, grad_weight, grad_bias

@@ -35,9 +35,10 @@ class OctreeConvTritonFunction(Function):
   def backward(ctx, grad):
     data, weights, bias, neigh = ctx.saved_tensors
     grad = grad.contiguous()
-    grad_out = conv_bwd_implicit_gemm_splitk(grad, data, weights, bias, neigh,)
-    grad_out[1] = grad_out[1].permute(1, 2, 0)      # (Co,V,Ci) -> (V,Ci,Co)
-    return grad_out + (None,)
+    grad_input, grad_weight, grad_bias = conv_bwd_implicit_gemm_splitk(
+        grad, data, weights, bias, neigh, ctx.needs_input_grad)
+    grad_weight = grad_weight.permute(1, 2, 0)      # (Co,V,Ci) -> (V,Ci,Co)
+    return grad_input, grad_weight, grad_bias, None
 
 
 # alias

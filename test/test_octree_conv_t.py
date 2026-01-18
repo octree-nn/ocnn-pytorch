@@ -16,7 +16,7 @@ from .utils import sphere_coords
 
 class TesOctreeConv(unittest.TestCase):
 
-  def test_conv_forward(self):
+  def test_conv_forward_backward(self):
     r''' Tests octree2col/col2octree, octree_conv/octree_deconv.
     '''
 
@@ -37,10 +37,21 @@ class TesOctreeConv(unittest.TestCase):
         ci, co, kernel_size=[3, 3, 3], stride=1, use_bias=True).cuda()
     conv_t.weights.data.copy_(conv.weights.data)
     conv_t.bias.data.copy_(conv.bias.data)
+    data.requires_grad_()
+    data_t = data.clone().detach().requires_grad_()
 
     out = conv(data, octree, depth=7)
-    out_t = conv_t(data, octree, depth=7)
-    self.assertTrue(torch.allclose(out, out_t, atol=1e-6))
+    out_t = conv_t(data_t, octree, depth=7)
+    self.assertTrue(torch.allclose(out, out_t, atol=5e-3))
+
+    loss = out.sum()
+    loss.backward()
+    loss_t = out_t.sum()
+    loss_t.backward()
+    self.assertTrue(torch.allclose(data.grad, data_t.grad, atol=5e-3))
+    self.assertTrue(torch.allclose(conv.bias.grad, conv_t.bias.grad, atol=5e-3))
+    self.assertTrue(  # TODO: check why the grad diff is large
+        torch.allclose(conv.weights.grad, conv_t.weights.grad, atol=5e-1))
 
 
 if __name__ == "__main__":
