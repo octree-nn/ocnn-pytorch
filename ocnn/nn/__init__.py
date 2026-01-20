@@ -4,6 +4,9 @@
 # Licensed under The MIT License [see LICENSE for details]
 # Written by Peng-Shuai Wang
 # --------------------------------------------------------
+from flex_gemm.kernels.triton.spconv.config import _kernel_config
+
+_kernel_config.configure(allow_tf32=False, invalid_neigh=-1)
 
 from .octree2vox import octree2voxel, Octree2Voxel
 from .octree2col import octree2col, col2octree
@@ -21,7 +24,7 @@ from .octree_norm import (OctreeBatchNorm, OctreeGroupNorm,
                           OctreeInstanceNorm, OctreeNorm)
 from .octree_drop import OctreeDropPath
 from .octree_align import search_value, octree_align
-from .octree_conv_t import OctreeConvTriton
+from .octree_conv_t import OctreeConvTriton, OctreeDeConvTriton
 
 # alias
 OctreeConvT = OctreeConvTriton
@@ -42,7 +45,7 @@ __all__ = [
     'OctreeInstanceNorm', 'OctreeBatchNorm', 'OctreeGroupNorm', 'OctreeNorm',
     'OctreeDropPath',
     'search_value', 'octree_align',
-    'OctreeConvTriton', 'OctreeConvT'
+    'OctreeConvTriton', 'OctreeConvT', 'OctreeDeConvTriton'
 ]
 
 classes = __all__

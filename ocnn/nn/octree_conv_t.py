@@ -6,73 +6,62 @@
 # --------------------------------------------------------
 
 import torch
-import torch.nn
-from torch.autograd import Function
-from typing import List
-
+from .implicit_gemm import (
+  flex_gemm_backward_weight_implicit,
+  flex_gemm_forward_implicit,
+)
+from typing import List, Optional
+from ocnn.utils import resize_with_last_val, list2str
 from ocnn.octree import Octree
-from ocnn.utils import xavier_uniform_, resize_with_last_val, list2str
-from .kernels import conv_fwd_implicit_gemm_splitk, conv_bwd_implicit_gemm_splitk
+from .octree_pad import octree_pad, octree_depad
 
 
-class OctreeConvTritonFunction(Function):
-  r''' Wrap the octree convolution for auto-diff.
-  '''
+class _flexible_gemm(torch.autograd.Function):
+  @staticmethod
+  def setup_context(ctx, inputs, output):
+    data, weight, neighbour, inv_neighbour = inputs
+    ctx.save_for_backward(data, weight, neighbour, inv_neighbour)
 
   @staticmethod
-  def forward(ctx, data: torch.Tensor, weights: torch.Tensor, bias: torch.Tensor,
-              neigh: torch.Tensor):
-    data = data.contiguous()
-    weights = weights.permute(2, 0, 1).contiguous()  # (V,Ci,Co) -> (Co,V,Ci)
-    if bias is not None:
-      bias = bias.contiguous()
-
-    out = conv_fwd_implicit_gemm_splitk(data, weights, bias, neigh)
-    ctx.save_for_backward(data, weights, bias, neigh)
-    return out
+  def forward(data, weight, neighbour, inv_neighbour):
+    return flex_gemm_forward_implicit(data, weight, None, neighbour)
 
   @staticmethod
-  def backward(ctx, grad):
-    data, weights, bias, neigh = ctx.saved_tensors
-    grad = grad.contiguous()
-    grad_input, grad_weight, grad_bias = conv_bwd_implicit_gemm_splitk(
-        grad, data, weights, bias, neigh, ctx.needs_input_grad)
-    grad_weight = grad_weight.permute(1, 2, 0)      # (Co,V,Ci) -> (V,Ci,Co)
-    return grad_input, grad_weight, grad_bias, None
+  def backward(ctx, upstream_grad):
+    data, weight, neighbour, inv_neighbour = ctx.saved_tensors
+    grad_data, grad_weight = None, None
+    if ctx.needs_input_grad[0] or ctx.needs_input_grad[1]:
+      upstream_grad = upstream_grad.contiguous()
+    if ctx.needs_input_grad[0]:
+      grad_data = flex_gemm_forward_implicit(
+        upstream_grad, weight.permute(2, 1, 0).contiguous(), None, inv_neighbour
+      )
+    if ctx.needs_input_grad[1]:
+      grad_weight = flex_gemm_backward_weight_implicit(
+        upstream_grad, data, neighbour
+      )
+    return grad_data, grad_weight, None, None
 
 
-# alias
-octree_conv_triton = OctreeConvTritonFunction.apply
+def flexible_gemm(
+  data: torch.Tensor,
+  weight: torch.Tensor,
+  neighbour: torch.Tensor,
+  inv_neighbour: torch.Tensor,
+):
+  return _flexible_gemm.apply(data, weight, neighbour, inv_neighbour)
 
 
 class OctreeConvTriton(torch.nn.Module):
-  r''' Performs octree convolution.
-
-  Args:
-    in_channels (int): Number of input channels.
-    out_channels (int): Number of output channels.
-    kernel_size (List(int)): The kernel shape, choose from :obj:`[3]`, :obj:`[2]`,
-        :obj:`[3,3,3]`, :obj:`[3,1,1]`, :obj:`[1,3,1]`, :obj:`[1,1,3]`,
-        :obj:`[2,2,2]`, :obj:`[3,3,1]`, :obj:`[1,3,3]`, and :obj:`[3,1,3]`.
-    stride (int): The stride of the convolution.
-    nempty (bool): If True, only performs the convolution on non-empty
-        octree nodes.
-    use_bias (bool): If True, add a bias term to the convolution.
-
-  .. note::
-    Each non-empty octree node has exactly 8 children nodes, among which some
-    children nodes are non-empty and some are empty. If :attr:`nempty` is true,
-    the convolution is performed on non-empty octree nodes only, which is exactly
-    the same as SparseConvNet and MinkowsiNet; if :attr:`nempty` is false, the
-    convolution is performed on all octree nodes, which is essential for shape
-    reconstruction tasks and can also be used in classification and segmentation
-    (with slightly better performance and larger memory cost).
-  '''
-
-  def __init__(self, in_channels: int, out_channels: int,
-               kernel_size: List[int] = [3], stride: int = 1,
-               nempty: bool = False, direct_method: bool = False,
-               use_bias: bool = False, max_buffer: int = int(2e8)):
+  def __init__(
+    self,
+    in_channels: int,
+    out_channels: int,
+    kernel_size: List[int] = [3],
+    stride: int = 1,
+    nempty: bool = False,
+    use_bias: bool = False,
+  ):
     super().__init__()
     self.in_channels = in_channels
     self.out_channels = out_channels
@@ -81,38 +70,107 @@ class OctreeConvTriton(torch.nn.Module):
     self.stride = stride
     self.nempty = nempty
     self.use_bias = use_bias
-    assert self.stride == 1, 'Only stride=1 is supported now.'
-    assert self.kernel == '333', 'Only kernel_size=[3,3,3] is supported now.'
 
     self.kdim = self.kernel_size[0] * self.kernel_size[1] * self.kernel_size[2]
-    self.weights_shape = (self.kdim, self.in_channels, self.out_channels)
-    self.weights = torch.nn.Parameter(torch.Tensor(*self.weights_shape))
-    self.bias = (torch.nn.Parameter(torch.Tensor(self.out_channels))
-                 if use_bias else None)
-    self.reset_parameters()
+    self.weights_shape = (self.out_channels, self.kdim, self.in_channels)
 
-  def reset_parameters(self):
-    xavier_uniform_(self.weights)
+    self.weights = torch.nn.Parameter(torch.empty(*self.weights_shape))
+    self.bias = (
+      torch.nn.Parameter(torch.empty(self.out_channels))
+      if self.use_bias
+      else None
+    )
+
+  def forward(
+    self, data: torch.Tensor, octree: Octree, depth: int
+  ) -> torch.Tensor:
+    out = flexible_gemm(
+      data,
+      self.weights,
+      octree.get_neigh(depth, self.kernel, self.stride, self.nempty),
+      octree.get_inv_neigh(depth, self.kernel, self.stride, self.nempty),
+    )
     if self.use_bias:
-      torch.nn.init.zeros_(self.bias)
+      out = out + self.bias
 
-  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
-    r''' Defines the octree convolution.
+    if self.stride == 2 and not self.nempty:
+      out = octree_pad(out, octree, depth - 1)
 
-    Args:
-      data (torch.Tensor): The input data.
-      octree (Octree): The corresponding octree.
-      depth (int): The depth of current octree.
-    '''
-
-    neigh = octree.get_neigh(depth, self.kernel, self.stride, self.nempty)
-    out = octree_conv_triton(data, self.weights, self.bias, neigh)
     return out
 
   def extra_repr(self) -> str:
-    r''' Sets the extra representation of the module.
-    '''
+    r"""Sets the extra representation of the module."""
 
-    return ('in_channels={}, out_channels={}, kernel_size={}, stride={}, '
-            'nempty={}, bias={}').format(self.in_channels, self.out_channels,
-             self.kernel_size, self.stride, self.nempty, self.use_bias)  # noqa
+    return (
+      "in_channels={}, out_channels={}, kernel_size={}, stride={}, "
+      "nempty={}, bias={}"
+    ).format(
+      self.in_channels,
+      self.out_channels,
+      self.kernel_size,
+      self.stride,
+      self.nempty,
+      self.use_bias,
+    )
+
+
+class OctreeDeConvTriton(torch.nn.Module):
+  def __init__(
+    self,
+    in_channels: int,
+    out_channels: int,
+    kernel_size: List[int] = [3],
+    stride: int = 1,
+    nempty: bool = False,
+    use_bias: bool = False,
+  ):
+    super().__init__()
+    self.in_channels = in_channels
+    self.out_channels = out_channels
+    self.kernel_size = resize_with_last_val(kernel_size)
+    self.kernel = list2str(self.kernel_size)
+    self.stride = stride
+    self.nempty = nempty
+    self.use_bias = use_bias
+
+    self.kdim = self.kernel_size[0] * self.kernel_size[1] * self.kernel_size[2]
+    self.weights_shape = (self.out_channels, self.kdim, self.in_channels)
+
+    self.weights = torch.nn.Parameter(torch.empty(*self.weights_shape))
+    self.bias = (
+      torch.nn.Parameter(torch.empty(self.out_channels))
+      if self.use_bias
+      else None
+    )
+
+  def forward(
+    self, data: torch.Tensor, octree: Octree, depth: int
+  ) -> torch.Tensor:
+    if self.stride == 2 and not self.nempty:
+      data = octree_depad(data, octree, depth)
+
+    out = flexible_gemm(
+      data,
+      self.weights,
+      octree.get_inv_neigh(depth, self.kernel, self.stride, self.nempty),
+      octree.get_neigh(depth, self.kernel, self.stride, self.nempty),
+    )
+    if self.use_bias:
+      out = out + self.bias
+
+    return out
+
+  def extra_repr(self) -> str:
+    r"""Sets the extra representation of the module."""
+
+    return (
+      "in_channels={}, out_channels={}, kernel_size={}, stride={}, "
+      "nempty={}, bias={}"
+    ).format(
+      self.in_channels,
+      self.out_channels,
+      self.kernel_size,
+      self.stride,
+      self.nempty,
+      self.use_bias,
+    )
