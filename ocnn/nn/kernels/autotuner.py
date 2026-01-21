@@ -9,9 +9,7 @@ import triton
 import time
 import inspect
 from filelock import FileLock
-
-AUTOSAVE_AUTOTUNE_CACHE = 1
-AUTOTUNE_CACHE_PATH = os.path.expanduser('~/.ocnnconvt/autotune_cache.json')
+from . import AUTOSAVE_AUTOTUNE_CACHE, AUTOTUNE_CACHE_PATH
 
 
 class TritonPersistentCacheAutotuner(triton.runtime.Autotuner):
@@ -256,6 +254,10 @@ class PersistentCacheAutoTuner:
             if self.verbose:
                 print(f"Best config for {self.kernel.__name__} with key {key}: {best_config}")
             self.cache[key] = best_config
+        else:
+            if self.verbose:
+                print('Using cached config for {} with key {}'.format(self.kernel.__name__, key))
+                print('Config: {}'.format(self.cache[key]))
 
         if AUTOSAVE_AUTOTUNE_CACHE and not used_cached_result:
             save_autotune_cache()
@@ -290,6 +292,9 @@ class PersistentCacheAutoTuner:
         return best_config
 
 
+verbose_autotune = os.getenv('TRITON_PRINT_AUTOTUNING', '0') == '1'
+
+
 def autotune(
     configs=None,
     key=None,
@@ -297,7 +302,7 @@ def autotune(
     key_fn=None,
     warmup=3,
     runs=10,
-    verbose=False
+    verbose=verbose_autotune
 ):
     def decorator(kernel):
         return PersistentCacheAutoTuner(kernel, configs, key, config_fn, key_fn, warmup, runs, verbose)
