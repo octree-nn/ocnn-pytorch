@@ -1,3 +1,6 @@
+import os
+allow_tf32 = os.getenv('OCNN_ALLOW_TF32', '0') == '1'
+
 from .conv_fwd_implicit_gemm_splitk import conv_fwd_implicit_gemm_splitk
 from .conv_bwd_implicit_gemm_splitk import conv_bwd_implicit_gemm_splitk
 
