@@ -1,8 +1,6 @@
 import triton
 from .utils import get_autotune_config
-
-
-allow_tf32 = True
+from . import allow_tf32
 
 
 autotune_config = get_autotune_config(
@@ -27,18 +25,18 @@ autotune_config = get_autotune_config(
     },
     device={
         'A100': [
-            triton.Config({'B1': 256, 'B2': 128, 'BK': 64}, num_stages=4, num_warps=8),
-            triton.Config({'B1': 256, 'B2': 128, 'BK': 32}, num_stages=4, num_warps=8),
-            triton.Config({'B1': 128, 'B2': 256, 'BK': 64}, num_stages=4, num_warps=8),
-            triton.Config({'B1': 128, 'B2': 256, 'BK': 32}, num_stages=4, num_warps=8),
-            triton.Config({'B1': 256, 'B2': 64,  'BK': 64}, num_stages=4, num_warps=4),
-            triton.Config({'B1': 256, 'B2': 64,  'BK': 32}, num_stages=4, num_warps=4),
-            triton.Config({'B1': 64,  'B2': 256, 'BK': 64}, num_stages=4, num_warps=4),
-            triton.Config({'B1': 64,  'B2': 256, 'BK': 32}, num_stages=4, num_warps=4),
-            triton.Config({'B1': 128, 'B2': 128, 'BK': 64}, num_stages=4, num_warps=4),
-            triton.Config({'B1': 128, 'B2': 128, 'BK': 32}, num_stages=4, num_warps=4),
-            triton.Config({'B1': 128, 'B2': 64,  'BK': 32}, num_stages=4, num_warps=4),
-            triton.Config({'B1': 128, 'B2': 64,  'BK': 32}, num_stages=4, num_warps=2),
+            # triton.Config({'B1': 256, 'B2': 128, 'BK': 64}, num_stages=4, num_warps=8),
+            # triton.Config({'B1': 256, 'B2': 128, 'BK': 32}, num_stages=4, num_warps=8),
+            # triton.Config({'B1': 128, 'B2': 256, 'BK': 64}, num_stages=4, num_warps=8),
+            # triton.Config({'B1': 128, 'B2': 256, 'BK': 32}, num_stages=4, num_warps=8),
+            # triton.Config({'B1': 256, 'B2': 64,  'BK': 64}, num_stages=4, num_warps=4),
+            # triton.Config({'B1': 256, 'B2': 64,  'BK': 32}, num_stages=4, num_warps=4),
+            # triton.Config({'B1': 64,  'B2': 256, 'BK': 64}, num_stages=4, num_warps=4),
+            # triton.Config({'B1': 64,  'B2': 256, 'BK': 32}, num_stages=4, num_warps=4),
+            # triton.Config({'B1': 128, 'B2': 128, 'BK': 64}, num_stages=4, num_warps=4),
+            # triton.Config({'B1': 128, 'B2': 128, 'BK': 32}, num_stages=4, num_warps=4),
+            # triton.Config({'B1': 128, 'B2': 64,  'BK': 32}, num_stages=4, num_warps=4),
+            # triton.Config({'B1': 128, 'B2': 64,  'BK': 32}, num_stages=4, num_warps=2),
             triton.Config({'B1': 64,  'B2': 128, 'BK': 32}, num_stages=4, num_warps=4),
             triton.Config({'B1': 64,  'B2': 128, 'BK': 32}, num_stages=4, num_warps=2),
             triton.Config({'B1': 64,  'B2': 64,  'BK': 64}, num_stages=4, num_warps=2),
