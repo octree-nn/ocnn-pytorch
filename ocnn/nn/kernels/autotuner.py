@@ -11,6 +11,8 @@ import inspect
 from filelock import FileLock
 from . import AUTOSAVE_AUTOTUNE_CACHE, AUTOTUNE_CACHE_PATH
 
+verbose_autotune = os.getenv('TRITON_PRINT_AUTOTUNING', '0') == '1'
+
 
 class TritonPersistentCacheAutotuner(triton.runtime.Autotuner):
     def __init__(
@@ -292,7 +294,6 @@ class PersistentCacheAutoTuner:
         return best_config
 
 
-verbose_autotune = os.getenv('TRITON_PRINT_AUTOTUNING', '0') == '1'
 
 
 def autotune(
