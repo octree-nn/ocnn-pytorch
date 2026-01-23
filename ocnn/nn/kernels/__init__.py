@@ -1,6 +1,5 @@
 import os
 
-allow_tf32 = os.getenv('OCNN_ALLOW_TF32', '1') == '1'
 AUTOSAVE_AUTOTUNE_CACHE = os.getenv('OCNN_AUTOSAVE_AUTOTUNE', '1') == '1'
 AUTOTUNE_CACHE_PATH = os.getenv('OCNN_AUTOTUNE_CACHE_PATH',
                                 os.path.expanduser('~/.ocnnconvt/autotune_cache.json'))
