@@ -21,10 +21,7 @@ from .octree_norm import (OctreeBatchNorm, OctreeGroupNorm,
                           OctreeInstanceNorm, OctreeNorm)
 from .octree_drop import OctreeDropPath
 from .octree_align import search_value, octree_align
-from .octree_conv_t import OctreeConvTriton
-
-# alias
-OctreeConvT = OctreeConvTriton
+from .octree_conv_t import OctreeConvTriton, OctreeConvT
 
 __all__ = [
     'octree2voxel',
