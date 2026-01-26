@@ -82,11 +82,11 @@ class TestOctreeConvTriton(unittest.TestCase):
     self.assertTrue(torch.allclose(
         conv_pt.bias.grad, conv_tt.bias.grad, atol=atol), msg)
 
-  def calc_err(self, src, ref):
-    abs_err = (src - ref).float().abs()
-    rel_err = abs_err / torch.clamp_min(ref.float().abs(), 1e-6)
-    err = torch.minimum(abs_err, rel_err)
-    return err.max().item(), err.mean().item()
+def calc_err(src, ref):
+  abs_err = (src - ref).float().abs()
+  rel_err = abs_err / torch.clamp_min(ref.float().abs(), 1e-6)
+  err = torch.minimum(abs_err, rel_err)
+  return err.max().item(), err.mean().item()
 
 
 if __name__ == "__main__":
