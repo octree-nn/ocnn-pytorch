@@ -23,6 +23,7 @@ class OctreeConvTritonFunction(Function):
   def forward(ctx, data: torch.Tensor, weights: torch.Tensor, bias: torch.Tensor,
               neigh: torch.Tensor):
     data = data.contiguous()
+    # TODO: remove the permute operation by changing the kernel implementation
     weights = weights.permute(2, 0, 1).contiguous()  # (V,Ci,Co) -> (Co,V,Ci)
     if bias is not None:
       bias = bias.contiguous()
@@ -37,6 +38,7 @@ class OctreeConvTritonFunction(Function):
     grad = grad.contiguous()
     grad_input, grad_weight, grad_bias = conv_bwd_implicit_gemm_splitk(
         grad, data, weights, bias, neigh, ctx.needs_input_grad)
+    # TODO: remove the permute operation by changing the kernel implementation
     grad_weight = grad_weight.permute(1, 2, 0)      # (Co,V,Ci) -> (V,Ci,Co)
     return grad_input, grad_weight, grad_bias, None
 
@@ -51,12 +53,11 @@ class OctreeConvTriton(torch.nn.Module):
   Args:
     in_channels (int): Number of input channels.
     out_channels (int): Number of output channels.
-    kernel_size (List(int)): The kernel shape, choose from :obj:`[3]`, :obj:`[2]`,
-        :obj:`[3,3,3]`, :obj:`[3,1,1]`, :obj:`[1,3,1]`, :obj:`[1,1,3]`,
-        :obj:`[2,2,2]`, :obj:`[3,3,1]`, :obj:`[1,3,3]`, and :obj:`[3,1,3]`.
-    stride (int): The stride of the convolution.
-    nempty (bool): If True, only performs the convolution on non-empty
-        octree nodes.
+    kernel_size (List(int)): The kernel shape, only :obj:`[3]` and :obj:`[3,3,3]`
+        are supported now for the triton implementation.
+    stride (int): The stride of the convolution, only :obj:`1` is supported now.
+    nempty (bool): If True, only performs the convolution on non-empty octree
+        nodes; otherwise, performs the convolution on all octree nodes.
     use_bias (bool): If True, add a bias term to the convolution.
 
   .. note::
@@ -113,6 +114,10 @@ class OctreeConvTriton(torch.nn.Module):
     r''' Sets the extra representation of the module.
     '''
 
-    return ('in_channels={}, out_channels={}, kernel_size={}, stride={}, '
+    return ('triton, in_channels={}, out_channels={}, kernel_size={}, stride={}, '
             'nempty={}, bias={}').format(self.in_channels, self.out_channels,
              self.kernel_size, self.stride, self.nempty, self.use_bias)  # noqa
+
+
+# alias
+OctreeConvT = OctreeConvTriton

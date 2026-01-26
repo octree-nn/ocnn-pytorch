@@ -1,5 +1,4 @@
 import builtins
-from typing import *
 import os
 import json
 import importlib
@@ -9,7 +8,12 @@ import triton
 import time
 import inspect
 from filelock import FileLock
-from . import AUTOSAVE_AUTOTUNE_CACHE, AUTOTUNE_CACHE_PATH
+from typing import Dict, Mapping
+
+VERBOSE_AUTOTUNE = os.getenv('TRITON_PRINT_AUTOTUNING', '0') == '1'
+AUTOSAVE_AUTOTUNE_CACHE = os.getenv('OCNN_AUTOSAVE_AUTOTUNE', '1') == '1'
+AUTOTUNE_CACHE_PATH = os.getenv('OCNN_AUTOTUNE_CACHE_PATH',
+                                os.path.expanduser('~/.ocnnconvt/autotune_cache.json'))
 
 
 class TritonPersistentCacheAutotuner(triton.runtime.Autotuner):
@@ -292,7 +296,6 @@ class PersistentCacheAutoTuner:
         return best_config
 
 
-verbose_autotune = os.getenv('TRITON_PRINT_AUTOTUNING', '0') == '1'
 
 
 def autotune(
@@ -302,7 +305,7 @@ def autotune(
     key_fn=None,
     warmup=3,
     runs=10,
-    verbose=verbose_autotune
+    verbose=VERBOSE_AUTOTUNE
 ):
     def decorator(kernel):
         return PersistentCacheAutoTuner(kernel, configs, key, config_fn, key_fn, warmup, runs, verbose)

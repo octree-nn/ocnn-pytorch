@@ -1,7 +1,8 @@
+import os
 import triton
 from .utils import get_autotune_config
-from . import allow_tf32
 
+allow_tf32 = os.getenv('OCNN_ALLOW_TF32', '1') == '1'
 
 autotune_config = get_autotune_config(
     platform={
