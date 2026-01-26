@@ -157,6 +157,7 @@ def conv_bwd_implicit_gemm(
     weight: torch.Tensor,
     bias: torch.Tensor,
     neighbor: torch.Tensor,
+    needs_input_grad: List[bool],
 ) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]:
     assert grad_output.is_contiguous(), "Matrix grad_output must be contiguous"
     assert input.shape[1] == weight.shape[2], "Incompatible dimensions"
@@ -169,7 +170,7 @@ def conv_bwd_implicit_gemm(
     grad_input, grad_weight, grad_bias = None, None, None
 
     # Grad for input
-    if input.requires_grad:
+    if needs_input_grad[0]:
         # Allocate output matrix output.
         grad_input = torch.empty((N, Ci), device=input.device, dtype=input.dtype)
         # Launch the kernel.
@@ -184,7 +185,7 @@ def conv_bwd_implicit_gemm(
         )
 
     # Grad for weight
-    if weight.requires_grad:
+    if needs_input_grad[1]:
         # Allocate output matrix output.
         grad_weight = torch.empty((Co, V, Ci), device=weight.device, dtype=weight.dtype)
         # Launch the kernel.
@@ -199,7 +200,7 @@ def conv_bwd_implicit_gemm(
         )
 
     # Grad for bias
-    if bias is not None and bias.requires_grad:
+    if needs_input_grad[2]:
         grad_bias = grad_output.sum(0)
 
     return grad_input, grad_weight, grad_bias

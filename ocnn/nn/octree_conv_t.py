@@ -13,7 +13,7 @@ from typing import List
 from ocnn.octree import Octree
 from ocnn.utils import xavier_uniform_, resize_with_last_val, list2str
 from .kernels import conv_fwd_implicit_gemm_splitk, conv_bwd_implicit_gemm_splitk
-
+from .kernels import conv_fwd_implicit_gemm, conv_bwd_implicit_gemm
 
 class OctreeConvTritonFunction(Function):
   r''' Wrap the octree convolution for auto-diff.
