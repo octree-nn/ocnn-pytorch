@@ -54,9 +54,11 @@ def conv_fwd_implicit_gemm_splitk_kernel(
 
     # Create a block of the output matrix C.
     accumulator = tl.zeros((B1, B2), dtype=tl.float32)
-
-    # Calculate pointers to weight matrix.
-    weight_ptr = weight + k_start * BK + (offset_co[None, :] * V * Ci + offset_k[:, None])     # (BK, B2)
+    curr_v = k_start // num_k
+    curr_bk = k_start % num_k
+    weight_offset_base = curr_v * Ci + curr_bk * BK
+    
+    weight_ptr = weight + weight_offset_base + (offset_co[None, :] * V * Ci + offset_k[:, None])     # (BK, B2)
 
     # Iterate along V*Ci dimension.
     for k in range(k_start, k_end):
