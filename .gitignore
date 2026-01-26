@@ -8,8 +8,5 @@ data
 logs
 *.sh
 *.xyz
-amlt
-submit
 thsolver
-.amltconfig
-.amltignore
+benchmark
