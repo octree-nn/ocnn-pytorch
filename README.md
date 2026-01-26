@@ -54,6 +54,12 @@ octrees to perform convolution operations. Of course, it also supports other 3D
 data formats, such as meshes and volumetric grids, which can be converted into
 octrees to leverage the library's capabilities.
 
+## Updates
+
+- **2026.01.08**: I plan to incorporate Triton to accelerate octree-based sparse
+  convolution in the upcoming release. Stay tuned! ✨
+- **2025.12.18**: Release `v2.2.8`, improving neighbor search efficiency.
+
 
 ## Key benefits of ocnn-pytorch
 
