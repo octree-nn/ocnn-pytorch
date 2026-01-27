@@ -60,18 +60,24 @@ def calc_err(src, ref):
 
 # atol = 5e-3
 device = "cuda"
-points = sphere_coords(64, device="cpu")
-points = points / 64 * 2 - 1
-octree = Octree(8, 2)
-octree.build_octree(Points(points))
-octree.construct_all_neigh()
-octree = octree.to(device)
+
+
+@pytest.fixture(scope="module")
+def test_octree():
+    """创建用于测试的octree对象"""
+    points = sphere_coords(64, device="cpu")
+    points = points / 64 * 2 - 1
+    octree = Octree(8, 2)
+    octree.build_octree(Points(points))
+    octree.construct_all_neigh()
+    octree = octree.to(device)
+    return octree
 
 
 @pytest.mark.parametrize("depth", range(3, 9))
 @pytest.mark.parametrize("out_ratio", [1.0, 0.5, 2.0])
 @pytest.mark.parametrize("channel", [4, 8, 16, 32])
-def test_conv_stride1(depth, out_ratio, channel):
+def test_conv_stride1(depth, out_ratio, channel, test_octree, cleanup_cuda):
   kernel_size = [3]
   atol = 5e-3
   nempty = False
@@ -106,15 +112,15 @@ def test_conv_stride1(depth, out_ratio, channel):
   with torch.no_grad():
     conv_triton.weights.copy_(conv_im2col.weights)
     conv_triton.bias.copy_(conv_im2col.bias)
-  data = torch.randn(octree.nnum[depth], in_channel, device=device, dtype=dtype)
+  data = torch.randn(test_octree.nnum[depth], in_channel, device=device, dtype=dtype)
   data_tt = data.detach().clone().requires_grad_()
   data_pt = data.detach().clone().requires_grad_()
   grad = torch.randn(
-    octree.nnum[depth], out_channel, device=device, dtype=dtype
+    test_octree.nnum[depth], out_channel, device=device, dtype=dtype
   )
 
-  out_tt = conv_triton(data_tt, octree, depth)
-  out_pt = conv_im2col(data_pt, octree, depth)
+  out_tt = conv_triton(data_tt, test_octree, depth)
+  out_pt = conv_im2col(data_pt, test_octree, depth)
 
   loss_tt = (out_tt * grad).sum()
   loss_pt = (out_pt * grad).sum()
