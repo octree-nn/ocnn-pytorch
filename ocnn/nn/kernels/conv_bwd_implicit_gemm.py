@@ -76,8 +76,10 @@ def conv_bwd_input_implicit_gemm_kernel(
 
 
 heuristics = {
-    'BV': lambda meta: max(1, meta['B2'] // meta['Ci']),
-    'BCi': lambda meta: min(meta['Ci'], meta['B2']),
+    # BCi must be a power of 2 for tl.dot, but should not exceed Ci or B2
+    'BCi': lambda meta: min(triton.next_power_of_2(meta['Ci']), meta['B2']),
+    # BV is calculated based on B2 and BCi
+    'BV': lambda meta: max(1, meta['B2'] // min(triton.next_power_of_2(meta['Ci']), meta['B2'])),
 }
 
 
@@ -116,9 +118,11 @@ def conv_bwd_weight_implicit_gemm_kernel(
 
     # Create pointers for submatrices of A and B.
     num_k = tl.cdiv(N, BK)  # Number of blocks in K dimension
+    # Use cdiv to handle non-power-of-2 Ci correctly
+    num_ci_blocks = tl.cdiv(Ci, BCi)
     offset_co = (block_id_co * B1 + tl.arange(0, B1)) % Co                          # (B1,)
-    offset_v = (tl.arange(0, BV) + (block_id_vci // (Ci // BCi)) * BV) % V          # (BV,)
-    offset_ci = (tl.arange(0, BCi) + (block_id_vci % (Ci // BCi)) * BCi) % Ci       # (BCi,)
+    offset_v = (tl.arange(0, BV) + (block_id_vci // num_ci_blocks) * BV) % V        # (BV,)
+    offset_ci = (tl.arange(0, BCi) + (block_id_vci % num_ci_blocks) * BCi) % Ci     # (BCi,)
     offset_k = tl.arange(0, BK)                                                     # (BK,)
     neighbor_ptr = neighbor + (offset_k[:, None] * V + offset_v[None, :])           # (BK, BV)
     grad_output_ptr = grad_output + (offset_k[None, :] * Co + offset_co[:, None])   # (B1, BK)
@@ -144,10 +148,28 @@ def conv_bwd_weight_implicit_gemm_kernel(
     c = accumulator.to(grad_output.type.element_ty)
 
     # Write back the block of the output matrix with masks.
+    # Decompose block_id_vci into block_id_v and block_id_ci
+    block_id_v = block_id_vci // num_ci_blocks
+    block_id_ci = block_id_vci % num_ci_blocks
+    
     grad_weight_offset_co = block_id_co * B1 + tl.arange(0, B1)
-    grad_weight_offset_vci = block_id_vci * BV * BCi + tl.arange(0, BV * BCi)
+    
+    # Compute V*Ci linear indices correctly accounting for (V, Ci) layout
+    local_v = tl.arange(0, BV)
+    local_ci = tl.arange(0, BCi)
+    global_v = block_id_v * BV + local_v  # (BV,)
+    global_ci = block_id_ci * BCi + local_ci  # (BCi,)
+    
+    # Linear index in V*Ci space: v * Ci + ci
+    grad_weight_offset_vci = (global_v[:, None] * Ci + global_ci[None, :]).reshape(BV * BCi)  # (BV*BCi,)
+    
     grad_weight_ptr = grad_weight + (grad_weight_offset_co[:, None] * V * Ci + grad_weight_offset_vci[None, :])
-    grad_weight_mask = (grad_weight_offset_co[:, None] < Co) & (grad_weight_offset_vci[None, :] < V * Ci)
+    
+    # Create proper mask for V and Ci boundaries
+    v_mask = (global_v < V)[:, None]  # (BV, 1)
+    ci_mask = (global_ci < Ci)[None, :]  # (1, BCi)
+    vci_mask = (v_mask & ci_mask).reshape(BV * BCi)  # (BV*BCi,)
+    grad_weight_mask = (grad_weight_offset_co[:, None] < Co) & vci_mask[None, :]
     tl.store(grad_weight_ptr, c, mask=grad_weight_mask)
 
 
@@ -157,6 +179,7 @@ def conv_bwd_implicit_gemm(
     weight: torch.Tensor,
     bias: torch.Tensor,
     neighbor: torch.Tensor,
+    needs_input_grad: List[bool],
 ) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]:
     assert grad_output.is_contiguous(), "Matrix grad_output must be contiguous"
     assert input.shape[1] == weight.shape[2], "Incompatible dimensions"
@@ -169,7 +192,7 @@ def conv_bwd_implicit_gemm(
     grad_input, grad_weight, grad_bias = None, None, None
 
     # Grad for input
-    if input.requires_grad:
+    if needs_input_grad[0]:
         # Allocate output matrix output.
         grad_input = torch.empty((N, Ci), device=input.device, dtype=input.dtype)
         # Launch the kernel.
@@ -184,11 +207,12 @@ def conv_bwd_implicit_gemm(
         )
 
     # Grad for weight
-    if weight.requires_grad:
+    if needs_input_grad[1]:
         # Allocate output matrix output.
         grad_weight = torch.empty((Co, V, Ci), device=weight.device, dtype=weight.dtype)
         # Launch the kernel.
-        grid = lambda META: (triton.cdiv(Co, META['B1']), triton.cdiv(V * Ci, META['BV'] * META['BCi']))
+        # Use cdiv separately for V and Ci to correctly handle non-power-of-2 channels
+        grid = lambda META: (triton.cdiv(Co, META['B1']), triton.cdiv(V, META['BV']) * triton.cdiv(Ci, META['BCi']))
         conv_bwd_weight_implicit_gemm_kernel[grid](
             grad_output,
             input,
@@ -199,7 +223,7 @@ def conv_bwd_implicit_gemm(
         )
 
     # Grad for bias
-    if bias is not None and bias.requires_grad:
+    if needs_input_grad[2]:
         grad_bias = grad_output.sum(0)
 
     return grad_input, grad_weight, grad_bias

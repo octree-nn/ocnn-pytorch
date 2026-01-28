@@ -84,8 +84,10 @@ def conv_bwd_input_implicit_gemm_splitk_kernel(
 
 
 heuristics = {
-    'BV': lambda meta: max(1, meta['B2'] // meta['Ci']),
-    'BCi': lambda meta: min(meta['Ci'], meta['B2']),
+    # BCi should be power of 2 for efficient tl.dot, but not exceed Ci or B2
+    'BCi': lambda meta: min(triton.next_power_of_2(meta['Ci']), meta['B2']),
+    # BV is calculated based on B2 and BCi
+    'BV': lambda meta: max(1, meta['B2'] // min(triton.next_power_of_2(meta['Ci']), meta['B2'])),
 }
 
 
@@ -128,9 +130,11 @@ def conv_bwd_weight_implicit_gemm_splitk_kernel(
     num_k = tl.cdiv(N, BK)  # Number of blocks in K dimension
     k_start = tl.cdiv(num_k * block_id_k, SPLITK)
     k_end = tl.cdiv(num_k * (block_id_k + 1), SPLITK)
+    # Use cdiv to handle non-power-of-2 Ci correctly
+    num_ci_blocks = tl.cdiv(Ci, BCi)
     offset_co = (block_id_co * B1 + tl.arange(0, B1)) % Co                          # (B1,)
-    offset_v = (tl.arange(0, BV) + (block_id_vci // (Ci // BCi)) * BV) % V          # (BV,)
-    offset_ci = (tl.arange(0, BCi) + (block_id_vci % (Ci // BCi)) * BCi) % Ci       # (BCi,)
+    offset_v = (tl.arange(0, BV) + (block_id_vci // num_ci_blocks) * BV) % V        # (BV,)
+    offset_ci = (tl.arange(0, BCi) + (block_id_vci % num_ci_blocks) * BCi) % Ci     # (BCi,)
     offset_k = tl.arange(0, BK)                                                     # (BK,)
     neighbor_ptr = neighbor + k_start * BK * V + (offset_k[:, None] * V + offset_v[None, :])            # (BK, BV)
     grad_output_ptr = grad_output + k_start * BK * Co + (offset_k[None, :] * Co + offset_co[:, None])   # (B1, BK)
@@ -155,10 +159,28 @@ def conv_bwd_weight_implicit_gemm_splitk_kernel(
         neighbor_ptr += BK * V
 
     # Write back the block of the output matrix with masks.
+    # Decompose block_id_vci into block_id_v and block_id_ci
+    block_id_v = block_id_vci // num_ci_blocks
+    block_id_ci = block_id_vci % num_ci_blocks
+    
     grad_weight_offset_co = block_id_co * B1 + tl.arange(0, B1)
-    grad_weight_offset_vci = block_id_vci * BV * BCi + tl.arange(0, BV * BCi)
+    
+    # Compute V*Ci linear indices correctly accounting for (V, Ci) layout
+    local_v = tl.arange(0, BV)
+    local_ci = tl.arange(0, BCi)
+    global_v = block_id_v * BV + local_v  # (BV,)
+    global_ci = block_id_ci * BCi + local_ci  # (BCi,)
+    
+    # Linear index in V*Ci space: v * Ci + ci
+    grad_weight_offset_vci = (global_v[:, None] * Ci + global_ci[None, :]).reshape(BV * BCi)  # (BV*BCi,)
+    
     grad_weight_ptr = grad_weight + block_id_k * Co * V * Ci + (grad_weight_offset_co[:, None] * V * Ci + grad_weight_offset_vci[None, :])
-    grad_weight_mask = (grad_weight_offset_co[:, None] < Co) & (grad_weight_offset_vci[None, :] < V * Ci)
+    
+    # Create proper mask for V and Ci boundaries
+    v_mask = (global_v < V)[:, None]  # (BV, 1)
+    ci_mask = (global_ci < Ci)[None, :]  # (1, BCi)
+    vci_mask = (v_mask & ci_mask).reshape(BV * BCi)  # (BV*BCi,)
+    grad_weight_mask = (grad_weight_offset_co[:, None] < Co) & vci_mask[None, :]
     tl.store(grad_weight_ptr, accumulator, mask=grad_weight_mask)
 
 
@@ -257,7 +279,8 @@ def conv_bwd_weight_implicit_gemm_splitk(
     # Launch the kernel.
     if SPLITK == 1:
         grad_weight = torch.empty((Co, V, Ci), device=grad_output.device, dtype=grad_output.dtype)
-        grid = lambda META: (triton.cdiv(Co, META['B1']), triton.cdiv(V * Ci, META['B2']))
+        # Use cdiv separately for V and Ci to correctly handle non-power-of-2 channels
+        grid = lambda META: (triton.cdiv(Co, META['B1']), triton.cdiv(V, META['BV']) * triton.cdiv(Ci, META['BCi']))
         conv_bwd_weight_implicit_gemm_kernel[grid](
             grad_output,
             input,
@@ -269,7 +292,8 @@ def conv_bwd_weight_implicit_gemm_splitk(
         return grad_weight
     else:
         grad_weight = torch.empty((SPLITK, Co, V, Ci), device=grad_output.device, dtype=torch.float32)
-        grid = lambda META: (triton.cdiv(Co, META['B1']), triton.cdiv(V * Ci, META['B2']), SPLITK)
+        # Use cdiv separately for V and Ci to correctly handle non-power-of-2 channels
+        grid = lambda META: (triton.cdiv(Co, META['B1']), triton.cdiv(V, META['BV']) * triton.cdiv(Ci, META['BCi']), SPLITK)
         conv_bwd_weight_implicit_gemm_splitk_kernel[grid](
             grad_output,
             input,
