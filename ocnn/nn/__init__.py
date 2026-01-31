@@ -21,8 +21,7 @@ from .octree_norm import (OctreeBatchNorm, OctreeGroupNorm,
                           OctreeInstanceNorm, OctreeNorm)
 from .octree_drop import OctreeDropPath
 from .octree_align import search_value, octree_align
-from .octree_conv_t import OctreeConvTriton, OctreeConvT
-from .utils import convert_conv_triton
+from .octree_conv_t import OctreeConvTriton, OctreeConvT, convert_conv_triton
 
 __all__ = [
     'octree2voxel',
@@ -40,8 +39,7 @@ __all__ = [
     'OctreeInstanceNorm', 'OctreeBatchNorm', 'OctreeGroupNorm', 'OctreeNorm',
     'OctreeDropPath',
     'search_value', 'octree_align',
-    'OctreeConvTriton', 'OctreeConvT'
-    'convert_conv_triton',
+    'OctreeConvTriton', 'OctreeConvT', 'convert_conv_triton',
 ]
 
 classes = __all__

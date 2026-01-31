@@ -11,9 +11,10 @@ from torch.autograd import Function
 from typing import List
 
 from ocnn.octree import Octree
+from ocnn.nn import OctreeConv
 from ocnn.utils import xavier_uniform_, resize_with_last_val, list2str
-from .kernels import conv_fwd_implicit_gemm_splitk, conv_bwd_implicit_gemm_splitk
-from .kernels import conv_fwd_implicit_gemm, conv_bwd_implicit_gemm
+from ocnn.nn.kernels import conv_fwd_implicit_gemm_splitk, conv_bwd_implicit_gemm_splitk
+
 
 class OctreeConvTritonFunction(Function):
   r''' Wrap the octree convolution for auto-diff.
@@ -121,3 +122,27 @@ class OctreeConvTriton(torch.nn.Module):
 
 # alias
 OctreeConvT = OctreeConvTriton
+
+
+def convert_conv_triton(module: torch.nn.Module) -> torch.nn.Module:
+  r''' Convert OctreeConv modules to OctreeConvTriton modules in a network.
+
+  Args:
+    module (torch.nn.Module): The input module.
+  '''
+
+  module_out = module
+  if (isinstance(module, OctreeConv) and
+          module.stride == 1 and module.kernel_size == [3, 3, 3]):
+    module_out = OctreeConvTriton(
+        module.in_channels, module.out_channels, module.kernel_size,
+        module.stride, module.nempty, use_bias=module.use_bias,)
+    with torch.no_grad():
+      module_out.weights = module.weights
+      if module.use_bias:
+        module_out.bias = module.bias
+
+  for name, child in module.named_children():
+    module_out.add_module(name, convert_conv_triton(child))
+  del module
+  return module_out
