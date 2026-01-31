@@ -15,7 +15,7 @@ class ResNet(torch.nn.Module):
   '''
 
   def __init__(self, in_channels: int, out_channels: int, resblock_num: int,
-               stages: int, nempty: bool = False):
+               stages: int, nempty: bool = False, dropout: float = 0.5):
     super().__init__()
     self.in_channels = in_channels
     self.out_channels = out_channels
@@ -36,7 +36,7 @@ class ResNet(torch.nn.Module):
     # self.header = torch.nn.Linear(channels[-1], out_channels, bias=True)
     self.header = torch.nn.Sequential(
         ocnn.modules.FcBnRelu(channels[-1], 512),
-        torch.nn.Dropout(p=0.5),
+        torch.nn.Dropout(p=dropout),
         torch.nn.Linear(512, out_channels))
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
