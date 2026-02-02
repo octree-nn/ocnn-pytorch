@@ -12,7 +12,7 @@ from . import models
 from . import dataset
 from . import utils
 
-__version__ = '2.2.8'
+__version__ = '2.3.0'
 
 __all__ = [
     'octree',

@@ -56,8 +56,9 @@ octrees to leverage the library's capabilities.
 
 ## Updates
 
-- **2026.01.08**: I plan to incorporate Triton to accelerate octree-based sparse
-  convolution in the upcoming release. Stay tuned! ✨
+- **2026.02.02**: Release `v2.3.0`, incorporating Triton to accelerate
+  octree-based sparse convolution in the upcoming release. OctreeConv is even
+  **2.5 times faster than the latest spconv**!
 - **2025.12.18**: Release `v2.2.8`, improving neighbor search efficiency.
 
 
@@ -69,10 +70,9 @@ octrees to leverage the library's capabilities.
   configure the compiling environment.
 
 - **Efficiency**. The ocnn-pytorch is very efficient compared with other sparse
-  convolution frameworks.  It only takes 18 hours to train the network on
-  ScanNet for 600 epochs with 4 V100 GPUs. For reference, under the same
-  training settings, MinkowskiNet 0.4.3 takes 60 hours and MinkowskiNet 0.5.4
-  takes 30 hours.
+  convolution frameworks. It is **even 2.5 times faster than the latest spconv
+  implementation**! Check the benchmark [code](test/benchmark_conv.py) and
+  [results](test/benchmark/results.png) for details. ✨
 
 ## Citation
 
