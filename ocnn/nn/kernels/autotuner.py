@@ -373,6 +373,8 @@ def save_autotune_cache(path=None):
 
 
 def load_autotune_cache(path_or_cache=None):
+    if torch.cuda.is_available() is False: return
+    
     cache = None
 
     # Preserve path-based loading, but allow callers to provide a preloaded cache object.

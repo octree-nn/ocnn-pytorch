@@ -13,11 +13,11 @@ def get_platform_name():
             return 'hip'
         return 'cuda'
     return 'unknown'
-    
+
 
 def get_num_sm():
     return torch.cuda.get_device_properties("cuda").multi_processor_count
-    
+
 
 def get_autotune_config(
     default: List[triton.Config] = None,
@@ -27,18 +27,21 @@ def get_autotune_config(
     """
     Get the autotune configuration for the current platform and device.
     """
+    if torch.cuda.is_available() is False:
+        return list()
+
     if device is not None:
         gpu_name = get_gpu_name()
         for key, value in device.items():
             if key.lower() in gpu_name.lower():
                 return value
-    
+
     if platform is not None:
         platform_name = get_platform_name()
         for key, value in platform.items():
             if key.lower() in platform_name.lower():
                 return value
-    
+
     if default is None:
         raise ValueError("No autotune configuration found for the current platform and device.")
     return default
