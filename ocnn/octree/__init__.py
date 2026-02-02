@@ -8,6 +8,7 @@
 from .shuffled_key import key2xyz, xyz2key
 from .points import Points, merge_points
 from .octree import Octree, merge_octrees, init_octree
+from .adaptive import build_adaptive_octree_normal, build_adaptive_octree_qem
 
 __all__ = [
     'key2xyz',
@@ -17,6 +18,8 @@ __all__ = [
     'merge_points',
     'merge_octrees',
     'init_octree',
+    'build_adaptive_octree_normal',
+    'build_adaptive_octree_qem',
 ]
 
 classes = __all__
