@@ -24,8 +24,8 @@ class OctreeConvTritonFunction(Function):
   def forward(ctx, data: torch.Tensor, weights: torch.Tensor, bias: torch.Tensor,
               neigh: torch.Tensor):
     data = data.contiguous()
-    # TODO: remove the permute operation by changing the kernel implementation
-    weights = weights.permute(2, 0, 1).contiguous()  # (V,Ci,Co) -> (Co,V,Ci)
+    weights = weights.contiguous()
+    neigh = neigh.contiguous()
     if bias is not None:
       bias = bias.contiguous()
 
@@ -39,8 +39,6 @@ class OctreeConvTritonFunction(Function):
     grad = grad.contiguous()
     grad_input, grad_weight, grad_bias = conv_bwd_implicit_gemm_splitk(
         grad, data, weights, bias, neigh, ctx.needs_input_grad)
-    # TODO: remove the permute operation by changing the kernel implementation
-    grad_weight = grad_weight.permute(1, 2, 0)      # (Co,V,Ci) -> (V,Ci,Co)
     return grad_input, grad_weight, grad_bias, None
 
 
@@ -107,8 +105,10 @@ class OctreeConvTriton(torch.nn.Module):
       depth (int): The depth of current octree.
     '''
 
+    # TODO: remove the permute operation by changing the kernel implementation
+    weight = self.weights.permute(2, 0, 1)   # (V,Ci,Co) -> (Co,V,Ci)
     neigh = octree.get_neigh(depth, self.kernel, self.stride, self.nempty)
-    out = octree_conv_triton(data, self.weights, self.bias, neigh)
+    out = octree_conv_triton(data, weight, self.bias, neigh)
     return out
 
   def extra_repr(self) -> str:
