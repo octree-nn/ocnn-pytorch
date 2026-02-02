@@ -21,6 +21,7 @@ from .utils import sphere_coords
 ocnn.nn.kernels.config.allow_tf32 = False
 
 
+@unittest.skipIf(torch.cuda.is_available() is False, "no GPU")
 class TestConvertConvTriton(unittest.TestCase):
 
   def test_resnet(self):

@@ -17,7 +17,7 @@ from .utils import sphere_coords
 # !!! disable TF32 for testing !!!
 ocnn.nn.kernels.config.allow_tf32 = False
 
-
+@unittest.skipIf(torch.cuda.is_available() is False, "no GPU")
 class TestOctreeConvTriton(unittest.TestCase):
 
   def test_conv(self):
