@@ -15,6 +15,16 @@ depth2channel = {4: 512, 5: 256, 6: 128, 7: 128, 8: 64, 9: 32, 10: 32}
 fp32_precision = 'ieee' if not ocnn.nn.kernels.config.allow_tf32 else 'tf32'
 
 
+# Number-of-voxels at different depths:
+#      depth      Number-of-voxels
+# 0      5.0            3840
+# 1      6.0           15192
+# 2      7.0           64160
+# 3      8.0          252392
+# 4      9.0         1026536
+# 5     10.0         4113056
+
+
 configs = [
     triton.testing.Benchmark(
         x_names=['depth'],
