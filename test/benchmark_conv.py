@@ -22,10 +22,11 @@ configs = [
         line_arg='provider',
         line_vals=['torch', 'triton', 'spconv'],
         line_names=['OctConv', 'OctConvT', 'Spconv'],
-        styles=[('green', '-'), ('blue', '-'), ('yellow', '-')],
+        styles=[('green', '-'), ('red', '-'), ('blue', '-')],
         ylabel='Latency (ms)',
         plot_name=f'{fp32_precision}-{mode}-{str(dtype)}',
         args={'mode': mode, 'dtype': dtype},
+        y_log=True,
     )
     for mode in ['fwd', 'bwd']
     for dtype in [torch.float32, torch.float16, torch.bfloat16]
@@ -63,7 +64,7 @@ def benchmark(depth, provider, mode, dtype):
 
   # Generate coordinates and octree
   reso = 2**depth
-  pos = sphere_coords(2**depth)
+  pos = sphere_coords(2**depth, device=device)
   pos = pos / reso * 2 - 1
   octree = Octree(depth, 2, device=device)
   octree.build_octree(Points(pos))
