@@ -13,7 +13,15 @@ from typing import List
 from ocnn.octree import Octree
 from ocnn.nn import OctreeConv
 from ocnn.utils import xavier_uniform_, resize_with_last_val, list2str
-from ocnn.nn.kernels import conv_fwd_implicit_gemm_splitk, conv_bwd_implicit_gemm_splitk
+
+# Conditionally import Triton kernels, only available on GPU
+try:
+  from ocnn.nn.kernels import (
+      conv_fwd_implicit_gemm_splitk,
+      conv_bwd_implicit_gemm_splitk)
+except ImportError:
+  conv_fwd_implicit_gemm_splitk = None
+  conv_bwd_implicit_gemm_splitk = None
 
 
 class OctreeConvTritonFunction(Function):
