@@ -12,8 +12,9 @@ from typing import Dict, Mapping
 
 VERBOSE_AUTOTUNE = os.getenv('TRITON_PRINT_AUTOTUNING', '0') == '1'
 AUTOSAVE_AUTOTUNE_CACHE = os.getenv('OCNN_AUTOSAVE_AUTOTUNE', '1') == '1'
-AUTOTUNE_CACHE_PATH = os.getenv('OCNN_AUTOTUNE_CACHE_PATH',
-                                os.path.expanduser('~/.ocnnconvt/autotune_cache.json'))
+AUTOTUNE_CACHE_PATH = os.getenv(
+    'OCNN_AUTOTUNE_CACHE_PATH',
+    os.path.expanduser('~/.ocnnconvt/autotune_cache.json'))
 
 
 class TritonPersistentCacheAutotuner(triton.runtime.Autotuner):
@@ -374,7 +375,7 @@ def save_autotune_cache(path=None):
 
 def load_autotune_cache(path_or_cache=None):
     if torch.cuda.is_available() is False: return
-    
+
     cache = None
 
     # Preserve path-based loading, but allow callers to provide a preloaded cache object.
