@@ -40,10 +40,10 @@ with `Hash Tables`.
 Our O-CNN is published in SIGGRAPH 2017, SparseConvNet is published in CVPR
 2018, and MinkowskiNet is published in CVPR 2019. Actually, our O-CNN was
 submitted to SIGGRAPH in the end of 2016 and was officially accepted in March, 2017.
-<!-- The camera-ready version of our O-CNN was submitted to SIGGRAPH in April, 2018. -->
 We just did not post our paper on Arxiv during the review process of SIGGRAPH.
 Therefore, **the idea of constraining CNN computation into sparse non-emtpry
 voxels, i.e. Sparse Convolution,  is first proposed by our O-CNN**.
+<!-- The camera-ready version of our O-CNN was submitted to SIGGRAPH in April, 2018. -->
 
 <!--
 Developed in collaboration with authors from [PointCNN](https://arxiv.org/abs/1801.07791),
