@@ -59,12 +59,12 @@ octrees to leverage the library's capabilities.
 ## Updates
 
 - **2026.02.02**: Release `v2.3.0`, incorporating Triton to accelerate
-  octree-based sparse convolution in the upcoming release. OctreeConv is even
+  octree-based sparse convolution, resulting in a performance boost of up to
   **2.5 times faster than the latest spconv**!
 - **2025.12.18**: Release `v2.2.8`, improving neighbor search efficiency.
 
 
-## Key benefits of ocnn-pytorch
+## Key Benefits
 
 - **Simplicity**. The ocnn-pytorch is based on pure PyTorch, it is portable and
   can be installed with a simple command:`pip install ocnn`. Other sparse
@@ -75,6 +75,7 @@ octrees to leverage the library's capabilities.
   convolution frameworks. It is **even 2.5 times faster than the latest spconv
   implementation**! Check the benchmark [code](test/benchmark_conv.py) and
   [results](test/benchmark/results.png) for details. ✨
+
 
 ## Citation
 
