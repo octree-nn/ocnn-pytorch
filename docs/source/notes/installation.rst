@@ -35,4 +35,14 @@ It is also easy to install `ocnn` from source.
 
     .. code-block:: none
 
-      python setup.py install
+      pip install .
+
+
+.. note::
+
+    The Triton-based convolution operations in `ocnn` require `PyTorch ≥ 2.9.0`
+    and the `triton` package. On Ubuntu systems, the `triton`    package is
+    automatically installed during the `PyTorch` installation process. However,
+    on Windows systems, the `triton` package is not installed automatically, so
+    you need to install it manually using the following command: `pip install
+    triton-windows`.

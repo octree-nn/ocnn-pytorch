@@ -7,10 +7,11 @@
 [![Downloads](https://static.pepy.tech/badge/ocnn/month)](https://pepy.tech/project/ocnn)
 [![PyPI](https://img.shields.io/pypi/v/ocnn)](https://pypi.org/project/ocnn/)
 
+
 This repository contains the **pure PyTorch**-based implementation of
 [O-CNN](https://wang-ps.github.io/O-CNN.html). The code has been tested with
-`Pytorch>=1.6.0`, and `Pytorch>=1.9.0` is preferred. The *original*
-implementation of O-CNN is based on C++ and CUDA and can be found
+`Pytorch>=1.6.0`, and `Pytorch>=2.9.0` is needed for Triton-based convolutions.
+The *original* implementation of O-CNN is based on C++ and CUDA and can be found
 [here](https://github.com/Microsoft/O-CNN), which has received
 [![stars - O-CNN](https://img.shields.io/github/stars/microsoft/O-CNN?style=social)](https://github.com/microsoft/O-CNN) and
 [![forks - O-CNN](https://img.shields.io/github/forks/microsoft/O-CNN?style=social)](https://github.com/microsoft/O-CNN).
@@ -39,7 +40,7 @@ with `Hash Tables`.
 Our O-CNN is published in SIGGRAPH 2017, SparseConvNet is published in CVPR
 2018, and MinkowskiNet is published in CVPR 2019. Actually, our O-CNN was
 submitted to SIGGRAPH in the end of 2016 and was officially accepted in March,
-2017. <!-- The camera-ready version of our O-CNN was submitted to SIGGRAPH in April, 2018. -->
+1.    <!-- The camera-ready version of our O-CNN was submitted to SIGGRAPH in April, 2018. -->
 We just did not post our paper on Arxiv during the review process of SIGGRAPH.
 Therefore, **the idea of constraining CNN computation into sparse non-emtpry
 voxels, i.e. Sparse Convolution,  is first proposed by our O-CNN**.
@@ -53,6 +54,7 @@ The library provides essential components for converting raw point clouds into
 octrees to perform convolution operations. Of course, it also supports other 3D
 data formats, such as meshes and volumetric grids, which can be converted into
 octrees to leverage the library's capabilities.
+
 
 ## Updates
 

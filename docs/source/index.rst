@@ -19,11 +19,12 @@ ocnn-pytorch
    :target: https://pypi.org/project/ocnn/
    :alt: PyPI
 
-This repository contains the **pure PyTorch**-based implementation of
-`O-CNN <https://wang-ps.github.io/O-CNN.html>`_. The code has been tested with
-`Pytorch>=1.6.0`, and `Pytorch>=1.9.0` is preferred. The *original*
-implementation of O-CNN is based on C++ and CUDA and can be found
-`here <https://github.com/Microsoft/O-CNN>`_, which has received over `730 stars`.
+This repository contains the **pure PyTorch**-based implementation of `O-CNN
+<https://wang-ps.github.io/O-CNN.html>`_. The code has been tested with
+`Pytorch>=1.6.0`, and `Pytorch>=2.9.0` is needed for Triton-based convolutions.
+The *original* implementation of O-CNN is based on C++ and CUDA and can be found
+`here <https://github.com/Microsoft/O-CNN>`_, which has received over `730
+stars`.
 
 
 O-CNN is an octree-based 3D convolutional neural network framework for 3D data.
