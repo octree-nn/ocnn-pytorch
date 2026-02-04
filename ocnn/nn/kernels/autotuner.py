@@ -34,21 +34,26 @@ class TritonPersistentCacheAutotuner(triton.runtime.Autotuner):
         use_cuda_graph=False,
         do_bench=None,
     ):
-        super().__init__(
-            fn,
-            arg_names,
-            configs,
-            key,
-            reset_to_zero,
-            restore_value,
-            pre_hook,
-            post_hook,
-            prune_configs_by,
-            warmup,
-            rep,
-            use_cuda_graph,
-            do_bench,
+        kwargs = dict(
+            fn=fn,
+            arg_names=arg_names,
+            configs=configs,
+            key=key,
+            reset_to_zero=reset_to_zero,
+            restore_value=restore_value,
+            pre_hook=pre_hook,
+            post_hook=post_hook,
+            prune_configs_by=prune_configs_by,
+            warmup=warmup,
+            rep=rep,
+            use_cuda_graph=use_cuda_graph,
+            do_bench=do_bench,
         )
+
+        sig = inspect.signature(super().__init__)
+        filtered = {k: v for k, v in kwargs.items() if k in sig.parameters}
+        super().__init__(**filtered)
+
 
     def run(self, *args, **kwargs):
         self.nargs = dict(zip(self.arg_names, args))
