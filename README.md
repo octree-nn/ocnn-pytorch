@@ -9,8 +9,8 @@
 
 
 This repository contains the **pure PyTorch**-based implementation of
-[O-CNN](https://wang-ps.github.io/O-CNN.html). The code has been tested with
-`Pytorch>=1.6.0`, and `Pytorch>=2.9.0` is needed for Triton-based convolutions.
+[O-CNN](https://wang-ps.github.io/O-CNN.html). The code  is compatible with
+`Pytorch>=1.6.0`, while `Pytorch>=2.8.0` is required for Triton-based convolutions.
 The *original* implementation of O-CNN is based on C++ and CUDA and can be found
 [here](https://github.com/Microsoft/O-CNN), which has received
 [![stars - O-CNN](https://img.shields.io/github/stars/microsoft/O-CNN?style=social)](https://github.com/microsoft/O-CNN) and

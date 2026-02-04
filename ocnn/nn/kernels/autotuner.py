@@ -8,7 +8,7 @@ import triton
 import time
 import inspect
 from filelock import FileLock
-from typing import Dict, Mapping
+from typing import Mapping
 
 VERBOSE_AUTOTUNE = os.getenv('TRITON_PRINT_AUTOTUNING', '0') == '1'
 AUTOSAVE_AUTOTUNE_CACHE = os.getenv('OCNN_AUTOSAVE_AUTOTUNE', '1') == '1'
@@ -18,42 +18,6 @@ AUTOTUNE_CACHE_PATH = os.getenv(
 
 
 class TritonPersistentCacheAutotuner(triton.runtime.Autotuner):
-    def __init__(
-        self,
-        fn,
-        arg_names,
-        configs,
-        key,
-        reset_to_zero,
-        restore_value,
-        pre_hook=None,
-        post_hook=None,
-        prune_configs_by: Dict = None,
-        warmup=None,
-        rep=None,
-        use_cuda_graph=False,
-        do_bench=None,
-    ):
-        kwargs = dict(
-            fn=fn,
-            arg_names=arg_names,
-            configs=configs,
-            key=key,
-            reset_to_zero=reset_to_zero,
-            restore_value=restore_value,
-            pre_hook=pre_hook,
-            post_hook=post_hook,
-            prune_configs_by=prune_configs_by,
-            warmup=warmup,
-            rep=rep,
-            use_cuda_graph=use_cuda_graph,
-            do_bench=do_bench,
-        )
-
-        sig = inspect.signature(super().__init__)
-        filtered = {k: v for k, v in kwargs.items() if k in sig.parameters}
-        super().__init__(**filtered)
-
 
     def run(self, *args, **kwargs):
         self.nargs = dict(zip(self.arg_names, args))
