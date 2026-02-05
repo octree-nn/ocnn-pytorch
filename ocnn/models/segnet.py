@@ -25,20 +25,17 @@ class SegNet(torch.nn.Module):
 
     channels_stages = [2 ** max(i+8-stages, 2) for i in range(stages)]
     channels = [in_channels] + channels_stages
-    self.convs = torch.nn.ModuleList(
-        [ocnn.modules.OctreeConvBnRelu(channels[i], channels[i+1], nempty=nempty)
-         for i in range(stages)])
-    self.pools = torch.nn.ModuleList(
-        [ocnn.nn.OctreeMaxPool(nempty, return_indices) for _ in range(stages)])
-
+    self.convs = torch.nn.ModuleList([ocnn.modules.OctreeConvBnRelu(
+        channels[i], channels[i+1], nempty=nempty) for i in range(stages)])
+    self.pools = torch.nn.ModuleList([ocnn.nn.OctreeMaxPool(
+        nempty, return_indices) for _ in range(stages)])
     self.bottleneck = ocnn.modules.OctreeConvBnRelu(channels[-1], channels[-1])
 
     channels = channels_stages[::-1] + [channels_stages[0]]
-    self.deconvs = torch.nn.ModuleList(
-        [ocnn.modules.OctreeConvBnRelu(channels[i], channels[i+1], nempty=nempty)
-         for i in range(0, stages)])
-    self.unpools = torch.nn.ModuleList(
-        [ocnn.nn.OctreeMaxUnpool(nempty) for _ in range(stages)])
+    self.deconvs = torch.nn.ModuleList([ocnn.modules.OctreeConvBnRelu(
+        channels[i], channels[i+1], nempty=nempty) for i in range(0, stages)])
+    self.unpools = torch.nn.ModuleList([ocnn.nn.OctreeMaxUnpool(
+        nempty) for _ in range(stages)])
 
     self.octree_interp = ocnn.nn.OctreeInterp(interp, nempty)
     self.header = torch.nn.Sequential(
