@@ -10,8 +10,8 @@ import torch.nn
 from torch.autograd import Function
 from typing import List
 
+import ocnn
 from ocnn.octree import Octree
-from ocnn.nn import OctreeConv
 from ocnn.utils import xavier_uniform_, resize_with_last_val, list2str
 
 # Conditionally import Triton kernels, only available on GPU
@@ -79,7 +79,7 @@ class OctreeConvTriton(torch.nn.Module):
 
   def __init__(self, in_channels: int, out_channels: int,
                kernel_size: List[int] = [3], stride: int = 1,
-               nempty: bool = False, direct_method: bool = False,
+               nempty: bool = False, method: str = 'triton',
                use_bias: bool = False, max_buffer: int = int(2e8)):
     super().__init__()
     self.in_channels = in_channels
@@ -140,7 +140,7 @@ def convert_conv_triton(module: torch.nn.Module) -> torch.nn.Module:
   '''
 
   module_out = module
-  if (isinstance(module, OctreeConv) and
+  if (isinstance(module, ocnn.nn.OctreeConv) and
           module.stride == 1 and module.kernel_size == [3, 3, 3]):
     module_out = OctreeConvTriton(
         module.in_channels, module.out_channels, module.kernel_size,

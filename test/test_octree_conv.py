@@ -54,7 +54,7 @@ class TesOctreeConv(unittest.TestCase):
           # update counter
           counter = counter + 1
 
-    for m in [True, False]:
+    for m in ['explicit_gemm', 'block_gemm']:
       counter = 0
       for i in range(len(stride)):
         for j in range(len(kernel_size)):
@@ -62,7 +62,7 @@ class TesOctreeConv(unittest.TestCase):
             # test octree_conv
             conv = ocnn.nn.OctreeConv(
                 in_channels, out_channels, kernel_size[j].tolist(), stride[i],
-                nempty=ne, direct_method=m, max_buffer=int(2e4))
+                nempty=ne, method=m, max_buffer=int(2e4))
             weight = torch.from_numpy(data['cw_%d' % counter])
             conv.weights.data.copy_(weight)
             out = conv.forward(data_in[ne], octree, depth)
@@ -72,7 +72,7 @@ class TesOctreeConv(unittest.TestCase):
             # test octree_deconv
             deconv = ocnn.nn.OctreeDeconv(
                 in_channels, out_channels, kernel_size[j].tolist(), stride[i],
-                nempty=ne, direct_method=m, max_buffer=int(2e4))
+                nempty=ne, method=m, max_buffer=int(2e4))
             weight = torch.from_numpy(data['dw_%d' % counter])
             deconv.weights.data.copy_(weight)
             out = deconv.forward(data_in[ne], octree, depth)
@@ -104,7 +104,7 @@ class TesOctreeConv(unittest.TestCase):
           # test octree_conv
           conv_ref = ocnn.nn.OctreeConv(
               in_channels, out_channels, kernel_size[j].tolist(), stride[i],
-              nempty=ne, direct_method=True)
+              nempty=ne, method='explicit_gemm')
           weight = torch.from_numpy(data['cw_%d' % counter])
           conv_ref.weights.data.copy_(weight)
           data_ref = data_in[ne].clone().requires_grad_()
@@ -114,7 +114,7 @@ class TesOctreeConv(unittest.TestCase):
 
           conv = ocnn.nn.OctreeConv(
               in_channels, out_channels, kernel_size[j].tolist(), stride[i],
-              nempty=ne, direct_method=False, max_buffer=int(2e4))
+              nempty=ne, method='block_gemm', max_buffer=int(2e4))
           weight = torch.from_numpy(data['cw_%d' % counter])
           conv.weights.data.copy_(weight)
           data_ = data_in[ne].clone().requires_grad_()
@@ -133,7 +133,7 @@ class TesOctreeConv(unittest.TestCase):
           # test octree_deconv
           deconv_ref = ocnn.nn.OctreeDeconv(
               in_channels, out_channels, kernel_size[j].tolist(), stride[i],
-              nempty=ne, direct_method=True)
+              nempty=ne, method='explicit_gemm')
           weight = torch.from_numpy(data['dw_%d' % counter])
           deconv_ref.weights.data.copy_(weight)
           data_ref = data_in[ne].clone().requires_grad_()
@@ -143,7 +143,7 @@ class TesOctreeConv(unittest.TestCase):
 
           deconv = ocnn.nn.OctreeDeconv(
               in_channels, out_channels, kernel_size[j].tolist(), stride[i],
-              nempty=ne, direct_method=False, max_buffer=int(2e4))
+              nempty=ne, method='block_gemm', max_buffer=int(2e4))
           weight = torch.from_numpy(data['dw_%d' % counter])
           deconv.weights.data.copy_(weight)
           data_ = data_in[ne].clone().requires_grad_()

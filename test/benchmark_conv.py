@@ -65,12 +65,12 @@ def benchmark(depth, provider, mode, dtype):
   if provider == 'torch':
     model = ocnn.nn.OctreeConv(
         in_channel, out_channel, kernel_size, stride=stride,
-        nempty=nempty, use_bias=True,).type(dtype).to(device)
+        nempty=nempty, use_bias=True, method='block_gemm').type(dtype).to(device)
 
   elif provider == 'triton':
     model = ocnn.nn.OctreeConvTriton(
         in_channel, out_channel, kernel_size, stride=stride,
-        nempty=nempty, use_bias=True,).type(dtype).to(device)
+        nempty=nempty, use_bias=True, method='triton').type(dtype).to(device)
   else:
     model = spconv.SubMConv3d(
         in_channel, out_channel, kernel_size, padding=1, indice_key='test',

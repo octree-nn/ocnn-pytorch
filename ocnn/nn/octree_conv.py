@@ -5,15 +5,22 @@
 # Written by Peng-Shuai Wang
 # --------------------------------------------------------
 
+import os
 import torch
 import torch.nn
+# import warnings
 from torch.autograd import Function
+from packaging import version
 from typing import List
 
 from ocnn.octree import Octree
 from ocnn.utils import scatter_add, xavier_uniform_, resize_with_last_val, list2str
 from .octree2col import octree2col, col2octree
 from .octree_pad import octree_pad, octree_depad
+from .octree_conv_t import octree_conv_triton
+
+
+DISABLE_TRITON = os.getenv('OCNN_DISABLE_TRITON', '0') == '1'
 
 
 class OctreeConvBase:
@@ -319,14 +326,16 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
     stride (int): The stride of the convolution (:obj:`1` or :obj:`2`).
     nempty (bool): If True, only performs the convolution on non-empty
         octree nodes.
-    direct_method (bool): If True, directly performs the convolution via using
-        gemm and octree2col/col2octree. The octree2col/col2octree needs to
-        construct a large matrix, which may consume a lot of memory. If False,
-        performs the convolution in a sub-matrix manner, which can save the
-        requied runtime memory.
+    method (str): Which implementation to use. Options are
+      :obj:`'explicit_gemm'`, :obj:`'block_gemm'`, and :obj:`'triton'`.
+      :obj:`'explicit_gemm'` builds the full column matrix via
+      octree2col/col2octree and then uses GEMM; this can use a large amount of
+      memory. :obj:`'block_gemm'` computes in smaller blocks to reduce peak
+      memory at some runtime cost. :obj:`'triton'` uses the implicit kernel and
+      requires kernel_size=[3,3,3], stride=1, CUDA, and PyTorch >= 2.8.0.
     use_bias (bool): If True, add a bias term to the convolution.
     max_buffer (int): The maximum number of elements in the buffer, used when
-        :attr:`direct_method` is False.
+        :attr:`method` is 'block_gemm'.
 
   .. note::
     Each non-empty octree node has exactly 8 children nodes, among which some
@@ -340,17 +349,29 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
 
   def __init__(self, in_channels: int, out_channels: int,
                kernel_size: List[int] = [3], stride: int = 1,
-               nempty: bool = False, direct_method: bool = False,
+               nempty: bool = False, method: str = 'triton',
                use_bias: bool = False, max_buffer: int = int(2e8)):
     super().__init__(
         in_channels, out_channels, kernel_size, stride, nempty, max_buffer)
 
-    self.direct_method = direct_method
     self.use_bias = use_bias
+    self.method = self.check_method(method)
     self.weights = torch.nn.Parameter(torch.Tensor(*self.weights_shape))
-    if self.use_bias:
-      self.bias = torch.nn.Parameter(torch.Tensor(out_channels))
+    self.bias = (torch.nn.Parameter(torch.Tensor(out_channels))
+                 if use_bias else None)
     self.reset_parameters()
+
+  def check_method(self, method: str):
+    smaller_than_280 = version.parse(torch.__version__) < version.parse('2.8.8')
+    if method == 'triton':
+      if (self.kernel != '333' or self.stride != 1 or DISABLE_TRITON or
+              smaller_than_280 or torch.cuda.is_available() is False):
+        method = 'block_gemm'
+        # warnings.warn(
+        #     'The triton implementation only supports kernel_size=[3,3,3], '
+        #     'stride=1, and requires PyTorch >= 2.8.0 and CUDA. '
+        #     'Falling back to block_gemm.', RuntimeWarning, stacklevel=2,)
+    return method
 
   def reset_parameters(self):
     xavier_uniform_(self.weights)
@@ -358,6 +379,41 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
       torch.nn.init.zeros_(self.bias)
 
   def is_conv_layer(self): return True
+
+  def explicit_gemm(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''' Performs the convolution via explicitly constructing the `col` data.
+    '''
+
+    col = octree2col(
+        data, octree, depth, self.kernel, self.stride, self.nempty)
+    out = torch.mm(col.flatten(1), self.weights.flatten(0, 1))
+
+    if self.use_bias:
+      out += self.bias
+    return out
+
+  def block_gemm(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''' Performs the convolution in a block manner, which can save the required
+    runtime memory.
+    '''
+
+    out = octree_conv(
+        data, self.weights, octree, depth, self.in_channels,
+        self.out_channels, self.kernel_size, self.stride, self.nempty,
+        self.max_buffer)
+
+    if self.use_bias:
+      out += self.bias
+    return out
+
+  def implicit_gemm(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''' Performs the convolution via the implicit GEMM kernel implemented in Triton.
+    '''
+
+    weight = self.weights.permute(2, 0, 1)   # (V,Ci,Co) -> (Co,V,Ci)
+    neigh = octree.get_neigh(depth, self.kernel, self.stride, self.nempty)
+    out = octree_conv_triton(data, weight, self.bias, neigh)
+    return out
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
     r''' Defines the octree convolution.
@@ -368,18 +424,14 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
       depth (int): The depth of current octree.
     '''
 
-    if self.direct_method:
-      col = octree2col(
-          data, octree, depth, self.kernel, self.stride, self.nempty)
-      out = torch.mm(col.flatten(1), self.weights.flatten(0, 1))
+    if self.method == 'explicit_gemm':
+      out = self.explicit_gemm(data, octree, depth)
+    elif self.method == 'block_gemm':
+      out = self.block_gemm(data, octree, depth)
+    elif self.method == 'triton':
+      out = self.implicit_gemm(data, octree, depth)
     else:
-      out = octree_conv(
-          data, self.weights, octree, depth, self.in_channels,
-          self.out_channels, self.kernel_size, self.stride, self.nempty,
-          self.max_buffer)
-
-    if self.use_bias:
-      out += self.bias
+      raise ValueError('Unknown method: {}'.format(self.method))
 
     if self.stride == 2 and not self.nempty:
       out = octree_pad(out, octree, depth-1)
@@ -414,7 +466,7 @@ class OctreeDeconv(OctreeConv):
       if not self.nempty:
         data = octree_depad(data, octree, depth)
 
-    if self.direct_method:
+    if self.method == 'explicit_gemm':
       col = torch.mm(data, self.weights.flatten(0, 1).t())
       col = col.view(col.shape[0], self.kdim, -1)
       out = col2octree(

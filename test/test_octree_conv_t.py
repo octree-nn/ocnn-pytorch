@@ -73,7 +73,7 @@ class TestOctreeConvTriton(unittest.TestCase):
     # initialize conv layers
     conv_pt = ocnn.nn.OctreeConv(
         in_channel, out_channel, kernel_size, stride=1,
-        nempty=nempty, use_bias=True).to(device)
+        nempty=nempty, use_bias=True, method='block_gemm').to(device)
     conv_tt = ocnn.nn.OctreeConvTriton(
         in_channel, out_channel, kernel_size, stride=1,
         nempty=nempty, use_bias=True,).to(device)

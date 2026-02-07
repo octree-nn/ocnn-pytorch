@@ -7,7 +7,6 @@
 
 import os
 import torch
-import numpy as np
 import unittest
 
 import ocnn
@@ -40,7 +39,9 @@ class TesOctreeDWConv(unittest.TestCase):
           convs = []
           data = rnd_data.clone().requires_grad_()
           for c in range(channel):
-            conv = ocnn.nn.OctreeConv(1, 1, kernel_size[i], stride, nempty)
+            conv = ocnn.nn.OctreeConv(
+                1, 1, kernel_size[i], stride, nempty, method='block_gemm',
+                max_buffer=max_buffer)
             conv.weights.data.copy_(dwconv.weights.data[:, :, c:c+1])
             outs.append(conv(data[:, c:c+1], octree, depth))
             convs.append(conv)
