@@ -17,8 +17,10 @@ from ocnn.models import ResNet
 from .utils import sphere_coords
 
 
-# !!! disable TF32 for testing !!!
+# !!! disable TF32 for testing
 ocnn.nn.kernels.config.allow_tf32 = False
+# !!! disable triton for octree_conv
+ocnn.nn.octree_conv.DISABLE_TRITON = True
 
 
 @unittest.skipIf(torch.cuda.is_available() is False, "no GPU")

@@ -13,6 +13,8 @@ import ocnn
 from ocnn.octree import Octree, Points
 from utils import sphere_coords
 
+# !!! disable triton for octree_conv
+ocnn.nn.octree_conv.DISABLE_TRITON = True
 
 device = 'cuda'
 depth2channel = {3: 1024, 4: 512, 5: 256, 6: 128, 7: 64, 8: 32, 9: 16}
