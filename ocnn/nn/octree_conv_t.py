@@ -89,6 +89,7 @@ class OctreeConvTriton(torch.nn.Module):
     self.stride = stride
     self.nempty = nempty
     self.use_bias = use_bias
+    self.method = method
     assert self.stride == 1, 'Only stride=1 is supported now.'
     assert self.kernel == '333', 'Only kernel_size=[3,3,3] is supported now.'
 
@@ -123,9 +124,10 @@ class OctreeConvTriton(torch.nn.Module):
     r''' Sets the extra representation of the module.
     '''
 
-    return ('triton, in_channels={}, out_channels={}, kernel_size={}, stride={}, '
-            'nempty={}, bias={}').format(self.in_channels, self.out_channels,
-             self.kernel_size, self.stride, self.nempty, self.use_bias)  # noqa
+    return ('in_channels={}, out_channels={}, kernel_size={}, stride={}, '
+            'nempty={}, bias={}, method={}').format(self.in_channels,
+             self.out_channels, self.kernel_size, self.stride, self.nempty,
+             self.use_bias, self.method)  # noqa
 
 
 # alias

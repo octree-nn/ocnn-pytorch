@@ -442,8 +442,9 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
     '''
 
     return ('in_channels={}, out_channels={}, kernel_size={}, stride={}, '
-            'nempty={}, bias={}').format(self.in_channels, self.out_channels,
-             self.kernel_size, self.stride, self.nempty, self.use_bias)  # noqa
+            'nempty={}, bias={}, method={}').format(self.in_channels,
+             self.out_channels, self.kernel_size, self.stride, self.nempty,
+             self.use_bias, self.method)  # noqa
 
 
 class OctreeDeconv(OctreeConv):
