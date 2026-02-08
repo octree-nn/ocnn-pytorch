@@ -58,6 +58,8 @@ octrees to leverage the library's capabilities.
 
 ## Updates
 
+- **2026.02.08**: Release `v2.3.1`, improving the interfaces of octree
+  convolutions and simplifying the triton kernels.
 - **2026.02.02**: Release `v2.3.0`, incorporating Triton to accelerate
   octree-based sparse convolution, resulting in a performance boost of up to
   **2.5 times faster than the latest spconv**!
