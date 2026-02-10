@@ -33,9 +33,11 @@ class OctreeConvTritonFunction(Function):
               neigh: torch.Tensor):
     data = data.contiguous()
     weights = weights.contiguous()
+    weights = weights.to(data.dtype)  # for torch.amp
     neigh = neigh.contiguous()
     if bias is not None:
       bias = bias.contiguous()
+      bias = bias.to(data.dtype)      # for torch.amp
 
     out = conv_fwd_implicit_gemm_splitk(data, weights, bias, neigh)
     ctx.save_for_backward(data, weights, bias, neigh)
