@@ -8,6 +8,7 @@
 import os
 import torch
 import numpy as np
+from packaging import version
 
 import ocnn
 
@@ -67,3 +68,8 @@ def sphere_coords(resolution, device='cuda'):
         out.append(block[active])
   pos = torch.cat(out, dim=0)
   return pos
+
+
+def skip_triton_test():
+  return (torch.cuda.is_available() is False or
+          version.parse(torch.__version__) < version.parse("2.7.0"))

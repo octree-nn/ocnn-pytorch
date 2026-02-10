@@ -12,18 +12,16 @@ import unittest
 import ocnn
 import ocnn.nn.kernels.config
 from ocnn.octree import Points, Octree
-from .utils import sphere_coords
+from .utils import sphere_coords, skip_triton_test
 
 # !!! disable TF32 for testing !!!
 ocnn.nn.kernels.config.allow_tf32 = False
 
-@unittest.skipIf(torch.cuda.is_available() is False, "no GPU")
+
+@unittest.skipIf(skip_triton_test(), "Skip triton")
 class TestOctreeConvTriton(unittest.TestCase):
 
   def test_conv(self):
-    if torch.cuda.is_available() is False:
-      return  # !!! skip the test if no GPU is available !!!
-
     octree = self.build_octree()
     depth2channel = {3: 1024, 4: 512, 5: 256, 6: 128, 7: 64}
     for d in [octree.depth, octree.depth - 1]:
@@ -31,9 +29,6 @@ class TestOctreeConvTriton(unittest.TestCase):
         self.conv_forward_backward(d, out_ratio, octree, depth2channel[d])
 
   def test_conv_small_channel(self):
-    if torch.cuda.is_available() is False:
-      return  # !!! skip the test if no GPU is available !!!
-
     octree = self.build_octree()
     for d in [octree.depth]:
       for out_ratio in [1.0, 2.0]:
@@ -42,9 +37,6 @@ class TestOctreeConvTriton(unittest.TestCase):
           self.conv_forward_backward(d, out_ratio, octree, channel)
 
   def test_conv_irregular_channel(self):
-    if torch.cuda.is_available() is False:
-      return  # !!! skip the test if no GPU is available !!!
-
     octree = self.build_octree()
     for d in [octree.depth]:
       for out_ratio in [1.0, 2.0]:

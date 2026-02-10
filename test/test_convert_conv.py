@@ -14,7 +14,7 @@ import ocnn.nn.kernels.config
 from ocnn.octree import Points, Octree
 from ocnn.models import ResNet
 
-from .utils import sphere_coords
+from .utils import sphere_coords, skip_triton_test
 
 
 # !!! disable TF32 for testing
@@ -23,13 +23,10 @@ ocnn.nn.kernels.config.allow_tf32 = False
 ocnn.nn.octree_conv.DISABLE_TRITON = True
 
 
-@unittest.skipIf(torch.cuda.is_available() is False, "no GPU")
+@unittest.skipIf(skip_triton_test(), "Skip triton")
 class TestConvertConvTriton(unittest.TestCase):
 
   def test_resnet(self):
-    if torch.cuda.is_available() is False:
-      return  # !!! skip the test if no GPU is available !!!
-
     atol = 5e-3
     octree = self.build_octree()
     octree = ocnn.octree.merge_octrees([octree, octree])
