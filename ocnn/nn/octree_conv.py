@@ -159,7 +159,6 @@ class OctreeConvBase:
       # The sub-matrix gemm
       buffer = torch.mm(grad[start:end], weights.flatten(0, 1).t())
       buffer = buffer.view(-1, self.buffer_shape[1], self.buffer_shape[2])
-      buffer = buffer.to(out.dtype)  # for pytorch.amp
 
       # Performs col2octree
       neigh_i = self.neigh[start:end]
@@ -230,6 +229,7 @@ class OctreeConvFunction(Function):
         in_channels, out_channels, kernel_size, stride, nempty, max_buffer)
     octree_conv.setup(octree, depth)
     out = octree_conv.check_and_init(data)
+    weights = weights.to(data.dtype)
     out = octree_conv.forward_gemm(out, data, weights)
 
     ctx.save_for_backward(data, weights)
@@ -267,6 +267,7 @@ class OctreeDeconvFunction(Function):
         in_channels, out_channels, kernel_size, stride, nempty, max_buffer)
     octree_deconv.setup(octree, depth)
     out = octree_deconv.check_and_init(data)
+    weights = weights.to(data.dtype)
     out = octree_deconv.backward_gemm(out, data, weights)
 
     ctx.save_for_backward(data, weights)

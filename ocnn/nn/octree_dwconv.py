@@ -59,7 +59,7 @@ class OctreeDWConvBase(OctreeConvBase):
 
   def backward_gemm(self, out: torch.Tensor, grad: torch.Tensor,
                     weights: torch.Tensor):
-    r''' Performs the backward pass of octree-based convolution. 
+    r''' Performs the backward pass of octree-based convolution.
     '''
 
     # Loop over each sub-matrix
@@ -130,6 +130,7 @@ class OctreeDWConvFunction(Function):
         in_channels, kernel_size, stride, nempty, max_buffer)
     octree_conv.setup(octree, depth)
     out = octree_conv.check_and_init(data)
+    weights = weights.to(data.dtype)
     out = octree_conv.forward_gemm(out, data, weights)
 
     ctx.save_for_backward(data, weights)
