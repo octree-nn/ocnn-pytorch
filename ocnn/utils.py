@@ -203,3 +203,19 @@ def build_example_octree(depth: int = 5, full_depth: int = 2, pt_num: int = 3):
   octree = ocnn.octree.Octree(depth, full_depth)
   octree.build_octree(point_cloud)
   return octree
+
+
+def has_nan_inf(x: torch.Tensor, name: str):
+  r''' Checks if all elements in :attr:`x` are finite for debugging.
+  If not, raises a :obj:`RuntimeError` with the name of the tensor and its
+  maximum absolute value.
+
+  args:
+    x (torch.Tensor): The tensor to check for finiteness.
+    name (str): The name of the tensor, used in the error message if non-finite
+        values are found.
+  '''
+
+  if not torch.isfinite(x).all():
+    raise RuntimeError(
+        f"{name} has NaN/Inf: dtype={x.dtype}, max={x.abs().max().item()}")
