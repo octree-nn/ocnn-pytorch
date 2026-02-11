@@ -32,12 +32,6 @@ class OctreeDWConvBase(OctreeConvBase):
     r''' Peforms the forward pass of octree-based convolution.
     '''
 
-    # Type check
-    if data.dtype != out.dtype:
-      data = data.to(out.dtype)
-    if weights.dtype != out.dtype:
-      weights = weights.to(out.dtype)
-
     # Initialize the buffer
     buffer = data.new_empty(self.buffer_shape)
 
@@ -68,12 +62,6 @@ class OctreeDWConvBase(OctreeConvBase):
     r''' Performs the backward pass of octree-based convolution. 
     '''
 
-    # Type check
-    if grad.dtype != out.dtype:
-      grad = grad.to(out.dtype)
-    if weights.dtype != out.dtype:
-      weights = weights.to(out.dtype)
-
     # Loop over each sub-matrix
     for i in range(self.buffer_n):
       start = i * self.buffer_h
@@ -99,12 +87,6 @@ class OctreeDWConvBase(OctreeConvBase):
   def weight_gemm(self, out: torch.Tensor, data: torch.Tensor, grad: torch.Tensor):
     r''' Computes the gradient of the weight matrix.
     '''
-
-    # Type check
-    if data.dtype != out.dtype:
-      data = data.to(out.dtype)
-    if grad.dtype != out.dtype:
-      grad = grad.to(out.dtype)
 
     # Record the shape of out
     out_shape = out.shape
