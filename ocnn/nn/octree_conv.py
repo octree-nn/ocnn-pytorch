@@ -345,10 +345,10 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
     self.reset_parameters()
 
   def check_method(self, method: str):
-    smaller_than_280 = version.parse(torch.__version__) < version.parse('2.8.8')
+    smaller_than_270 = version.parse(torch.__version__) < version.parse('2.7.0')
     if method == 'triton':
       if (self.kernel != '333' or self.stride != 1 or DISABLE_TRITON or
-              smaller_than_280 or torch.cuda.is_available() is False):
+              smaller_than_270 or torch.cuda.is_available() is False):
         method = 'block_gemm'
         # warnings.warn(
         #     'The triton implementation only supports kernel_size=[3,3,3], '

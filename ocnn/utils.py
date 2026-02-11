@@ -124,7 +124,7 @@ def scatter_add(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
   Args:
     src (torch.Tensor): The source tensor.
     index (torch.Tensor): The indices of elements to scatter.
-    dim (torch.Tensor): The axis along which to index, (default: :obj:`-1`).
+    dim (int): The axis along which to index, (default: :obj:`-1`).
     out (torch.Tensor or None): The destination tensor.
     dim_size (int or None): If :attr:`out` is not given, automatically create
         output with size :attr:`dim_size` at dimension :attr:`dim`. If
