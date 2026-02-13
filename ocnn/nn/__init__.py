@@ -23,6 +23,7 @@ from .octree_drop import OctreeDropPath
 from .octree_align import search_value, octree_align
 from .octree_conv_t import OctreeConvTriton, OctreeConvT, convert_conv_triton
 
+
 __all__ = [
     'octree2voxel',
     'octree2col', 'col2octree',
