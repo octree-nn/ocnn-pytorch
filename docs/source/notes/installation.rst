@@ -7,6 +7,7 @@ Requirement
 
 Install `PyTorch >= 1.9.0 <https://pytorch.org/get-started/locally/>`_ according
 the official PyTorch instructions.
+**Pytorch>=2.8.0 is required for Triton-based convolutions**.
 
 
 Installation via Pip
@@ -40,7 +41,7 @@ It is also easy to install `ocnn` from source.
 
 .. note::
 
-    The Triton-based convolution operations in `ocnn` require `PyTorch ≥ 2.9.0`
+    The Triton-based convolution operations in `ocnn` require `PyTorch ≥ 2.8.0`
     and the `triton` package. On Ubuntu systems, the `triton`    package is
     automatically installed during the `PyTorch` installation process. However,
     on Windows systems, the `triton` package is not installed automatically, so

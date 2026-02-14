@@ -10,7 +10,7 @@
 
 This repository contains the **pure PyTorch**-based implementation of
 [O-CNN](https://wang-ps.github.io/O-CNN.html). The code  is compatible with
-`Pytorch>=1.6.0`, while `Pytorch>=2.8.0` is required for Triton-based convolutions.
+`Pytorch>=1.6.0`, while **`Pytorch>=2.8.0` is required for Triton-based convolutions**.
 The *original* implementation of O-CNN is based on C++ and CUDA and can be found
 [here](https://github.com/Microsoft/O-CNN), which has received
 [![stars - O-CNN](https://img.shields.io/github/stars/microsoft/O-CNN?style=social)](https://github.com/microsoft/O-CNN) and
@@ -69,7 +69,7 @@ octrees to leverage the library's capabilities.
 ## Key Benefits
 
 - **Simplicity**. The ocnn-pytorch is based on pure PyTorch, it is portable and
-  can be installed with a simple command:`pip install ocnn`. Other sparse
+  can be installed with a simple command: **`pip install ocnn`**. Other sparse
   convolution frameworks heavily rely on C++ and CUDA, and it is complicated to
   configure the compiling environment.
 
