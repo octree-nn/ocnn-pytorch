@@ -16,7 +16,7 @@ from .utils import get_octree
 class OctreeDropTest(unittest.TestCase):
 
   def test_octree_drop_path(self):
-    r'''Just execute the `OctreeDropPath`, and there are no comparisons with 
+    r'''Just execute the `OctreeDropPath`, and there are no comparisons with
     ground-truth results.
     '''
 
@@ -35,6 +35,11 @@ class OctreeDropTest(unittest.TestCase):
     data = torch.rand(nnum_nempty, 3)
     drop_path = ocnn.nn.OctreeDropPath(drop_prob=0.8, nempty=True)
     output = drop_path(data, octree, depth)
+
+    # Test 3
+    data = torch.rand(nnum, 3)
+    drop_path = ocnn.nn.DropPath(drop_prob=0.8, scale_by_keep=True)
+    output = drop_path(data)
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ from .octree_gconv import OctreeGroupConv
 from .octree_dwconv import OctreeDWConv
 from .octree_norm import (OctreeBatchNorm, OctreeGroupNorm,
                           OctreeInstanceNorm, OctreeNorm)
-from .octree_drop import OctreeDropPath
+from .octree_drop import OctreeDropPath, DropPath
 from .octree_align import search_value, octree_align
 from .octree_conv_t import OctreeConvTriton, OctreeConvT, convert_conv_triton
 
@@ -37,7 +37,7 @@ __all__ = [
     'OctreeGroupConv', 'OctreeDWConv',
     'OctreeInterp', 'OctreeUpsample',
     'OctreeInstanceNorm', 'OctreeBatchNorm', 'OctreeGroupNorm', 'OctreeNorm',
-    'OctreeDropPath',
+    'OctreeDropPath', 'DropPath',
     'search_value', 'octree_align',
     'OctreeConvTriton', 'OctreeConvT', 'convert_conv_triton',
 ]
