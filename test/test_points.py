@@ -83,11 +83,11 @@ class TestPoints(unittest.TestCase):
     self.assertTrue(torch.allclose(point_cloud.normals, normals, atol=1e-6) &
                     torch.allclose(point_cloud.points, points, atol=1e-6))
 
-  def test_normalize(self):
+  def test_centralize(self):
     point_cloud = self.init_points()
 
     bbmin, bbmax = point_cloud.bbox()
-    point_cloud.normalize(bbmin, bbmax)
+    point_cloud.centralize(bbmin, bbmax)
 
     self.assertTrue((point_cloud.points >= -1).all() &
                     (point_cloud.points <= 1).all())

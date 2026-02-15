@@ -24,7 +24,7 @@ class ShapeNetTransform(Transform):
 
     # !NOTE: Normalize the points into one unit sphere in [-0.8, 0.8]
     bbmin, bbmax = points.bbox()
-    points.normalize(bbmin, bbmax, scale=0.8)
+    points.centralize(bbmin, bbmax, scale=0.8)
 
     return {'points': points}
 

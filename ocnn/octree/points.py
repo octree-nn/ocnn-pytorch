@@ -206,9 +206,9 @@ class Points:
     bbmax = self.points.max(dim=0)
     return bbmin[0], bbmax[0]
 
-  def normalize(self, bbmin: torch.Tensor, bbmax: torch.Tensor,
+  def centralize(self, bbmin: torch.Tensor, bbmax: torch.Tensor,
                 scale: float = 1.0):
-    r''' Normalizes the point cloud to :obj:`[-scale, scale]`.
+    r''' Centralizes the point cloud to :obj:`[-scale, scale]`.
 
     Args:
       bbmin (torch.Tensor): The minimum coordinates of the bounding box.
