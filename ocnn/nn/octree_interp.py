@@ -7,7 +7,7 @@
 
 import torch
 import torch.sparse
-from typing import List, Optional
+from typing import Union, Optional
 
 import ocnn
 from ocnn.octree import Octree
@@ -24,7 +24,7 @@ def octree_nearest_pts(data: torch.Tensor, octree: Octree, depth: int,
     depth (int): The depth of the data.
     pts (torch.Tensor): The coordinates of the points with shape :obj:`(N, 4)`,
         i.e. :obj:`N x (x, y, z, batch)`.
-    nempty (bool): If true, the :attr:`data` only contains features of non-empty 
+    nempty (bool): If true, the :attr:`data` only contains features of non-empty
         octree nodes
     bound_check (bool): If true, check whether the point is in :obj:`[0, 2^depth)`.
 
@@ -115,13 +115,17 @@ class OctreeInterp(torch.nn.Module):
     self.func = octree_linear_pts if method == 'linear' else octree_nearest_pts
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int,
-              pts: torch.Tensor):
+              pts: torch.Tensor, bbmin: Union[torch.Tensor, float] = -1,
+              bbmax: Union[torch.Tensor, float] = 1):
     r''''''
 
-    # rescale points from [-1, 1] to [0, 2^depth]
+    # rescale points from [bbmin, bbmax] to [0, 2^depth]
     if self.rescale_pts:
-      scale = 2 ** (depth - 1)
-      pts[:, :3] = (pts[:, :3] + 1.0) * scale
+      box_size = bbmax - bbmin
+      if type(box_size) is torch.Tensor:
+        box_size = box_size.max().item()
+      assert box_size > 0, 'The bounding box size must be greater than 0.'
+      pts[:, :3] = (pts[:, :3] - bbmin) * (2**depth / box_size)
 
     return self.func(data, octree, depth, pts, self.nempty, self.bound_check)
 
@@ -142,7 +146,7 @@ def octree_nearest_upsample(data: torch.Tensor, octree: Octree, depth: int,
     data (torch.Tensor): The input data.
     octree (Octree): The octree to interpolate.
     depth (int): The depth of the data.
-    nempty (bool): If true, the :attr:`data` only contains features of non-empty 
+    nempty (bool): If true, the :attr:`data` only contains features of non-empty
         octree nodes.
   '''
 
