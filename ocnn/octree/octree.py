@@ -198,24 +198,27 @@ class Octree:
     neigh[valid] = child[neigh[valid]].long()  # remap the index
     return neigh
 
-  def build_octree(self, point_cloud: Points):
+  def build_octree(self, point_cloud: Points,
+                   bbmin: Union[float, torch.Tensor] = -1.0,
+                   bbmax: Union[float, torch.Tensor] = 1.0):
     r''' Builds an octree from a point cloud.
 
     Args:
       point_cloud (Points): The input point cloud.
+      bbmin (float or torch.Tensor): The minimum coordinates of the bounding box.
+      bbmax (float or torch.Tensor): The maximum coordinates of the bounding box.
 
     .. note::
-      The point cloud must be strictly in range :obj:`[-1, 1]`. A good practice
-      is to normalize it into :obj:`[-0.99, 0.99]` or :obj:`[0.9, 0.9]` to retain
-      some margin.
+      For a point cloud in range :obj:`[-1, 1]`, a good practice is to normalize
+      it into :obj:`[0.9, 0.9]` to retain some margin.
     '''
 
     self.device = point_cloud.device
     assert point_cloud.batch_size == self.batch_size, 'Inconsistent batch_size'
 
-    # normalize points from [-1, 1] to [0, 2^depth]. #[L:Scale]
-    scale = 2 ** (self.depth - 1)
-    points = (point_cloud.points + 1.0) * scale
+    # normalize points from [bbmin, bbmax] to [0, 2^depth]. #[L:Scale]
+    points = point_cloud.normalize(
+        bbmin, bbmax, scale=2 ** self.depth, inplace=False)
 
     # get the shuffled key and sort
     x, y, z = points[:, 0], points[:, 1], points[:, 2]

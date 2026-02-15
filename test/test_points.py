@@ -87,7 +87,7 @@ class TestPoints(unittest.TestCase):
     point_cloud = self.init_points()
 
     bbmin, bbmax = point_cloud.bbox()
-    point_cloud.centralize(bbmin, bbmax)
+    point_cloud.centralize_scale(bbmin, bbmax)
 
     self.assertTrue((point_cloud.points >= -1).all() &
                     (point_cloud.points <= 1).all())

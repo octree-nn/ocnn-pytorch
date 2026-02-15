@@ -206,8 +206,8 @@ class Points:
     bbmax = self.points.max(dim=0)
     return bbmin[0], bbmax[0]
 
-  def centralize(self, bbmin: torch.Tensor, bbmax: torch.Tensor,
-                scale: float = 1.0):
+  def centralize_scale(self, bbmin: torch.Tensor, bbmax: torch.Tensor,
+                       scale: float = 1.0):
     r''' Centralizes the point cloud to :obj:`[-scale, scale]`.
 
     Args:
@@ -219,6 +219,29 @@ class Points:
     center = (bbmin + bbmax) * 0.5
     box_size = (bbmax - bbmin).max() + 1.0e-6
     self.points = (self.points - center) * (2.0 * scale / box_size)
+
+  def normalize(self, bbmin: torch.Tensor, bbmax: torch.Tensor,
+                scale: float, inplace: bool = False):
+    r''' Normalizes the point cloud to :obj:`[0, scale]`.
+
+    Args:
+      bbmin (torch.Tensor): The minimum coordinates of the bounding box.
+      bbmax (torch.Tensor): The maximum coordinates of the bounding box.
+      scale (float): The scale factor.
+      inplace (bool): If True, the normalization is performed in-place;
+        otherwise, directly returns the normalized points without modifying
+        the original points.
+    '''
+
+    box_size = bbmax - bbmin
+    if type(box_size) is torch.Tensor:
+      box_size = box_size.max().item()
+    assert box_size > 0, 'The bounding box size must be greater than 0.'
+
+    points = (self.points - bbmin) * (scale / box_size)
+    if inplace:
+      self.points = points
+    return points
 
   def to(self, device: Union[torch.device, str], non_blocking: bool = False):
     r''' Moves the Points to a specified device.
