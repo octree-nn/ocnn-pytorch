@@ -62,8 +62,10 @@ class Octree:
     self.children = [None] * num
     self.neighs = [None] * num
     self.features = [None] * num
+    self.fields = [None] * num
     self.normals = [None] * num
     self.points = [None] * num
+    self.field_scale = 2 ** 16  # = 32767 / 0.5
 
     # self.nempty_masks, self.nempty_indices and self.nempty_neighs are
     # for handling of non-empty nodes and are constructed on demand
@@ -119,16 +121,21 @@ class Octree:
       key = key[idx]
     return key
 
-  def xyzb(self, depth: int, nempty: bool = False):
+  def xyzb(self, depth: int, nempty: bool = False, normalize: bool = False):
     r''' Returns the xyz coordinates and the batch indices of each octree node.
 
     Args:
       depth (int): The depth of the octree.
       nempty (bool): If True, returns the results of non-empty octree nodes.
+      normalize (bool): If True, normalizes output to :obj:`[0, 2 ** self.depth]`.
     '''
 
     key = self.key(depth, nempty)
-    return key2xyz(key, depth)
+    x, y, z, b = key2xyz(key, depth)
+    if normalize:
+      scale = 2 ** (self.depth - depth)
+      x, y, z = x * scale, y * scale, z * scale
+    return x, y, z, b
 
   def batch_id(self, depth: int, nempty: bool = False):
     r''' Returns the batch indices of each octree node.
@@ -227,6 +234,99 @@ class Octree:
     node_key, idx, counts = torch.unique(
         key, sorted=True, return_inverse=True, return_counts=True)
 
+    # build octree from the shuffled key of the last octree layer
+    self.build_octree_from_keys(node_key)
+
+    # average the signal for the last octree layer
+    d = self.depth
+    points = scatter_add(points, idx, dim=0)  # points is rescaled in [L:Scale]
+    self.points[d] = points / counts.unsqueeze(1)
+    if point_cloud.normals is not None:
+      normals = scatter_add(point_cloud.normals, idx, dim=0)
+      self.normals[d] = F.normalize(normals)
+    if point_cloud.features is not None:
+      features = scatter_add(point_cloud.features, idx, dim=0)
+      self.features[d] = features / counts.unsqueeze(1)
+    return idx
+
+  def build_octree_from_sdf(self, sdf: torch.Tensor, compress: bool = False, **kargs):
+    r''' Builds an octree from a signed distance field (SDF).
+
+    Args:
+      sdf (torch.Tensor): The input SDF with shape :obj:`(B, X, Y, Z)`, where
+          :obj:`B` is the batch size, and :obj:`X`, :obj:`Y`, and :obj:`Z` are
+          the dimensions of the SDF.
+      compress (bool): If True, compresses the SDF values to int16 in range
+          :obj:`[-32768, 32767]`. This is useful for saving memory, but it may
+          cause precision loss. (default: False).
+    '''
+
+    # check input
+    assert self.depth > 4, 'The octree depth must be larger than 4'
+    assert sdf.ndim == 4, 'Input SDF must have shape (B, X, Y, Z)'
+    B, X, Y, Z = sdf.shape
+    assert B == self.batch_size, 'Inconsistent batch_size'
+    assert X == Y == Z == 2 ** self.depth, 'Inconsistent SDF dimensions'
+
+    # rescale field
+    sdf = sdf.to(self.device)
+    if compress:
+      sdf = (sdf * self.field_scale).round().clip(-32768, 32767).to(torch.int16)
+
+    # calculate non-empty node keys
+    node_keys = []
+    N = 2 ** (self.depth * 3)
+    K = min(2 ** 21, N)
+    T = (N + K - 1) // K
+    sign = (sdf > 0).to(torch.int8) * 2 - 1  # sdf to range [-1, 1]
+    rng = range_grid(0, 1, device=self.device)
+    for bs in range(B):
+      for t in range(T):
+        start = t * K
+        end = min((t + 1) * K, N)
+        key = torch.arange(start, end, device=sdf.device, dtype=torch.int64)
+        key = key | (bs << 48)
+
+        x, y, z, b = key2xyz(key, self.depth)
+        x = x.clip(max=X - 2)
+        y = y.clip(max=Y - 2)
+        z = z.clip(max=Z - 2)
+
+        # change signs or not
+        split = sign[b, x, y, z]
+        for i in range(1, 8):
+          split += sign[b, x + rng[i][0], y + rng[i][1], z + rng[i][2]]
+        node_keys.append(key[split.abs() < 8])
+    node_key = torch.cat(node_keys)
+
+    # build octree
+    self.build_octree_from_keys(node_key)
+
+    # calculate fields for the octree
+    x, y, z, b = self.xyzb(self.full_depth, nempty=False, normalize=True)
+    self.fields[self.full_depth] = sdf[b, x, y, z]
+    rng = range_grid(0, 2, device=self.device)
+    for d in range(self.full_depth + 1, self.depth + 1):
+      fields = []
+      scale = 2 ** (self.depth - d)
+      x, y, z, b = self.xyzb(d - 1, nempty=True, normalize=False)  # !!! d - 1
+      for i in range(27):
+        # x*2, y*2, z*2 is the coordinate of the first sibling
+        xr = (x * 2 + rng[i][0]) * scale
+        yr = (y * 2 + rng[i][1]) * scale
+        zr = (z * 2 + rng[i][2]) * scale
+        fields.append(sdf[b, xr, yr, zr])
+      self.fields[d] = torch.stack(fields, dim=1)
+
+  def build_octree_from_keys(self, node_key: torch.Tensor, **kargs):
+    r''' Builds an octree in a bottom-up manner from the input node keys, which
+    are the shuffled keys of non-empty octree nodes in the last octree layer.
+    The input node keys must be sorted in ascending order.
+
+    Args:
+      node_key (torch.Tensor): The input node keys with shape :obj:`(N,)`.
+    '''
+
     # layer 0 to full_layer: the octree is full in these layers
     for d in range(self.full_depth+1):
       self.octree_grow_full(d, update_neigh=False)
@@ -269,22 +369,10 @@ class Octree:
     self.children[d] = children
     self.nnum_nempty[d] = node_key.numel()
 
-    # average the signal for the last octree layer
-    d = self.depth
-    points = scatter_add(points, idx, dim=0)  # points is rescaled in [L:Scale]
-    self.points[d] = points / counts.unsqueeze(1)
-    if point_cloud.normals is not None:
-      normals = scatter_add(point_cloud.normals, idx, dim=0)
-      self.normals[d] = F.normalize(normals)
-    if point_cloud.features is not None:
-      features = scatter_add(point_cloud.features, idx, dim=0)
-      self.features[d] = features / counts.unsqueeze(1)
-
     # reset nempty_masks and nempty_indices, which will be updated on demand
     self.nempty_masks = [None] * (self.depth + 1)
     self.nempty_indices = [None] * (self.depth + 1)
     self.nempty_neighs = [None] * (self.depth + 1)
-    return idx
 
   def octree_grow_full(self, depth: int, update_neigh: bool = True):
     r''' Builds the full octree, which is essentially a dense volumetric grid.
@@ -380,6 +468,7 @@ class Octree:
       self.children.append(None)
       self.neighs.append(None)
       self.features.append(None)
+      self.fields.append(None)
       self.normals.append(None)
       self.points.append(None)
       self.nempty_masks.append(None)
@@ -644,6 +733,7 @@ class Octree:
     octree.children = list_to_device(self.children)
     octree.neighs = list_to_device(self.neighs)
     octree.features = list_to_device(self.features)
+    octree.fields = list_to_device(self.fields)
     octree.normals = list_to_device(self.normals)
     octree.points = list_to_device(self.points)
 

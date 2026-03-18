@@ -122,6 +122,46 @@ class TesOctree(unittest.TestCase):
     octree.build_octree(points)
     self.check_octree(octree, data)
 
+
+  def test_build_octree_from_sdf(self):
+    depth, full_depth = 6, 4
+    resolution = 2 ** depth
+
+    # Build a deterministic SDF of a sphere-like shape centered at the origin.
+    grid = torch.linspace(-1.0, 1.0, resolution)
+    x, y, z = torch.meshgrid(grid, grid, grid, indexing='ij')
+    sdf = torch.sqrt(x * x + y * y + z * z) - 0.6
+    sdf = sdf.unsqueeze(0)  # (1, 64, 64, 64)
+
+    octree = ocnn.octree.Octree(
+        depth=depth, full_depth=full_depth, device='cpu')
+    octree.build_octree_from_sdf(sdf, compress=False)
+
+    # fields[full_depth] should be direct SDF samples at full octree nodes.
+    xf, yf, zf, bf = octree.xyzb(full_depth, nempty=False, normalize=True)
+    expected_full = sdf[bf, xf, yf, zf]
+    self.assertTrue(torch.equal(octree.fields[full_depth], expected_full))
+
+    # For d > full_depth, each non-empty parent contributes a 3x3x3 sample set.
+    for d in range(full_depth + 1, depth + 1):
+      self.assertEqual(octree.fields[d].dim(), 2)
+      self.assertEqual(
+          tuple(octree.fields[d].shape), (octree.nnum_nempty[d - 1].item(), 27))
+
+    # Validate one deep layer with exactly the same sampling rule.
+    d = full_depth + 1
+    scale = 2 ** (depth - d)
+    x, y, z, b = octree.xyzb(d - 1, nempty=True, normalize=False)
+    rng = ocnn.utils.range_grid(0, 2, device='cpu')
+    expected = []
+    for i in range(27):
+      xr = (x * 2 + rng[i][0]) * scale
+      yr = (y * 2 + rng[i][1]) * scale
+      zr = (z * 2 + rng[i][2]) * scale
+      expected.append(sdf[b, xr, yr, zr])
+    expected = torch.stack(expected, dim=1)
+    self.assertTrue(torch.equal(octree.fields[d], expected))
+
   def test_merge_octree_with_data(self):
     folder = os.path.dirname(__file__)
     data = np.load(os.path.join(folder, 'data/batch_45.npz'))
