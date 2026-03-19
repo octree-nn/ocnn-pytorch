@@ -275,19 +275,20 @@ class Octree:
 
     # calculate non-empty node keys
     node_keys = []
-    N = 2 ** (self.depth * 3)
-    K = min(2 ** 21, N)
-    T = (N + K - 1) // K
-    sign = (sdf > 0).to(torch.int8) * 2 - 1  # sdf to range [-1, 1]
+    K = min(2 ** 21, N)         # process at most 2^21 nodes each time
+    N = 2 ** (self.depth * 3)   # total number of sdf values
+    T = (N + K - 1) // K        # number of iterations
+    sign = (sdf > 0).to(torch.int8) * 2 - 1  # convert sdf to {-1, 1}
     rng = range_grid(0, 1, device=self.device)
     for bs in range(B):
       for t in range(T):
         start = t * K
         end = min((t + 1) * K, N)
         key = torch.arange(start, end, device=sdf.device, dtype=torch.int64)
-        key = key | (bs << 48)
+        key = key | (bs << 48)  # add batch id to the key
 
         x, y, z, b = key2xyz(key, self.depth)
+        # use clip to handle the boundary case
         x = x.clip(max=X - 2)
         y = y.clip(max=Y - 2)
         z = z.clip(max=Z - 2)
@@ -305,18 +306,13 @@ class Octree:
     # calculate fields for the octree
     x, y, z, b = self.xyzb(self.full_depth, nempty=False, normalize=True)
     self.fields[self.full_depth] = sdf[b, x, y, z]
-    rng = range_grid(0, 2, device=self.device)
     for d in range(self.full_depth + 1, self.depth + 1):
-      fields = []
-      scale = 2 ** (self.depth - d)
-      x, y, z, b = self.xyzb(d - 1, nempty=True, normalize=False)  # !!! d - 1
+      # normalize the `rng` by multiply it with scale `2 ** (self.depth - d)`
+      rng = range_grid(0, 2, device=self.device) * (2 ** (self.depth - d))
+      x, y, z, b = self.xyzb(d - 1, nempty=True, normalize=True)   # !!! d - 1
+      self.fields[d] = sdf.new_empty(self.nnum_nempty[d - 1], 27)  # !!! d - 1
       for i in range(27):
-        # x*2, y*2, z*2 is the coordinate of the first sibling
-        xr = (x * 2 + rng[i][0]) * scale
-        yr = (y * 2 + rng[i][1]) * scale
-        zr = (z * 2 + rng[i][2]) * scale
-        fields.append(sdf[b, xr, yr, zr])
-      self.fields[d] = torch.stack(fields, dim=1)
+        self.fields[d][:, i] = sdf[b, x + rng[i][0], y + rng[i][1], z + rng[i][2]]
 
   def build_octree_from_keys(self, node_key: torch.Tensor, **kargs):
     r''' Builds an octree in a bottom-up manner from the input node keys, which
