@@ -219,3 +219,38 @@ def has_nan_inf(x: torch.Tensor, name: str):
   if not torch.isfinite(x).all():
     raise RuntimeError(
         f"{name} has NaN/Inf: dtype={x.dtype}, max={x.abs().max().item()}")
+
+
+def trilinear_interp_weights(x: torch.Tensor, y: torch.Tensor, z: torch.Tensor):
+  r'''
+  Perform efficient trilinear interpolation for N points in the unit cube [0, 1].
+
+  args:
+    x (torch.Tensor): (N) tensor containing x coordinates of N sample points.
+    y (torch.Tensor): (N) tensor containing y coordinates of N sample points.
+    z (torch.Tensor): (N) tensor containing z coordinates of N sample points.
+
+  Returns:
+      (N, 8) tensor with interpolated results for the N sample points.
+  '''
+
+  # 1. Compute base weights along each dimension.
+  wx0, wx1 = 1 - x, x
+  wy0, wy1 = 1 - y, y
+  wz0, wz1 = 1 - z, z
+
+  # 2. Compute combined weights for the 8 vertices and concatenate to (N, 8).
+  # Index variation order: Z changes fastest, then Y, then X: 000, 001, 010,
+  # 011, 100...
+  weights = torch.stack([
+      wx0 * wy0 * wz0,  # (0, 0, 0)
+      wx0 * wy0 * wz1,  # (0, 0, 1)
+      wx0 * wy1 * wz0,  # (0, 1, 0)
+      wx0 * wy1 * wz1,  # (0, 1, 1)
+      wx1 * wy0 * wz0,  # (1, 0, 0)
+      wx1 * wy0 * wz1,  # (1, 0, 1)
+      wx1 * wy1 * wz0,  # (1, 1, 0)
+      wx1 * wy1 * wz1   # (1, 1, 1)
+  ], dim=1)
+
+  return weights
