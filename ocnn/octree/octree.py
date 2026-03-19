@@ -275,8 +275,8 @@ class Octree:
 
     # calculate non-empty node keys
     node_keys = []
-    K = min(2 ** 21, N)         # process at most 2^21 nodes each time
     N = 2 ** (self.depth * 3)   # total number of sdf values
+    K = min(2 ** 21, N)         # process at most 2^21 nodes each time
     T = (N + K - 1) // K        # number of iterations
     sign = (sdf > 0).to(torch.int8) * 2 - 1  # convert sdf to {-1, 1}
     rng = range_grid(0, 1, device=self.device)

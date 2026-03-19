@@ -11,7 +11,7 @@ def calculate_sdf_error(octree: Octree):
 
   # calcuate the interpolation error for each node at each depth
   errors = {}
-  for d in range(octree.full_depth+1, octree.depth+1):
+  for d in range(octree.full_depth + 1, octree.depth+1):
     fields_d = octree.fields[d]
     if fields_d.dtype == torch.int16:  # quantized fields
       fields_d = fields_d.float() / octree.field_scale  # int16 -> float
@@ -20,7 +20,7 @@ def calculate_sdf_error(octree: Octree):
     errors[d] = (fields_d - interp_d).abs().max(dim=1)[0]  # (N)
 
   # propagate the error from bottom to top
-  for d in range(octree.depth, octree.full_depth, -1):
-    error_d = octree_max_pool(errors[d], octree, d, nempty=True)
-    errors[d-1] = torch.max(errors[d-1], error_d)
+  for d in range(octree.depth, octree.full_depth + 1, -1):
+    error_d = octree_max_pool(errors[d].unsqueeze(1), octree, d - 1, nempty=True)
+    errors[d - 1] = torch.max(errors[d - 1], error_d.squeeze(1))
   return errors
