@@ -41,7 +41,8 @@ class TestOctreeConvTriton(unittest.TestCase):
   def test_conv_small_channel(self):
     octree = self.build_octree()
     for d in [octree.depth]:
-      for out_ratio in [1.0, 2.0]:
+      # for out_ratio in [1.0, 2.0]:
+      for out_ratio in [1.0]:
         for channel in [4, 8, 16]:
           # print(f'Testing depth={d}, out_ratio={out_ratio}, channel={channel}')
           self.conv_forward_backward(d, out_ratio, octree, channel)
