@@ -7,7 +7,7 @@
 
 import torch
 import torch.nn.functional as F
-from typing import Union, List
+from typing import Union, List, Dict
 
 import ocnn
 from ocnn.octree.points import Points
@@ -663,7 +663,7 @@ class Octree:
       features.append(self.features[depth])
 
     out = torch.cat(features, dim=1)
-    if not nempty:
+    if not nempty:  # pad the features of empty octree nodes
       out = ocnn.nn.octree_pad(out, self, depth)
     return out
 
@@ -816,6 +816,54 @@ class Octree:
         self.points[d] = torch.cat(points, dim=0)
 
     return self
+
+  def prune(self, keep: Dict[int, torch.Tensor], start_depth: int):
+    r''' Prunes **subtrees** in :attr:`depth` according to the input mask.
+
+    Args:
+      keep (Dict[int, torch.Tensor]): A dictionary of binary masks with shape
+          :obj:`(N,)`, where :obj:`N` is the number of non-empty octree nodes in
+          the corresponding depth. The value of each element in the mask indicates
+          whether to keep the corresponding subtree (True) or not (False).
+      start_depth (int): The depth to start pruning from.
+    '''
+
+    depth, full_depth = self.depth, self.full_depth
+    assert full_depth <= start_depth and start_depth < depth
+    # the original index of non-empty octree nodes
+    idx = {d: self.nempty_index(d) for d in range(start_depth, depth + 1)}
+
+    # set the splitting status of parent nodes via padding
+    splits = {}
+    for d in range(start_depth, depth):
+      split = keep[d].new_zeros(self.nnum[d])
+      split[idx[d]] = keep[d]
+      splits[d] = split
+    # initialize the last split with the input mask
+    splits[depth] = self.nempty_mask(depth)
+
+    # prune the octree
+    self.octree_split(splits[start_depth], start_depth)
+    for d in range(start_depth + 1, depth + 1):
+      keep_p = keep[d - 1]
+      if self.fields[d] is not None:
+        self.fields[d] = self.fields[d][keep_p]
+
+      keep_d = keep_p.repeat_interleave(8)
+      split_d = splits[d][keep_d]                 # prune nodes via parents' mask
+      self.octree_split(split_d, d)               # update children, nnum_nempty
+      self.keys[d] = self.keys[d][keep_d]         # update keys
+
+      self.neighs[d] = None                       # reset neighs
+      self.nnum[d] = self.nnum_nempty[d - 1] * 8  # update nnum_nempty
+
+      keep_n = keep_d[idx[d]]                     # consider non-empty nodes only
+      if self.features[d] is not None:            # update features
+        self.features[d] = self.features[d][keep_n]
+      if self.normals[d] is not None:             # update normals
+        self.normals[d] = self.normals[d][keep_n]
+      if self.points[d] is not None:              # update points
+        self.points[d] = self.points[d][keep_n]
 
   @classmethod
   def init_like(cls, octree: 'Octree', device: Union[torch.device, str, None] = None):
