@@ -11,3 +11,5 @@ logs
 thsolver
 benchmark
 CLAUDE.md
+.claude
+.pytest_cache
