@@ -122,7 +122,6 @@ class TesOctree(unittest.TestCase):
     octree.build_octree(points)
     self.check_octree(octree, data)
 
-
   def test_build_octree_from_sdf(self):
     depth, full_depth = 6, 4
     resolution = 2 ** depth

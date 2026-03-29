@@ -697,6 +697,33 @@ class Octree:
                  batch_id=batch_id, batch_size=batch_size)
     return out
 
+  def to_sdf(self):
+    r''' Converts the octree to a signed distance field (SDF). The SDF values
+    are stored in the :attr:`fields` property of the octree.
+    '''
+
+    def field_to_float(field: torch.Tensor):
+      if field.dtype == torch.int16:
+        return field.float() / self.field_scale
+      return field
+
+    depth, full_depth = self.depth, self.full_depth
+    N = 2 ** depth
+
+    sdf = torch.ones((self.batch_size, N, N, N), device=self.device)
+    x, y, z, b = self.xyzb(full_depth, nempty=False, normalize=True)
+    sdf[b, x, y, z] = field_to_float(self.fields[full_depth])
+
+    for d in range(full_depth + 1, depth + 1):
+      # normalize the `rng` by multiply it with scale `2 ** (self.depth - d)`
+      rng = range_grid(0, 2, device=self.device) * (2 ** (self.depth - d))
+      x, y, z, b = self.xyzb(d - 1, nempty=True, normalize=True)   # !!! d - 1
+
+      fields = field_to_float(self.fields[d])
+      for i in range(27):
+        sdf[b, x + rng[i][0], y + rng[i][1], z + rng[i][2]] = fields[:, i]
+    return sdf
+
   def to(self, device: Union[torch.device, str], non_blocking: bool = False):
     r''' Moves the octree to a specified device.
 
