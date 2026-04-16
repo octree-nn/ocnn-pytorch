@@ -121,17 +121,23 @@ class Octree:
       key = key[idx]
     return key
 
-  def xyzb(self, depth: int, nempty: bool = False, normalize: bool = False):
+  def xyzb(self, depth: int, nempty: bool = False, normalize: bool = False,
+           center: bool = False):
     r''' Returns the xyz coordinates and the batch indices of each octree node.
 
     Args:
       depth (int): The depth of the octree.
       nempty (bool): If True, returns the results of non-empty octree nodes.
       normalize (bool): If True, normalizes output to :obj:`[0, 2 ** self.depth]`.
+      center (bool): If True, return the coordinates of cell centers; otherwise,
+        return the coordinates of the bottom-left corner of the cell.
     '''
 
     key = self.key(depth, nempty)
     x, y, z, b = key2xyz(key, depth)
+
+    if center:
+      x, y, z = x + 0.5, y + 0.5, z + 0.5
     if normalize:
       scale = 2 ** (self.depth - depth)
       x, y, z = x * scale, y * scale, z * scale
