@@ -175,8 +175,32 @@ class TesOctree(unittest.TestCase):
     octree.normals[depth] = octree_gt.normals[depth]
 
     self.check_octree(octree, data)
+    self.assertTrue(torch.equal(octree.batch_nnum, octree_gt.batch_nnum))
+    self.assertTrue(torch.equal(
+        octree.batch_nnum_nempty, octree_gt.batch_nnum_nempty))
     self.assertTrue(np.array_equal(
         torch.cat(octree.neighs[1:], dim=0).numpy(), data['neigh']))
+
+  def test_octree_grow_extend_batched_depth(self):
+    depth = 4
+    batch_size = 8
+    octree = ocnn.octree.init_octree(
+        depth=depth, full_depth=depth, batch_size=batch_size)
+
+    split = torch.ones(octree.nnum[depth], dtype=torch.long)
+    octree.octree_split(split, depth)
+    octree.octree_grow(depth + 1)
+
+    expected = torch.full((batch_size,), 1 << (3 * (depth + 1)),
+                          dtype=torch.long)
+    batch_nnum = torch.bincount(
+        octree.batch_id(depth + 1), minlength=batch_size)
+
+    self.assertTrue(torch.equal(octree.batch_nnum[depth + 1], expected))
+    self.assertTrue(torch.equal(
+        octree.batch_nnum_nempty[depth + 1], expected))
+    self.assertTrue(torch.equal(batch_nnum, expected))
+    self.assertEqual(octree.nnum[depth + 1].item(), expected.sum().item())
 
   def test_octree_neigh(self):
 

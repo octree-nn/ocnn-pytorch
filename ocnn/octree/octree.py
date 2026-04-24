@@ -302,6 +302,9 @@ class Octree:
     batch_size = self.batch_size
     self.nnum[depth] = num * batch_size
     self.nnum_nempty[depth] = num * batch_size
+    batch_nnum = torch.full((batch_size,), num, dtype=torch.long)
+    self.batch_nnum[depth] = batch_nnum
+    self.batch_nnum_nempty[depth] = batch_nnum
 
     # update key
     key = torch.arange(num, dtype=torch.long, device=self.device)
@@ -334,15 +337,22 @@ class Octree:
     sum = cumsum(split, dim=0, exclusive=True)
     children, nnum_nempty = torch.split(sum, [split.shape[0], 1])
     children[empty] = -1
+    batch_id = self.batch_id(depth)
+    batch_nnum = torch.bincount(batch_id.cpu(), minlength=self.batch_size)
+    batch_nnum_nempty = torch.bincount(
+        batch_id[~empty].cpu(), minlength=self.batch_size)
 
     # boundary case, make sure that at least one octree node is splitted
     if nnum_nempty == 0:
       nnum_nempty = 1
       children[0] = 0
+      batch_nnum_nempty[batch_id[0].item()] = 1
 
     # update octree
     self.children[depth] = children.int()
     self.nnum_nempty[depth] = nnum_nempty
+    self.batch_nnum[depth] = batch_nnum
+    self.batch_nnum_nempty[depth] = batch_nnum_nempty
 
     # reset nempty_masks, nempty_indices, and nempty_neighs as they depend on
     # children[depth] and are invalid now
@@ -376,7 +386,7 @@ class Octree:
       zero = torch.zeros(1, dtype=torch.long)
       self.nnum = torch.cat([self.nnum, zero])
       self.nnum_nempty = torch.cat([self.nnum_nempty, zero])
-      zero = zero.view(1, 1)
+      zero = torch.zeros(1, self.batch_size, dtype=torch.long)
       self.batch_nnum = torch.cat([self.batch_nnum, zero], dim=0)
       self.batch_nnum_nempty = torch.cat([self.batch_nnum_nempty, zero], dim=0)
 
@@ -384,6 +394,9 @@ class Octree:
     nnum = self.nnum_nempty[depth-1] * 8
     self.nnum[depth] = nnum
     self.nnum_nempty[depth] = nnum  # initialize self.nnum_nempty
+    batch_nnum = self.batch_nnum_nempty[depth-1] * 8
+    self.batch_nnum[depth] = batch_nnum
+    self.batch_nnum_nempty[depth] = batch_nnum
 
     # update keys
     key = self.key(depth-1, nempty=True)
