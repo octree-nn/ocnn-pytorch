@@ -58,6 +58,8 @@ octrees to leverage the library's capabilities.
 
 ## Updates
 
+- **2026.05.07**: Release `v2.3.2`,  this release focuses on stability,
+  performance, and usability improvements.
 - **2026.02.08**: Release `v2.3.1`, improving the interfaces of octree
   convolutions and simplifying the triton kernels.
 - **2026.02.02**: Release `v2.3.0`, incorporating Triton to accelerate
