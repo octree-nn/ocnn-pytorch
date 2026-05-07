@@ -26,7 +26,17 @@ class TestOctreeConvTriton(unittest.TestCase):
     depth2channel = {3: 1024, 4: 512, 5: 256, 6: 128, 7: 64}
     for d in [octree.depth, octree.depth - 1]:
       for out_ratio in [1.0, 0.5, 2.0]:
+        if d == 7 and out_ratio == 2.0:
+          continue
         self.conv_forward_backward(d, out_ratio, octree, depth2channel[d])
+
+  def test_conv_depth7_out_ratio2_expected_tolerance(self):
+    octree = self.build_octree()
+    # This configuration has a known larger weight-gradient error, so keep its
+    # tolerance explicit instead of hiding it in the broader parameter sweep.
+    self.conv_forward_backward(
+        depth=7, out_ratio=2.0, octree=octree, in_channel=64,
+        weights_atol=1e-2)
 
   def test_conv_small_channel(self):
     octree = self.build_octree()
@@ -55,7 +65,8 @@ class TestOctreeConvTriton(unittest.TestCase):
     octree.construct_all_neigh()
     return octree
 
-  def conv_forward_backward(self, depth, out_ratio, octree, in_channel):
+  def conv_forward_backward(
+      self, depth, out_ratio, octree, in_channel, weights_atol=1e-2):
     atol = 5e-3
     kernel_size = [3, 3, 3]
     nempty = False
@@ -93,10 +104,11 @@ class TestOctreeConvTriton(unittest.TestCase):
     msg = f'depth: {depth}, out_ratio: {out_ratio}'
     self.assertTrue(torch.allclose(out_tt, out_pt, atol=atol), msg)
     self.assertTrue(torch.allclose(data_pt.grad, data_tt.grad, atol=atol), msg)
-    # TODO: depth: 7, out_ratio: 2.0, error: 0.0031270573381334543
-    err = f', error: {self.calc_err(conv_pt.weights.grad, conv_tt.weights.grad)}'
+    weight_err = self.calc_err(conv_pt.weights.grad, conv_tt.weights.grad)
+    err = f', error: {weight_err}'
     self.assertTrue(torch.allclose(
-        conv_pt.weights.grad, conv_tt.weights.grad, atol=1e-2), msg + err)
+        conv_pt.weights.grad, conv_tt.weights.grad, atol=weights_atol),
+        msg + err + f', tolerance: {weights_atol}')
     self.assertTrue(torch.allclose(
         conv_pt.bias.grad, conv_tt.bias.grad, atol=atol), msg)
 

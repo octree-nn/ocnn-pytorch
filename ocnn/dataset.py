@@ -30,7 +30,9 @@ class Transform:
         rotation angles.
     scale (float): The maximum relative scale factor.
     uniform (bool): If true, performs uniform scaling.
-    jittor (float): The maximum jitter values.
+    jitter (float): The maximum jitter values.
+    flip (list): A list of 3 float values to represent the probability of
+        flipping each axis.
     orient_normal (str): Orient point normals along the specified axis, which is
         useful when normals are not oriented.
   '''
@@ -70,7 +72,8 @@ class Transform:
     '''
 
     xyz = torch.from_numpy(sample.pop('points'))
-    normals = torch.from_numpy(sample.pop('normals'))
+    normals = sample.pop('normals', None)
+    normals = torch.from_numpy(normals) if normals is not None else None
     sample['points'] = Points(xyz, normals)
     return sample
 

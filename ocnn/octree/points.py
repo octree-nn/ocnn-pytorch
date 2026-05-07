@@ -256,7 +256,7 @@ class Points:
     if isinstance(device, str):
       device = torch.device(device)
 
-    #  If on the save device, directly retrun self
+    #  If on the same device, directly return self
     if self.device == device:
       return self
 
