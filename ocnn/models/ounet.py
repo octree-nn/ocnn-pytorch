@@ -8,7 +8,6 @@
 
 import ocnn
 import torch
-import torch.nn
 
 from ocnn.octree import Octree
 from ocnn.models.autoencoder import AutoEncoder
