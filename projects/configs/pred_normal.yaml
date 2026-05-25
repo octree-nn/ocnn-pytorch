@@ -1,0 +1,73 @@
+# --------------------------------------------------------
+# Octree-based Sparse Convolutional Neural Networks
+# Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
+# Licensed under The MIT License [see LICENSE for details]
+# Written by Peng-Shuai Wang
+# --------------------------------------------------------
+
+SOLVER:
+  gpu: 0,
+  run: train
+  best_val: min:loss
+  port: 10001         # the port used for multi-gpu training
+
+  logdir: logs/pred_normal/shapenet
+  max_epoch: 300
+  test_every_epoch: 20
+  log_per_iter: 50
+  ckpt_num: 20
+
+  # optimizer
+  type: adamw
+  weight_decay: 0.01  # default value of adamw
+  lr: 0.001           # default value of adamw
+
+  # learning rate
+  lr_type: poly
+  milestones: (160,240) # not used for `poly`
+
+DATA:
+  train:
+    name: shapenet
+    points_scale: 0.9
+
+    # octree building
+    depth: 6
+    full_depth: 2
+
+    # no data augmentations
+    distort: False
+
+    # data loading
+    location: data/ShapeNet/dataset
+    filelist: data/ShapeNet/filelist/train_plane.txt
+    batch_size: 32
+    shuffle: True
+    # num_workers: 0
+
+  test:
+    name: shapenet
+    points_scale: 0.9
+
+    # octree building
+    depth: 6
+    full_depth: 2
+
+    # no data augmentations
+    distort: False
+
+    # data loading
+    location: data/ShapeNet/dataset
+    filelist: data/ShapeNet/filelist/test_plane.txt
+    batch_size: 16
+    shuffle: False
+    # num_workers: 0
+
+MODEL:
+  name: autoencoder
+  feature: ND   # N -> Normal (3 channels); D -> Local displacement (1 channel)
+  channel: 1
+  channel_out: 5
+
+  depth: 6
+  full_depth: 2

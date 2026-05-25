@@ -12,6 +12,7 @@ from .semantic_kitti import get_kitti_dataset
 from .ae_shapenet import get_ae_shapenet_dataset
 from .completion import get_completion_dataset
 from .image2shape import get_image2shape_dataset
+from .shapenet import get_shapenet_dataset
 
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     'get_ae_shapenet_dataset',
     'get_completion_dataset',
     'get_image2shape_dataset',
+    'get_shapenet_dataset',
 ]

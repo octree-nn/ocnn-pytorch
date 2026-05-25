@@ -69,7 +69,7 @@ class UNet(torch.nn.Module):
     self.resblk = ocnn.modules.OctreeResBlock2
 
   def unet_encoder(self, data: torch.Tensor, octree: Octree, depth: int):
-    r''' The encoder of the U-Net. 
+    r''' The encoder of the U-Net.
     '''
 
     convd = dict()
@@ -81,7 +81,7 @@ class UNet(torch.nn.Module):
     return convd
 
   def unet_decoder(self, convd: Dict[int, torch.Tensor], octree: Octree, depth: int):
-    r''' The decoder of the U-Net. 
+    r''' The decoder of the U-Net.
     '''
 
     deconv = convd[depth]
@@ -93,13 +93,15 @@ class UNet(torch.nn.Module):
     return deconv
 
   def forward(self, data: torch.Tensor, octree: Octree, depth: int,
-              query_pts: torch.Tensor):
+              query_pts: torch.Tensor = None):
     r''''''
 
     convd = self.unet_encoder(data, octree, depth)
-    deconv = self.unet_decoder(convd, octree, depth - self.encoder_stages)
+    feature = self.unet_decoder(convd, octree, depth - self.encoder_stages)
 
-    interp_depth = depth - self.encoder_stages + self.decoder_stages
-    feature = self.octree_interp(deconv, octree, interp_depth, query_pts)
-    logits = self.header(feature)
-    return logits
+    if query_pts is not None:
+      interp_depth = depth - self.encoder_stages + self.decoder_stages
+      feature = self.octree_interp(feature, octree, interp_depth, query_pts)
+
+    out = self.header(feature)
+    return out
