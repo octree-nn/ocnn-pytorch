@@ -66,7 +66,7 @@ class NormalEstimationSolver(Solver):
 
   def eval_step(self, batch):
     # forward the model
-    self.model.train()
+    self.model.train()  # NOTE: set the model to train mode for debugging for now
     octree = batch['octree'].cuda(non_blocking=True)
     data = torch.ones(octree.nnum[octree.depth], 1, device=octree.device)
     model_out = self.model(data, octree, octree.depth)
@@ -86,7 +86,7 @@ class NormalEstimationSolver(Solver):
       points_in[i].save(filename_in)
       np.savetxt(filename_out, points_out[i].cpu().numpy(), fmt='%.6f')
 
-  def octree2pts(self,  model_out, octree: Octree):
+  def octree2pts(self, model_out, octree: Octree):
     depth = octree.depth
     batch_size = octree.batch_size
 
