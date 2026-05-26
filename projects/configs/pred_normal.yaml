@@ -12,7 +12,7 @@ SOLVER:
   port: 10001         # the port used for multi-gpu training
 
   logdir: logs/pred_normal/shapenet
-  max_epoch: 300
+  max_epoch: 2000
   test_every_epoch: 20
   log_per_iter: 50
   ckpt_num: 20

@@ -17,7 +17,7 @@ from datasets import get_shapenet_dataset
 
 # The following line is to fix `RuntimeError: received 0 items of ancdata`.
 # Refer: https://github.com/pytorch/pytorch/issues/973
-# torch.multiprocessing.set_sharing_strategy('file_system')
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 
 class NormalEstimationSolver(Solver):
@@ -66,10 +66,11 @@ class NormalEstimationSolver(Solver):
 
   def eval_step(self, batch):
     # forward the model
-    octree_in = batch['octree'].cuda(non_blocking=True)
-    data = torch.ones(octree_in.nnum[octree_in.depth], 1, device=octree_in.device)
-    output = self.model(data, octree_in, octree_in.depth, update_octree=True)
-    points_out = self.octree2pts(output['octree_out'])
+    self.model.train()
+    octree = batch['octree'].cuda(non_blocking=True)
+    data = torch.ones(octree.nnum[octree.depth], 1, device=octree.device)
+    model_out = self.model(data, octree, octree.depth)
+    points_out = self.octree2pts(model_out, octree)
 
     # save the output point clouds
     points_in = batch['points']
@@ -85,13 +86,16 @@ class NormalEstimationSolver(Solver):
       points_in[i].save(filename_in)
       np.savetxt(filename_out, points_out[i].cpu().numpy(), fmt='%.6f')
 
-  def octree2pts(self, octree: Octree):
+  def octree2pts(self,  model_out, octree: Octree):
     depth = octree.depth
     batch_size = octree.batch_size
 
-    signal = octree.features[depth]
-    normal = F.normalize(signal[:, :3])
-    displacement = signal[:, 3:]
+    label = model_out[:, 4:].squeeze().sigmoid().round()
+    octree.octree_split(label, depth)
+
+    model_out = model_out[:, :4][label.bool()]
+    normal = F.normalize(model_out[:, :3])
+    displacement = model_out[:, 3:4]
 
     x, y, z, _ = octree.xyzb(depth, nempty=True)
     xyz = torch.stack([x, y, z], dim=1) + 0.5 + displacement * normal
