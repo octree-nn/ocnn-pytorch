@@ -14,7 +14,7 @@ import ocnn
 from .utils import get_points, get_octree, get_batch_octree
 
 
-class TesOctree(unittest.TestCase):
+class TestOctree(unittest.TestCase):
 
   def init_points(self):
     points = torch.Tensor([[-1, -1, -1], [0, 0, -1], [0.0625, 0.0625, -1]])
@@ -209,6 +209,20 @@ class TesOctree(unittest.TestCase):
                         torch.ones(octree2.nnum[depth])])
       self.assertTrue(torch.equal(b0, b1))
       self.assertTrue(torch.equal(b0, b2.long()))
+
+  def test_octree_grow_extend_batched_depth(self):
+    depth = 4
+    batch_size = 8
+    for batch_size in [1, 8]:
+      octree = ocnn.octree.init_octree(
+          depth=depth, full_depth=depth, batch_size=batch_size)
+
+      split = torch.ones(octree.nnum[depth], dtype=torch.long)
+      octree.octree_split(split, depth)
+      octree.octree_grow(depth + 1)  # grow the octree to `depth + 1`
+
+    # expected = torch.full((batch_size,), 1 << (3 * (depth + 1)), dtype=torch.long)
+    # batch_nnum = torch.bincount(octree.batch_id(depth + 1), minlength=batch_size)
 
 
 if __name__ == "__main__":

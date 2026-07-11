@@ -376,7 +376,7 @@ class Octree:
       zero = torch.zeros(1, dtype=torch.long)
       self.nnum = torch.cat([self.nnum, zero])
       self.nnum_nempty = torch.cat([self.nnum_nempty, zero])
-      zero = zero.view(1, 1)
+      zero = torch.zeros([1, self.batch_size], dtype=torch.long)
       self.batch_nnum = torch.cat([self.batch_nnum, zero], dim=0)
       self.batch_nnum_nempty = torch.cat([self.batch_nnum_nempty, zero], dim=0)
 
