@@ -173,9 +173,10 @@ def resize_with_last_val(list_in: list, num: int = 3):
   '''
 
   assert (type(list_in) is list and len(list_in) < num + 1)
-  for _ in range(len(list_in), num):
-    list_in.append(list_in[-1])
-  return list_in
+  list_out = list(list_in)
+  for _ in range(len(list_out), num):
+    list_out.append(list_out[-1])
+  return list_out
 
 
 def list2str(list_in: list):

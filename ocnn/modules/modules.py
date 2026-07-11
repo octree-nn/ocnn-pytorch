@@ -17,15 +17,16 @@ from ocnn.octree import Octree
 # bn_momentum, bn_eps = 0.1, 1e-05   # the default value of pytorch
 
 
-def ckpt_conv_wrapper(conv_op, data, octree):
+def ckpt_conv_wrapper(conv_op, data, octree, depth):
   # The dummy tensor is a workaround when the checkpoint is used for the first conv layer:
   # https://discuss.pytorch.org/t/checkpoint-with-no-grad-requiring-inputs-problem/19117/11
-  dummy = torch.ones(1, dtype=torch.float32, requires_grad=True)
+  dummy = data.new_ones(1, requires_grad=True)
 
-  def conv_wrapper(data, octree, dummy_tensor):
-    return conv_op(data, octree)
+  def conv_wrapper(data, octree, depth, dummy_tensor):
+    return conv_op(data, octree, depth)
 
-  return torch.utils.checkpoint.checkpoint(conv_wrapper, data, octree, dummy)
+  return torch.utils.checkpoint.checkpoint(
+      conv_wrapper, data, octree, depth, dummy, use_reentrant=False)
 
 
 class OctreeConvBn(torch.nn.Module):
@@ -183,6 +184,7 @@ class OctreeConvGn(torch.nn.Module):
                kernel_size: List[int] = [3], stride: int = 1,
                nempty: bool = False):
     super().__init__()
+    self.stride = stride
     self.conv = OctreeConv(
         in_channels, out_channels, kernel_size, stride, nempty)
     self.gn = OctreeGroupNorm(out_channels, group=group, nempty=nempty)
@@ -191,7 +193,7 @@ class OctreeConvGn(torch.nn.Module):
     r''''''
 
     out = self.conv(data, octree, depth)
-    out = self.gn(out, octree, depth)
+    out = self.gn(out, octree, depth if self.stride == 1 else depth - 1)
     return out
 
 

@@ -37,6 +37,14 @@ class TestScatter(unittest.TestCase):
     self.assertTrue(torch.equal(gt2, out2))
     self.assertTrue(torch.equal(gt3, out3))
 
+  def test_resize_with_last_val_returns_copy(self):
+    data = [2]
+    out = ocnn.utils.resize_with_last_val(data)
+
+    self.assertEqual(out, [2, 2, 2])
+    self.assertEqual(data, [2])
+    self.assertIsNot(out, data)
+
 
 if __name__ == "__main__":
   os.environ['CUDA_VISIBLE_DEVICES'] = '0'
