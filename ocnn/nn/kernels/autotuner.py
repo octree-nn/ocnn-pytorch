@@ -14,7 +14,7 @@ VERBOSE_AUTOTUNE = os.getenv('TRITON_PRINT_AUTOTUNING', '0') == '1'
 AUTOSAVE_AUTOTUNE_CACHE = os.getenv('OCNN_AUTOSAVE_AUTOTUNE', '1') == '1'
 AUTOTUNE_CACHE_PATH = os.getenv(
     'OCNN_AUTOTUNE_CACHE_PATH',
-    os.path.expanduser('~/.ocnnconvt/autotune_cache.json'))
+    os.path.expanduser('~/.ocnn-triton/autotune_cache.json'))
 
 
 class TritonPersistentCacheAutotuner(triton.runtime.Autotuner):
