@@ -1,6 +1,6 @@
 import ast
 
-if not hasattr(ast, 'Num'):
+if 'Num' not in vars(ast):
   r''' Triton 3.5.1 constructs ast.Num nodes when compiling range loops.
 
   The Triton kernels contain loops like:

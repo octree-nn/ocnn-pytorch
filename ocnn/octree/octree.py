@@ -52,7 +52,12 @@ class Octree:
     self.batch_size = batch_size
     self.start_depth = start_depth
     self.device = device
-    assert 0 <= self.start_depth < self.depth
+    if not 0 <= self.start_depth <= self.depth:
+      raise ValueError('start_depth must be in the range [0, depth]')
+    if not 0 <= self.full_depth <= self.depth:
+      raise ValueError('full_depth must be in the range [0, depth]')
+    if self.batch_size < 1:
+      raise ValueError('batch_size must be positive')
 
     # properties after building the octree
     self.reset()
@@ -722,8 +727,11 @@ class Octree:
       condition = (octrees[i].depth == self.depth and
                    octrees[i].full_depth == self.full_depth and
                    octrees[i].start_depth == self.start_depth and
+                   octrees[i].batch_size == 1 and
                    octrees[i].device == self.device)
-      assert condition, 'The check of merge_octrees failed'
+      if not condition:
+        raise ValueError(
+            'All input octrees must be compatible, single-batch octrees')
 
     # node num
     batch_nnum = torch.stack(
@@ -805,8 +813,9 @@ class Octree:
       Octree: The initialized Octree object.
     '''
 
-    assert start_depth <= full_depth, \
-        'start_depth must not exceed full_depth when initializing a full octree'
+    if start_depth > full_depth:
+      raise ValueError(
+          'start_depth must not exceed full_depth when initializing a full octree')
     octree = cls(depth, full_depth, batch_size, device, start_depth=start_depth)
     for d in range(start_depth, full_depth + 1):
       octree.octree_grow_full(depth=d)
@@ -820,6 +829,8 @@ def merge_octrees(octrees: List['Octree']):
     Use :meth:`Octree.merge_octrees` instead.
   '''
 
+  if len(octrees) == 0:
+    raise ValueError('The input octree list must not be empty')
   return Octree.init_like(octrees[0]).merge_octrees(octrees)
 
 
