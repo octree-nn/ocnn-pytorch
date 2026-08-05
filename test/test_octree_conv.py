@@ -16,6 +16,74 @@ from .utils import get_batch_octree
 
 class TesOctreeConv(unittest.TestCase):
 
+  def test_deconv_specialized(self):
+    octree = get_batch_octree()
+    depth = 4
+    in_channels = 3
+    out_channels = 4
+
+    for nempty in [False, True]:
+      nnum = octree.nnum_nempty[depth] if nempty else octree.nnum[depth]
+      data = torch.randn(nnum, in_channels).t().contiguous().t()
+      self.assertFalse(data.is_contiguous())
+
+      deconv_ref = ocnn.nn.OctreeDeconv(
+          in_channels, out_channels, [2, 2, 2], 2, nempty=nempty,
+          method='explicit_gemm', use_bias=True)
+      deconv = ocnn.nn.OctreeDeconvK2(
+          in_channels, out_channels, nempty=nempty, use_bias=True)
+      deconv.weights.data.copy_(deconv_ref.weights.data)
+      deconv_ref.bias.data.fill_(0.25)
+      deconv.bias.data.copy_(deconv_ref.bias.data)
+
+      data_ref = data.detach().clone().requires_grad_()
+      data = data.detach().clone().requires_grad_()
+      out_ref = deconv_ref(data_ref, octree, depth)
+      out = deconv(data, octree, depth)
+      self.assertTrue(torch.allclose(out, out_ref, atol=1.0e-6))
+
+      out_ref.sum().backward()
+      out.sum().backward()
+      self.assertTrue(torch.allclose(data.grad, data_ref.grad, atol=1.0e-6))
+      self.assertTrue(torch.allclose(
+          deconv.weights.grad, deconv_ref.weights.grad, atol=1.0e-6))
+      self.assertTrue(torch.allclose(
+          deconv.bias.grad, deconv_ref.bias.grad, atol=1.0e-6))
+
+  def test_conv_specialized(self):
+    octree = get_batch_octree()
+    depth = 5
+    in_channels = 3
+    out_channels = 4
+
+    for nempty in [False, True]:
+      nnum = octree.nnum_nempty[depth] if nempty else octree.nnum[depth]
+      data = torch.randn(nnum, in_channels)
+      if not nempty:
+        data = data.t().contiguous().t()
+        self.assertFalse(data.is_contiguous())
+
+      conv_ref = ocnn.nn.OctreeConv(
+          in_channels, out_channels, [2, 2, 2], 2, nempty=nempty,
+          method='explicit_gemm', use_bias=True)
+      conv = ocnn.nn.OctreeConvK2(
+          in_channels, out_channels, nempty=nempty, use_bias=True)
+      conv.weights.data.copy_(conv_ref.weights.data)
+      conv_ref.bias.data.fill_(0.25)
+      conv.bias.data.copy_(conv_ref.bias.data)
+
+      out_ref = conv_ref(data, octree, depth)
+      out = conv(data, octree, depth)
+      self.assertTrue(torch.allclose(out, out_ref, atol=1.0e-6))
+
+    data = torch.randn(octree.nnum[depth], in_channels)
+    conv = ocnn.nn.OctreeConvK1(
+        in_channels, out_channels, use_bias=True)
+
+    out_ref = data @ conv.linear.weight.t() + conv.linear.bias
+    out = conv(data)
+    self.assertTrue(torch.allclose(out, out_ref, atol=1.0e-6))
+
   def test_conv_forward(self):
     r''' Tests octree2col/col2octree, octree_conv/octree_deconv.
     '''

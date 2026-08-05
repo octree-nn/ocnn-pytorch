@@ -10,7 +10,7 @@ import torch.nn
 
 from ocnn.octree import Octree
 from ocnn.utils import xavier_uniform_
-from ocnn.nn.octree_pad import octree_pad
+from ocnn.nn.octree_pad import octree_pad, octree_depad
 
 
 class OctreeConvK2(torch.nn.Module):
@@ -58,11 +58,75 @@ class OctreeConvK2(torch.nn.Module):
     if self.nempty:
       data = octree_pad(data, octree, depth)
 
-    out = data.view(-1, 8 * self.in_channels) @ self.weights.flatten(0, 1)
-    out = out.view(-1, self.out_channels)
+    out = data.reshape(-1, 8 * self.in_channels) @ self.weights.flatten(0, 1)
+    out = out.reshape(-1, self.out_channels)
+
+    if self.use_bias:
+      out += self.bias
 
     if not self.nempty:
       out = octree_pad(out, octree, depth-1)
+    return out
+
+  def extra_repr(self) -> str:
+    r''' Sets the extra representation of the module.
+    '''
+
+    return ('in_channels={}, out_channels={}, kernel_size=2, stride=2, '
+            'nempty={}, bias={}').format(self.in_channels, self.out_channels,
+             self.nempty, self.use_bias)  # noqa
+
+
+class OctreeDeconvK2(torch.nn.Module):
+  r''' Performs octree deconvolution with kernel size 2 and stride 2.
+
+  Args:
+    in_channels (int): Number of input channels.
+    out_channels (int): Number of output channels.
+    nempty (bool): If True, only performs the deconvolution on non-empty octree
+        nodes; otherwise, performs the deconvolution on all octree nodes.
+    use_bias (bool): If True, add a bias term to the deconvolution.
+
+  '''
+
+  def __init__(self, in_channels: int, out_channels: int,
+               nempty: bool = False, use_bias: bool = False, **kwargs):
+    super().__init__()
+    self.in_channels = in_channels
+    self.out_channels = out_channels
+    self.nempty = nempty
+    self.use_bias = use_bias
+
+    weights_shape = (8, out_channels, in_channels)
+    self.weights = torch.nn.Parameter(torch.Tensor(*weights_shape))
+    self.bias = (torch.nn.Parameter(torch.Tensor(self.out_channels))
+                 if use_bias else None)
+    self.reset_parameters()
+
+  def reset_parameters(self):
+    xavier_uniform_(self.weights)
+    if self.use_bias:
+      torch.nn.init.zeros_(self.bias)
+
+  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+    r''' Defines the octree deconvolution.
+
+    Args:
+      data (torch.Tensor): The input data.
+      octree (Octree): The corresponding octree.
+      depth (int): The depth of current octree.
+    '''
+
+    assert data.shape[1] == self.in_channels, 'Input channel mismatch.'
+
+    if not self.nempty:
+      data = octree_depad(data, octree, depth)
+
+    out = data @ self.weights.flatten(0, 1).t()
+    out = out.reshape(-1, self.out_channels)
+
+    if self.nempty:
+      out = octree_depad(out, octree, depth+1)
 
     if self.use_bias:
       out += self.bias
@@ -94,7 +158,7 @@ class OctreeConvK1(torch.nn.Module):
 
     self.linear = torch.nn.Linear(in_channels, out_channels, use_bias)
 
-  def forward(self, data: torch.Tensor, **kwargs):
+  def forward(self, data: torch.Tensor):
     r''''''
 
     return self.linear(data)
