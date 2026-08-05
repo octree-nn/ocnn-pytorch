@@ -42,6 +42,9 @@ class Octree:
     some margin.
   '''
 
+  # Lookup tables are shared by all Octree instances on the same device.
+  _lut_cache = {}
+
   def __init__(self, depth: int, full_depth: int = 2, batch_size: int = 1,
                device: Union[torch.device, str] = 'cpu', start_depth: int = 0,
                **kwargs):
@@ -92,28 +95,38 @@ class Octree:
     self.batch_nnum = torch.zeros(num, batch_size, dtype=torch.long)
     self.batch_nnum_nempty = torch.zeros(num, batch_size, dtype=torch.long)
 
-    # construct the look up tables for neighborhood searching
-    device = self.device
-    center_grid = range_grid(2, 3, device)    # (8, 3)
-    displacement = range_grid(-1, 1, device)  # (27, 3)
-    neigh_grid = center_grid.unsqueeze(1) + displacement  # (8, 27, 3)
-    parent_grid = trunc_div(neigh_grid, 2)
-    child_grid = neigh_grid % 2
-    self.lut_parent = torch.sum(
-        parent_grid * torch.tensor([9, 3, 1], device=device), dim=2)
-    self.lut_child = torch.sum(
-        child_grid * torch.tensor([4, 2, 1], device=device), dim=2)
+    # These lookup tables are read-only and shared by all octrees on this device.
+    self.lut_parent, self.lut_child, self.lut_kernel = self._get_lut(self.device)
 
-    # lookup tables for different kernel sizes
-    self.lut_kernel = {
-        '222': torch.tensor([13, 14, 16, 17, 22, 23, 25, 26], device=device),
-        '311': torch.tensor([4, 13, 22], device=device),
-        '131': torch.tensor([10, 13, 16], device=device),
-        '113': torch.tensor([12, 13, 14], device=device),
-        '331': torch.tensor([1, 4, 7, 10, 13, 16, 19, 22, 25], device=device),
-        '313': torch.tensor([3, 4, 5, 12, 13, 14, 21, 22, 23], device=device),
-        '133': torch.tensor([9, 10, 11, 12, 13, 14, 15, 16, 17], device=device),
-    }
+  @classmethod
+  def _get_lut(cls, device):
+    device = torch.device(device)
+    # An unspecified CUDA index follows the current CUDA device. Use a concrete
+    # device as the key so changing the current device cannot return a wrong LUT.
+    if device.type == 'cuda' and device.index is None:
+      device = torch.device('cuda', torch.cuda.current_device())
+
+    if device not in cls._lut_cache:
+      center_grid = range_grid(2, 3, device)     # (8, 3)
+      displacement = range_grid(-1, 1, device)   # (27, 3)
+      neigh_grid = center_grid.unsqueeze(1) + displacement  # (8, 27, 3)
+      parent_grid = trunc_div(neigh_grid, 2)
+      child_grid = neigh_grid % 2
+      lut_parent = torch.sum(
+          parent_grid * torch.tensor([9, 3, 1], device=device), dim=2)
+      lut_child = torch.sum(
+          child_grid * torch.tensor([4, 2, 1], device=device), dim=2)
+      lut_kernel = {
+          '222': torch.tensor([13, 14, 16, 17, 22, 23, 25, 26], device=device),
+          '311': torch.tensor([4, 13, 22], device=device),
+          '131': torch.tensor([10, 13, 16], device=device),
+          '113': torch.tensor([12, 13, 14], device=device),
+          '331': torch.tensor([1, 4, 7, 10, 13, 16, 19, 22, 25], device=device),
+          '313': torch.tensor([3, 4, 5, 12, 13, 14, 21, 22, 23], device=device),
+          '133': torch.tensor([9, 10, 11, 12, 13, 14, 15, 16, 17], device=device),
+      }
+      cls._lut_cache[device] = (lut_parent, lut_child, lut_kernel)
+    return cls._lut_cache[device]
 
   def key(self, depth: int, nempty: bool = False):
     r''' Returns the shuffled key of each octree node.

@@ -107,6 +107,23 @@ class TestOctree(unittest.TestCase):
     if torch.cuda.is_available():
       self.build_octree('cuda')
 
+  def test_lut_cache(self):
+    octree1 = ocnn.octree.Octree(depth=3)
+    octree2 = ocnn.octree.Octree(depth=5)
+
+    self.assertIs(octree1.lut_parent, octree2.lut_parent)
+    self.assertIs(octree1.lut_child, octree2.lut_child)
+    self.assertIs(octree1.lut_kernel, octree2.lut_kernel)
+
+    lut_parent = octree1.lut_parent
+    octree1.reset()
+    self.assertIs(octree1.lut_parent, lut_parent)
+
+    if torch.cuda.is_available():
+      octree_cuda = ocnn.octree.Octree(depth=3, device='cuda')
+      self.assertIsNot(octree1.lut_parent, octree_cuda.lut_parent)
+      self.assertEqual(octree_cuda.lut_parent.device.type, 'cuda')
+
   def test_build_octree_with_start_depth(self):
     points = self.init_points()
     reference = ocnn.octree.Octree(depth=5, full_depth=1)
