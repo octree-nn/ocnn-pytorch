@@ -107,6 +107,40 @@ class TestOctree(unittest.TestCase):
     if torch.cuda.is_available():
       self.build_octree('cuda')
 
+  def test_build_octree_with_start_depth(self):
+    points = self.init_points()
+    reference = ocnn.octree.Octree(depth=5, full_depth=1)
+    reference.build_octree(points)
+    reference.construct_all_neigh()
+
+    for start_depth in [1, 3]:
+      octree = ocnn.octree.Octree(
+          depth=5, full_depth=1, start_depth=start_depth)
+      octree.build_octree(points)
+      octree.construct_all_neigh()
+
+      self.assertTrue(all(x is None for x in octree.keys[:start_depth]))
+      self.assertTrue((octree.nnum[:start_depth] == 0).all())
+      for depth in range(start_depth, octree.depth + 1):
+        self.assertTrue(torch.equal(octree.keys[depth], reference.keys[depth]))
+        self.assertTrue(torch.equal(
+            octree.children[depth], reference.children[depth]))
+        self.assertTrue(torch.equal(
+            octree.neighs[depth], reference.neighs[depth]))
+
+      octree_like = ocnn.octree.Octree.init_like(octree)
+      self.assertEqual(octree_like.start_depth, start_depth)
+
+      octree_merged = ocnn.octree.merge_octrees([octree, octree])
+      self.assertEqual(octree_merged.start_depth, start_depth)
+      self.assertTrue(
+          all(x is None for x in octree_merged.keys[:start_depth]))
+
+    octree = ocnn.octree.Octree.init_octree(
+        depth=5, full_depth=3, start_depth=2)
+    self.assertTrue(all(x is None for x in octree.keys[:2]))
+    self.assertTrue(all(x is not None for x in octree.keys[2:4]))
+
   def test_octree_with_data(self):
     for i in range(1, 6):
       octree, data = get_octree(i, return_data=True)

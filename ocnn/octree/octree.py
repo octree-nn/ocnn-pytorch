@@ -25,6 +25,8 @@ class Octree:
     batch_size (int): The octree batch size.
     device (torch.device or str): Choose from :obj:`cpu` and :obj:`gpu`.
         (default: :obj:`cpu`)
+    start_depth (int): The octree depth to start building the octree,
+        it should be smaller than :attr:`depth` (default: :obj:`0`)
 
   .. note::
     The octree data structure requires that if an octree node has children nodes,
@@ -41,13 +43,16 @@ class Octree:
   '''
 
   def __init__(self, depth: int, full_depth: int = 2, batch_size: int = 1,
-               device: Union[torch.device, str] = 'cpu', **kwargs):
+               device: Union[torch.device, str] = 'cpu', start_depth: int = 0,
+               **kwargs):
     super().__init__()
     # configurations for initialization
     self.depth = depth
     self.full_depth = full_depth
     self.batch_size = batch_size
+    self.start_depth = start_depth
     self.device = device
+    assert 0 <= self.start_depth < self.depth
 
     # properties after building the octree
     self.reset()
@@ -227,12 +232,16 @@ class Octree:
     node_key, idx, counts = torch.unique(
         key, sorted=True, return_inverse=True, return_counts=True)
 
-    # layer 0 to full_layer: the octree is full in these layers
-    for d in range(self.full_depth+1):
+    # The layers from start_depth to full_depth are full.
+    # Layers smaller than start_depth are intentionally left uninitialized.
+    for d in range(self.start_depth, self.full_depth + 1):
       self.octree_grow_full(d, update_neigh=False)
 
-    # layer depth_ to full_layer_
-    for d in range(self.depth, self.full_depth, -1):
+    # Build the sparse layers down to either full_depth + 1 or start_depth.
+    # The latter allows an octree to start above full_depth without requiring
+    # any parent layers.
+    start_depth = max(self.full_depth + 1, self.start_depth)
+    for d in range(self.depth, start_depth - 1, -1):
       # compute parent key, i.e. keys of layer (d -1)
       pkey = node_key >> 3
       pkey, pidx, _ = torch.unique_consecutive(
@@ -258,16 +267,17 @@ class Octree:
       node_key = pkey if self.batch_size == 1 else  \
           ((pkey >> 45) << 48) | (pkey & ((1 << 45) - 1))
 
-    # set the children for the layer full_layer,
-    # now the node_keys are the key for full_layer
-    d = self.full_depth
-    children = -torch.ones_like(self.children[d])
-    nempty_idx = node_key if self.batch_size == 1 else  \
-        ((node_key >> 48) << (3 * d)) | (node_key & ((1 << 48) - 1))
-    children[nempty_idx] = torch.arange(
-        node_key.numel(), dtype=torch.int32, device=self.device)
-    self.children[d] = children
-    self.nnum_nempty[d] = node_key.numel()
+    # set the children for the layer full_layer. If start_depth is above
+    # full_depth, its children were already initialized in the loop above.
+    if self.start_depth <= self.full_depth:
+      d = self.full_depth
+      children = -torch.ones_like(self.children[d])
+      nempty_idx = node_key if self.batch_size == 1 else  \
+          ((node_key >> 48) << (3 * d)) | (node_key & ((1 << 48) - 1))
+      children[nempty_idx] = torch.arange(
+          node_key.numel(), dtype=torch.int32, device=self.device)
+      self.children[d] = children
+      self.nnum_nempty[d] = node_key.numel()
 
     # average the signal for the last octree layer
     d = self.depth
@@ -295,7 +305,7 @@ class Octree:
     '''
 
     # check
-    assert depth <= self.full_depth, 'error'
+    assert self.start_depth <= depth <= self.full_depth, 'error'
 
     # node number
     num = 1 << (3 * depth)
@@ -401,6 +411,73 @@ class Octree:
     if update_neigh:
       self.construct_neigh(depth)
 
+  def construct_neigh_full_depth(self, depth: int):
+    r''' Constructs the :obj:`3x3x3` neighbors for each octree node in a full
+    octree layer.
+
+    Args:
+      depth (int): The octree depth with a value larger than 0 (:obj:`>0`).
+    '''
+
+    device = self.device
+    nnum = 1 << (3 * depth)
+    key = torch.arange(nnum, dtype=torch.long, device=device)
+    x, y, z, _ = key2xyz(key, depth)
+    xyz = torch.stack([x, y, z], dim=-1)  # (N,  3)
+    grid = range_grid(-1, 1, device)      # (27, 3)
+    xyz = xyz.unsqueeze(1) + grid         # (N, 27, 3)
+    xyz = xyz.view(-1, 3)                 # (N*27, 3)
+    neigh = xyz2key(xyz[:, 0], xyz[:, 1], xyz[:, 2], depth=depth)
+
+    bs = torch.arange(self.batch_size, dtype=torch.long, device=device)
+    neigh = neigh + bs.unsqueeze(1) * nnum  # (N*27,) + (B, 1)
+
+    bound = 1 << depth
+    invalid = torch.logical_or((xyz < 0).any(1), (xyz >= bound).any(1))
+    neigh[:, invalid] = -1
+    self.neighs[depth] = neigh.view(-1, 27)  # (B*N, 27)
+
+  def construct_neigh_by_parent(self, depth: int):
+    r''' Constructs the :obj:`3x3x3` neighbors from the neighborhoods of the
+    parent octree layer.
+
+    Args:
+      depth (int): The octree depth with a value larger than
+          :attr:`full_depth` and :attr:`start_depth`.
+    '''
+
+    child_p = self.children[depth-1]
+    nempty = child_p >= 0
+    neigh_p = self.neighs[depth-1][nempty]   # (N, 27)
+    neigh_p = neigh_p[:, self.lut_parent]    # (N, 8, 27)
+    child_p = child_p[neigh_p]               # (N, 8, 27)
+    invalid = torch.logical_or(child_p < 0, neigh_p < 0)  # (N, 8, 27)
+    neigh = child_p * 8 + self.lut_child
+    neigh[invalid] = -1
+    self.neighs[depth] = neigh.view(-1, 27)
+
+  def construct_neigh_by_search(self, depth: int):
+    r''' Constructs the :obj:`3x3x3` neighbors by directly searching the
+    octree keys at the specified layer.
+
+    Args:
+      depth (int): The octree depth of a sparse starting layer whose parent
+          layer is unavailable.
+    '''
+
+    x, y, z, b = self.xyzb(depth)
+    xyz = torch.stack([x, y, z], dim=-1)
+    grid = range_grid(-1, 1, self.device)
+    xyz = xyz.unsqueeze(1) + grid
+    b = b.unsqueeze(1).expand(-1, grid.shape[0])
+    query = torch.cat([xyz, b.unsqueeze(-1)], dim=-1).view(-1, 4)
+    neigh = self.search_xyzb(query, depth)
+    bound = 1 << depth
+    invalid = torch.logical_or(
+        (query[:, :3] < 0).any(1), (query[:, :3] >= bound).any(1))
+    neigh[invalid] = -1
+    self.neighs[depth] = neigh.view(-1, 27)
+
   def construct_neigh(self, depth: int):
     r''' Constructs the :obj:`3x3x3` neighbors for each octree node.
 
@@ -409,40 +486,18 @@ class Octree:
     '''
 
     if depth <= self.full_depth:
-      device = self.device
-      nnum = 1 << (3 * depth)
-      key = torch.arange(nnum, dtype=torch.long, device=device)
-      x, y, z, _ = key2xyz(key, depth)
-      xyz = torch.stack([x, y, z], dim=-1)  # (N,  3)
-      grid = range_grid(-1, 1, device)      # (27, 3)
-      xyz = xyz.unsqueeze(1) + grid         # (N, 27, 3)
-      xyz = xyz.view(-1, 3)                 # (N*27, 3)
-      neigh = xyz2key(xyz[:, 0], xyz[:, 1], xyz[:, 2], depth=depth)
-
-      bs = torch.arange(self.batch_size, dtype=torch.long, device=device)
-      neigh = neigh + bs.unsqueeze(1) * nnum  # (N*27,) + (B, 1) -> (B, N*27)
-
-      bound = 1 << depth
-      invalid = torch.logical_or((xyz < 0).any(1), (xyz >= bound).any(1))
-      neigh[:, invalid] = -1
-      self.neighs[depth] = neigh.view(-1, 27)  # (B*N, 27)
-
+      self.construct_neigh_full_depth(depth)
     else:
-      child_p = self.children[depth-1]
-      nempty = child_p >= 0
-      neigh_p = self.neighs[depth-1][nempty]   # (N, 27)
-      neigh_p = neigh_p[:, self.lut_parent]    # (N, 8, 27)
-      child_p = child_p[neigh_p]               # (N, 8, 27)
-      invalid = torch.logical_or(child_p < 0, neigh_p < 0)   # (N, 8, 27)
-      neigh = child_p * 8 + self.lut_child
-      neigh[invalid] = -1
-      self.neighs[depth] = neigh.view(-1, 27)
+      if self.neighs[depth - 1] is None:
+        self.construct_neigh_by_search(depth)
+      else:
+        self.construct_neigh_by_parent(depth)
 
   def construct_all_neigh(self):
     r''' A convenient handler for constructing all neighbors.
     '''
 
-    for depth in range(1, self.depth+1):
+    for depth in range(max(1, self.start_depth), self.depth + 1):
       self.construct_neigh(depth)
 
   def search_xyzb(self, query: torch.Tensor, depth: int, nempty: bool = False):
@@ -663,9 +718,10 @@ class Octree:
     # init and check
     batch_size = len(octrees)
     self.batch_size = batch_size
-    for i in range(1, batch_size):
+    for i in range(batch_size):
       condition = (octrees[i].depth == self.depth and
                    octrees[i].full_depth == self.full_depth and
+                   octrees[i].start_depth == self.start_depth and
                    octrees[i].device == self.device)
       assert condition, 'The check of merge_octrees failed'
 
@@ -681,7 +737,7 @@ class Octree:
     nnum_cum = cumsum(batch_nnum_nempty, dim=1, exclusive=True)
 
     # merge octre properties
-    for d in range(self.depth + 1):
+    for d in range(self.start_depth, self.depth + 1):
       # key
       keys = [None] * batch_size
       for i in range(batch_size):
@@ -727,11 +783,13 @@ class Octree:
 
     device = device if device is not None else octree.device
     return cls(depth=octree.depth, full_depth=octree.full_depth,
-               batch_size=octree.batch_size, device=device)
+               batch_size=octree.batch_size, device=device,
+               start_depth=octree.start_depth)
 
   @classmethod
   def init_octree(cls, depth: int, full_depth: int = 2, batch_size: int = 1,
-                  device: Union[torch.device, str] = 'cpu'):
+                  device: Union[torch.device, str] = 'cpu',
+                  start_depth: int = 0):
     r'''
     Initializes an octree to :attr:`full_depth`.
 
@@ -741,13 +799,16 @@ class Octree:
           :attr:`full_depth` are forced to be full.
       batch_size (int, optional): The batch size.
       device (torch.device or str): The device to use for computation.
+      start_depth (int): The first full octree layer to initialize.
 
     Returns:
       Octree: The initialized Octree object.
     '''
 
-    octree = cls(depth, full_depth, batch_size, device)
-    for d in range(full_depth + 1):
+    assert start_depth <= full_depth, \
+        'start_depth must not exceed full_depth when initializing a full octree'
+    octree = cls(depth, full_depth, batch_size, device, start_depth=start_depth)
+    for d in range(start_depth, full_depth + 1):
       octree.octree_grow_full(depth=d)
     return octree
 
@@ -763,11 +824,12 @@ def merge_octrees(octrees: List['Octree']):
 
 
 def init_octree(depth: int, full_depth: int = 2, batch_size: int = 1,
-                device: Union[torch.device, str] = 'cpu'):
+                device: Union[torch.device, str] = 'cpu',
+                start_depth: int = 0):
   r''' A wrapper of :meth:`Octree.init_octree`.
 
   .. deprecated:: 2.2.7
     Use :meth:`Octree.init_octree` instead.
   '''
 
-  return Octree.init_octree(depth, full_depth, batch_size, device)
+  return Octree.init_octree(depth, full_depth, batch_size, device, start_depth)
