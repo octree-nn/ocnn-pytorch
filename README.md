@@ -58,6 +58,9 @@ octrees to leverage the library's capabilities.
 
 ## Updates
 
+- **2026.08.05**: Release `v2.3.3`,  this release mainly adds specialized octree
+  convolutions, flexible start_depth construction, a ShapeNet normal-estimation
+  workflow.
 - **2026.05.07**: Release `v2.3.2`,  this release focuses on stability,
   performance, and usability improvements.
 - **2026.02.08**: Release `v2.3.1`, improving the interfaces of octree
