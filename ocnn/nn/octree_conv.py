@@ -315,7 +315,8 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
       octree2col/col2octree and then uses GEMM; this can use a large amount of
       memory. :obj:`'block_gemm'` computes in smaller blocks to reduce peak
       memory at some runtime cost. :obj:`'triton'` uses the implicit kernel and
-      requires kernel_size=[3,3,3], stride=1, CUDA, and PyTorch >= 2.8.0.
+      requires kernel_size=[3,3,3], stride=1 or stride=2, CUDA, and
+      PyTorch >= 2.8.0.
     use_bias (bool): If True, add a bias term to the convolution.
     max_buffer (int): The maximum number of elements in the buffer, used when
         :attr:`method` is 'block_gemm'.
@@ -347,12 +348,12 @@ class OctreeConv(OctreeConvBase, torch.nn.Module):
   def check_method(self, method: str):
     smaller_than_270 = version.parse(torch.__version__) < version.parse('2.7.0')
     if method == 'triton':
-      if (self.kernel != '333' or self.stride != 1 or DISABLE_TRITON or
+      if (self.kernel != '333' or self.stride not in [1, 2] or DISABLE_TRITON or
               smaller_than_270 or torch.cuda.is_available() is False):
         method = 'block_gemm'
         # warnings.warn(
         #     'The triton implementation only supports kernel_size=[3,3,3], '
-        #     'stride=1, and requires PyTorch >= 2.8.0 and CUDA. '
+        #     'stride=1 or stride=2, and requires PyTorch >= 2.8.0 and CUDA. '
         #     'Falling back to block_gemm.', RuntimeWarning, stacklevel=2,)
     return method
 

@@ -13,6 +13,7 @@ from typing import List
 import ocnn
 from ocnn.octree import Octree
 from ocnn.utils import xavier_uniform_, resize_with_last_val, list2str
+from .octree_pad import octree_pad
 
 # Conditionally import Triton kernels, only available on GPU
 try:
@@ -64,7 +65,7 @@ class OctreeConvTriton(torch.nn.Module):
     out_channels (int): Number of output channels.
     kernel_size (List(int)): The kernel shape, only :obj:`[3]` and :obj:`[3,3,3]`
         are supported now for the triton implementation.
-    stride (int): The stride of the convolution, only :obj:`1` is supported now.
+    stride (int): The stride of the convolution (:obj:`1` or :obj:`2`).
     nempty (bool): If True, only performs the convolution on non-empty octree
         nodes; otherwise, performs the convolution on all octree nodes.
     use_bias (bool): If True, add a bias term to the convolution.
@@ -92,7 +93,7 @@ class OctreeConvTriton(torch.nn.Module):
     self.nempty = nempty
     self.use_bias = use_bias
     self.method = method
-    assert self.stride == 1, 'Only stride=1 is supported now.'
+    assert self.stride in [1, 2], 'Only stride=1 or stride=2 is supported now.'
     assert self.kernel == '333', 'Only kernel_size=[3,3,3] is supported now.'
 
     self.kdim = self.kernel_size[0] * self.kernel_size[1] * self.kernel_size[2]
@@ -120,6 +121,8 @@ class OctreeConvTriton(torch.nn.Module):
     weight = self.weights.permute(2, 0, 1)   # (V,Ci,Co) -> (Co,V,Ci)
     neigh = octree.get_neigh(depth, self.kernel, self.stride, self.nempty)
     out = octree_conv_triton(data, weight, self.bias, neigh)
+    if self.stride == 2 and not self.nempty:
+      out = octree_pad(out, octree, depth-1)
     return out
 
   def extra_repr(self) -> str:
@@ -145,7 +148,7 @@ def convert_conv_triton(module: torch.nn.Module) -> torch.nn.Module:
 
   module_out = module
   if (isinstance(module, ocnn.nn.OctreeConv) and
-          module.stride == 1 and module.kernel_size == [3, 3, 3]):
+          module.stride in [1, 2] and module.kernel_size == [3, 3, 3]):
     module_out = OctreeConvTriton(
         module.in_channels, module.out_channels, module.kernel_size,
         module.stride, module.nempty, use_bias=module.use_bias,)

@@ -14,7 +14,8 @@ from .conv_bwd_implicit_gemm import (
 
 @triton_autotune(
     configs=config.autotune_config,
-    key=['LOGN', 'Ci', 'Co', 'V', 'SPLITK', 'allow_tf32'],
+    key=['LOGN', 'Ni', 'Ci', 'Co', 'V', 'SPLITK', 'STRIDED', 'allow_tf32'],
+    reset_to_zero=['grad_input'],
 )
 @triton.jit
 def conv_bwd_input_implicit_gemm_splitk_kernel(
@@ -23,64 +24,108 @@ def conv_bwd_input_implicit_gemm_splitk_kernel(
     neighbor,
     grad_input,
     # Tensor dimensions
-    N, LOGN, Ci, Co, V: tl.constexpr,
+    N, Ni, LOGN, Ci, Co, V: tl.constexpr,
     # Meta-parameters
     B1: tl.constexpr,   # Block size for N dimension
     B2: tl.constexpr,   # Block size for Ci dimension
     BK: tl.constexpr,   # Block size for K dimension (V * Co)
     SPLITK: tl.constexpr,  # Split K dimension
+    STRIDED: tl.constexpr,  # Input and output node counts differ
     allow_tf32: tl.constexpr,  # Allow TF32 precision for matmuls
+    SCATTER_BCI: tl.constexpr,
+    SCATTER_BCO: tl.constexpr,
 ):
-    """
-    Sparse submanifold convolution backward to input kernel using implicit GEMM.
-
-    Args:
-        grad_output (pointer): A pointer to the gradient of the output tensor of shape (N, Co)
-        weight (pointer): A pointer to the weight tensor of shape (Co, V, Ci)
-        neighbor (pointer): A pointer to the neighbor tensor of shape (N, V)
-        grad_input (pointer): A pointer to the gradient of the input tensor of shape (N, Ci)
-    """
+    """Sparse convolution backward-to-input kernel using implicit GEMM."""
     block_id_k = tl.program_id(axis=1)  # SplitK dimension
     block_id = tl.program_id(axis=0)
-    block_dim_ci = tl.cdiv(Ci, B2)
-    block_id_ci = block_id % block_dim_ci
-    block_id_n = block_id // block_dim_ci
 
-    # Create pointers for submatrices of A and B.
-    num_k = tl.cdiv(Co, BK)  # Number of blocks in K dimension
-    k_start = tl.cdiv(num_k * V * block_id_k, SPLITK)
-    k_end = tl.cdiv(num_k * V * (block_id_k + 1), SPLITK)
-    offset_n = (block_id_n * B1 + tl.arange(0, B1)) % N         # (B1,)
-    offset_ci = (block_id_ci * B2 + tl.arange(0, B2)) % Ci      # (B2,)
-    offset_k = tl.arange(0, BK)                                 # (BK,)
+    if STRIDED:
+        # For a strided convolution the neighborhood matrix is rectangular.
+        # Each program computes one (neighbor, input-channel block) contribution
+        # and atomically scatters it to the corresponding input node.
+        block_dim_ci = tl.cdiv(Ci, SCATTER_BCI)
+        block_id_ci = block_id % block_dim_ci
+        nv = block_id // block_dim_ci
+        n = nv // V
+        v = nv % V
 
-    # Create a block of the output matrix C.
-    accumulator = tl.zeros((B1, B2), dtype=tl.float32)
+        num_k = tl.cdiv(Co, SCATTER_BCO)
+        k_start = tl.cdiv(num_k * block_id_k, SPLITK)
+        k_end = tl.cdiv(num_k * (block_id_k + 1), SPLITK)
+        offset_ci = (
+            block_id_ci * SCATTER_BCI + tl.arange(0, SCATTER_BCI))
+        offset_k = tl.arange(0, SCATTER_BCO)
+        accumulator = tl.zeros((SCATTER_BCI,), dtype=tl.float32)
 
-    # Iterate along V*Co dimension.
-    for k in range(k_start, k_end):
-        v = k // num_k
-        bk = k % num_k
-        # Calculate pointers to grad_output matrix.
-        neighbor_offset_n = tl.load(neighbor + offset_n * V + V - 1 - v)                                    # (B1,)
-        grad_output_ptr = grad_output + bk * BK + (neighbor_offset_n[:, None].to(tl.int64) * Co + offset_k[None, :])     # (B1, BK)
-        # Calculate pointers to weight matrix.
-        weight_ptr = weight + (((offset_k[:, None] + bk * BK) * V + v) * Ci + offset_ci[None, :])           # (BK, B2)
-        # Load the next block of input and weight.
-        neigh_mask = neighbor_offset_n != -1
-        k_mask = offset_k < Co - bk * BK
-        grad_output_block = tl.load(grad_output_ptr, mask=neigh_mask[:, None] & k_mask[None, :], other=0.0)
-        weight_block = tl.load(weight_ptr, mask=k_mask[:, None], other=0.0)
-        # Accumulate along the K dimension.
-        accumulator = tl.dot(grad_output_block, weight_block, accumulator,
-                             input_precision='tf32' if allow_tf32 else 'ieee')                              # (B1, B2)
+        for k in range(k_start, k_end):
+            offset_co = k * SCATTER_BCO + offset_k
+            grad = tl.load(
+                grad_output + n * Co + offset_co,
+                mask=offset_co < Co, other=0.0)
+            weight_offset = (
+                (offset_co[:, None] * V + v) * Ci + offset_ci[None, :])
+            weight_block = tl.load(
+                weight + weight_offset,
+                mask=(offset_co[:, None] < Co) & (offset_ci[None, :] < Ci),
+                other=0.0)
+            accumulator += tl.sum(grad[:, None] * weight_block, axis=0)
 
-    # Write back the block of the output matrix with masks.
-    grad_input_offset_n = block_id_n * B1 + tl.arange(0, B1)
-    grad_input_offset_ci = block_id_ci * B2 + tl.arange(0, B2)
-    grad_input_ptr = grad_input + block_id_k * N * Ci + (grad_input_offset_n[:, None] * Ci + grad_input_offset_ci[None, :])
-    grad_input_mask = (grad_input_offset_n[:, None] < N) & (grad_input_offset_ci[None, :] < Ci)
-    tl.store(grad_input_ptr, accumulator, mask=grad_input_mask)
+        input_idx = tl.load(neighbor + nv)
+        valid = (input_idx >= 0) & (input_idx < Ni) & (offset_ci < Ci)
+        grad_input_ptr = grad_input + input_idx * Ci + offset_ci
+        tl.atomic_add(grad_input_ptr, accumulator, mask=valid)
+
+    else:
+        block_dim_ci = tl.cdiv(Ci, B2)
+        block_id_ci = block_id % block_dim_ci
+        block_id_n = block_id // block_dim_ci
+
+        # Create pointers for submatrices of A and B.
+        num_k = tl.cdiv(Co, BK)  # Number of blocks in K dimension
+        k_start = tl.cdiv(num_k * V * block_id_k, SPLITK)
+        k_end = tl.cdiv(num_k * V * (block_id_k + 1), SPLITK)
+        offset_n = (block_id_n * B1 + tl.arange(0, B1)) % N
+        offset_ci = (block_id_ci * B2 + tl.arange(0, B2)) % Ci
+        offset_k = tl.arange(0, BK)
+
+        # Create a block of the output matrix C.
+        accumulator = tl.zeros((B1, B2), dtype=tl.float32)
+
+        # Iterate along V*Co dimension.
+        for k in range(k_start, k_end):
+            v = k // num_k
+            bk = k % num_k
+            neighbor_offset_n = tl.load(
+                neighbor + offset_n * V + V - 1 - v)
+            grad_output_ptr = (
+                grad_output + bk * BK
+                + neighbor_offset_n[:, None].to(tl.int64) * Co
+                + offset_k[None, :])
+            weight_ptr = (
+                weight + ((offset_k[:, None] + bk * BK) * V + v) * Ci
+                + offset_ci[None, :])
+            neigh_mask = neighbor_offset_n != -1
+            k_mask = offset_k < Co - bk * BK
+            grad_output_block = tl.load(
+                grad_output_ptr,
+                mask=neigh_mask[:, None] & k_mask[None, :], other=0.0)
+            weight_block = tl.load(
+                weight_ptr, mask=k_mask[:, None], other=0.0)
+            accumulator = tl.dot(
+                grad_output_block, weight_block, accumulator,
+                input_precision='tf32' if allow_tf32 else 'ieee')
+
+        # Write back the block of the output matrix with masks.
+        grad_input_offset_n = block_id_n * B1 + tl.arange(0, B1)
+        grad_input_offset_ci = block_id_ci * B2 + tl.arange(0, B2)
+        grad_input_ptr = (
+            grad_input + block_id_k * N * Ci
+            + grad_input_offset_n[:, None] * Ci
+            + grad_input_offset_ci[None, :])
+        grad_input_mask = (
+            (grad_input_offset_n[:, None] < N)
+            & (grad_input_offset_ci[None, :] < Ci))
+        tl.store(grad_input_ptr, accumulator, mask=grad_input_mask)
 
 
 heuristics = {
@@ -184,10 +229,15 @@ def conv_bwd_weight_implicit_gemm_splitk_kernel(
     tl.store(grad_weight_ptr, accumulator, mask=grad_weight_mask)
 
 
-def conv_bwd_input_implicit_gemm_splitk_configs(grad_output, weight, neighbor):
-    N, Ci = neighbor.shape[0], weight.shape[-1]
-    MAX_NB1 = (N + 128 - 1) // 128
-    MAX_NB2 = (Ci + 128 - 1) // 128
+def conv_bwd_input_implicit_gemm_splitk_configs(
+        grad_output, weight, neighbor, input_size):
+    N, Ci, V = neighbor.shape[0], weight.shape[-1], neighbor.shape[1]
+    if input_size == N:
+        MAX_NB1 = (N + 128 - 1) // 128
+        MAX_NB2 = (Ci + 128 - 1) // 128
+    else:
+        MAX_NB1 = N * V
+        MAX_NB2 = (Ci + 31) // 32
     NUM_BLOCKS = MAX_NB1 * MAX_NB2
     MIN_NUM_BLOCKS = get_num_sm()
     MAX_NUM_BLOCKS = 32 * get_num_sm()
@@ -199,9 +249,11 @@ def conv_bwd_input_implicit_gemm_splitk_configs(grad_output, weight, neighbor):
     return configs
 
 
-def conv_bwd_input_implicit_gemm_splitk_keys(grad_output, weight, neighbor):
-    N, Ci, Co, V = neighbor.shape[0], weight.shape[-1], weight.shape[0], weight.shape[1]
-    return f'(2^{int(math.log2(N))}, {Ci}, {Co}, {V})'
+def conv_bwd_input_implicit_gemm_splitk_keys(
+        grad_output, weight, neighbor, input_size):
+    N, Ci, Co, V = (
+        neighbor.shape[0], weight.shape[-1], weight.shape[0], weight.shape[1])
+    return f'(2^{int(math.log2(N))}, {input_size}, {Ci}, {Co}, {V})'
 
 
 @autotune(
@@ -212,36 +264,50 @@ def conv_bwd_input_implicit_gemm_splitk(
     grad_output: torch.Tensor,
     weight: torch.Tensor,
     neighbor: torch.Tensor,
+    input_size: int,
     SPLITK: int = 1,
 ) -> torch.Tensor:
-    N, Ci, Co, V = neighbor.shape[0], weight.shape[-1], weight.shape[0], weight.shape[1]
+    N, Ci, Co, V = (
+        neighbor.shape[0], weight.shape[-1], weight.shape[0], weight.shape[1])
+    Ni = input_size
     LOGN = int(math.log2(N))
-    # Launch the kernel.
-    if SPLITK == 1:
-        grad_input = torch.empty((N, Ci), device=weight.device, dtype=weight.dtype)
-        grid = lambda META: (triton.cdiv(Ci, META['B2']) * triton.cdiv(N, META['B1']),)
-        conv_bwd_input_implicit_gemm_kernel[grid](
-            grad_output,
-            weight,
-            neighbor,
-            grad_input,
-            N, LOGN, Ci, Co, V,
-            allow_tf32=config.allow_tf32,
-        )
-        return grad_input
-    else:
-        grad_input = torch.empty((SPLITK, N, Ci), device=weight.device, dtype=torch.float32)
-        grid = lambda META: (triton.cdiv(Ci, META['B2']) * triton.cdiv(N, META['B1']), SPLITK)
+    strided = Ni != N
+
+    if strided:
+        grad_input = torch.zeros(
+            (Ni, Ci), device=weight.device, dtype=weight.dtype)
+        grid = lambda META: (
+            N * V * triton.cdiv(Ci, 32), SPLITK)
         conv_bwd_input_implicit_gemm_splitk_kernel[grid](
-            grad_output,
-            weight,
-            neighbor,
-            grad_input,
+            grad_output, weight, neighbor, grad_input,
+            N, Ni, LOGN, Ci, Co, V,
+            SPLITK=SPLITK, STRIDED=True,
+            SCATTER_BCI=32, SCATTER_BCO=32,
+            allow_tf32=config.allow_tf32)
+        return grad_input
+
+    if SPLITK == 1:
+        grad_input = torch.empty(
+            (N, Ci), device=weight.device, dtype=weight.dtype)
+        grid = lambda META: (
+            triton.cdiv(Ci, META['B2']) * triton.cdiv(N, META['B1']),)
+        conv_bwd_input_implicit_gemm_kernel[grid](
+            grad_output, weight, neighbor, grad_input,
             N, LOGN, Ci, Co, V,
-            SPLITK=SPLITK,
-            allow_tf32=config.allow_tf32,
-        )
-        return grad_input.sum(0).to(weight.dtype)
+            allow_tf32=config.allow_tf32)
+        return grad_input
+
+    grad_input = torch.empty(
+        (SPLITK, N, Ci), device=weight.device, dtype=torch.float32)
+    grid = lambda META: (
+        triton.cdiv(Ci, META['B2']) * triton.cdiv(N, META['B1']), SPLITK)
+    conv_bwd_input_implicit_gemm_splitk_kernel[grid](
+        grad_output, weight, neighbor, grad_input,
+        N, Ni, LOGN, Ci, Co, V,
+        SPLITK=SPLITK, STRIDED=False,
+        SCATTER_BCI=32, SCATTER_BCO=32,
+        allow_tf32=config.allow_tf32)
+    return grad_input.sum(0).to(weight.dtype)
 
 
 def conv_bwd_weight_implicit_gemm_splitk_configs(grad_output, input, neighbor):
@@ -327,10 +393,7 @@ def conv_bwd_implicit_gemm_splitk(
     # Grad for input
     if needs_input_grad[0]:
         grad_input = conv_bwd_input_implicit_gemm_splitk(
-            grad_output,
-            weight,
-            neighbor,
-        )
+            grad_output, weight, neighbor, input.shape[0])
 
     # Grad for weight
     if needs_input_grad[1]:

@@ -54,6 +54,14 @@ class TestOctreeConvTriton(unittest.TestCase):
           # print(f'Testing depth={d}, out_ratio={out_ratio}, channel={channel}')
           self.conv_forward_backward(d, out_ratio, octree, channel)
 
+  def test_conv_stride2(self):
+    octree = self.build_octree()
+    depth = octree.depth
+    for nempty in [False, True]:
+      self.conv_forward_backward(
+          depth, out_ratio=1.0, octree=octree, in_channel=64,
+          stride=2, nempty=nempty)
+
   def build_octree(self):
     r = 64
     depth, full_depth = 7, 3
@@ -66,29 +74,33 @@ class TestOctreeConvTriton(unittest.TestCase):
     return octree
 
   def conv_forward_backward(
-      self, depth, out_ratio, octree, in_channel, weights_atol=1e-2):
+      self, depth, out_ratio, octree, in_channel, weights_atol=1e-2,
+      stride=1, nempty=False):
     atol = 5e-3
     kernel_size = [3, 3, 3]
-    nempty = False
     device = 'cuda'
     out_channel = int(in_channel * out_ratio)
 
     # initialize conv layers
     conv_pt = ocnn.nn.OctreeConv(
-        in_channel, out_channel, kernel_size, stride=1,
+        in_channel, out_channel, kernel_size, stride=stride,
         nempty=nempty, use_bias=True, method='block_gemm').to(device)
     conv_tt = ocnn.nn.OctreeConvTriton(
-        in_channel, out_channel, kernel_size, stride=1,
+        in_channel, out_channel, kernel_size, stride=stride,
         nempty=nempty, use_bias=True,).to(device)
     with torch.no_grad():
       conv_tt.weights.copy_(conv_pt.weights)
       conv_tt.bias.copy_(conv_pt.bias)
 
     # initialize data and grad
-    data = torch.randn(octree.nnum[depth], in_channel, device=device)
+    in_num = octree.nnum_nempty[depth] if nempty else octree.nnum[depth]
+    out_depth = depth if stride == 1 else depth - 1
+    out_num = (octree.nnum_nempty[out_depth]
+               if nempty else octree.nnum[out_depth])
+    data = torch.randn(in_num, in_channel, device=device)
     data_tt = data.detach().clone().requires_grad_()
     data_pt = data.detach().clone().requires_grad_()
-    grad = torch.randn(octree.nnum[depth], out_channel, device=device)
+    grad = torch.randn(out_num, out_channel, device=device)
 
     # forward
     out_tt = conv_tt(data_tt, octree, depth)
@@ -101,7 +113,8 @@ class TestOctreeConvTriton(unittest.TestCase):
     loss_pt.backward()
 
     # check results
-    msg = f'depth: {depth}, out_ratio: {out_ratio}'
+    msg = (f'depth: {depth}, out_ratio: {out_ratio}, stride: {stride}, '
+           f'nempty: {nempty}')
     self.assertTrue(torch.allclose(out_tt, out_pt, atol=atol), msg)
     self.assertTrue(torch.allclose(data_pt.grad, data_tt.grad, atol=atol), msg)
     weight_err = self.calc_err(conv_pt.weights.grad, conv_tt.weights.grad)
