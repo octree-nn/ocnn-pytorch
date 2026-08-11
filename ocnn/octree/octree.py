@@ -247,7 +247,7 @@ class Octree:
     x, y, z = points[:, 0], points[:, 1], points[:, 2]
     b = None if self.batch_size == 1 else point_cloud.batch_id.view(-1)
     key = xyz2key(x, y, z, b, self.depth)
-    node_key, idx, counts = torch.unique(
+    node_key, idx, counts = torch.unique(  # sorting happens here
         key, sorted=True, return_inverse=True, return_counts=True)
 
     # The layers from start_depth to full_depth are full.
@@ -312,6 +312,9 @@ class Octree:
     self.nempty_masks = [None] * (self.depth + 1)
     self.nempty_indices = [None] * (self.depth + 1)
     self.nempty_neighs = [None] * (self.depth + 1)
+
+    # the returned `idx` is the inverse mapping from the input points to the
+    # non-empty octree nodes in the last layer
     return idx
 
   def octree_grow_full(self, depth: int, update_neigh: bool = True):
