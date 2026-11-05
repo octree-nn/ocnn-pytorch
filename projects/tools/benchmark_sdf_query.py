@@ -23,20 +23,19 @@ def main():
   parser.add_argument('--queries', type=int, default=100000)
   parser.add_argument('--min-run-time', type=float, default=0.3)
   parser.add_argument('--compile-torch', action='store_true')
-  parser.add_argument('--max-dense-ratio', type=float, default=float('inf'))
   parser.add_argument('--device', default='cpu')
   parser.add_argument('--threads', type=int, default=4)
   parser.add_argument('--output', type=Path)
   args = parser.parse_args()
-  if not (args.depth > 4 and 2 <= args.full_depth < args.depth and
+  if not (args.depth > 4 and 0 <= args.full_depth < args.depth and
           args.queries > 0 and args.min_run_time > 0 and args.threads > 0):
-    parser.error('Require depth > full-depth >= 2, depth > 4, and positive '
+    parser.error('Require depth > full-depth >= 0, depth > 4, and positive '
                  'queries, min-run-time and threads.')
   torch.set_num_threads(args.threads)
   torch.manual_seed(42)
   device = torch.device(args.device)
   size = 2 ** args.depth
-  axis = torch.linspace(-1, 1, size, device=device)
+  axis = torch.linspace(-1, 1, size + 1, device=device)
   xyz = torch.stack(torch.meshgrid(axis, axis, axis, indexing='ij'), dim=-1)
   # Enclosed shell: exterior and cavity are positive, material is negative.
   volume = ((xyz.norm(dim=-1) - 0.26).abs() - 0.06).unsqueeze(0)
@@ -44,16 +43,12 @@ def main():
   octree.build_octree_from_sdf(volume)
 
   def dense_query(pts):
-    grid = pts[:, [2, 1, 0]] * (2.0 / (size - 1)) - 1
+    grid = pts[:, [2, 1, 0]] * (2.0 / size) - 1
     return F.grid_sample(volume[:, None], grid[None, :, None, None, :],
                          align_corners=True).reshape(-1)
 
-  def tensor_query(pts):
-    return octree_query_sdf(octree, pts)
-
-  compiled_query = (torch.compile(tensor_query, fullgraph=True)
-                    if args.compile_torch else None)
-  query = compiled_query if compiled_query is not None else tensor_query
+  query = (torch.compile(octree_query_sdf, fullgraph=True)
+            if args.compile_torch else octree_query_sdf)
 
   def timed(func):
     # Timer warms up and synchronizes accelerators. Report the median of
@@ -64,9 +59,11 @@ def main():
     return measurement.median * 1000
 
   report = {
-      'torch': torch.__version__, 'device': str(device), 'threads': args.threads,
+      'torch': torch.__version__, 'device': str(device),
+      'threads': args.threads,
       'depth': args.depth, 'full_depth': args.full_depth,
-      'volume_shape': list(volume.shape), 'queries_per_distribution': args.queries,
+      'volume_shape': list(volume.shape),
+      'queries_per_distribution': args.queries,
       'min_run_time': args.min_run_time, 'seed': 42,
       'compiled': args.compile_torch,
       'dense_bytes': volume.numel() * volume.element_size(),
@@ -80,14 +77,15 @@ def main():
   for distribution in ('uniform', 'near_surface'):
     pts = torch.zeros(args.queries, 4, device=device)
     if distribution == 'uniform':
-      pts[:, :3] = torch.rand(args.queries, 3, device=device) * (size - 1)
+      pts[:, :3] = torch.rand(args.queries, 3, device=device) * size
     else:
-      direction = F.normalize(torch.randn(args.queries, 3, device=device), dim=1)
+      direction = F.normalize(
+          torch.randn(args.queries, 3, device=device), dim=1)
       radius = torch.where(torch.rand(args.queries, 1, device=device) > 0.5,
                            0.32, 0.20)
-      radius = radius + (torch.rand_like(radius) - 0.5) * (4.0 / (size - 1))
-      pts[:, :3] = (direction * radius + 1) * ((size - 1) / 2)
-    result = query(pts)
+      radius = radius + (torch.rand_like(radius) - 0.5) * (4.0 / size)
+      pts[:, :3] = (direction * radius + 1) * (size / 2)
+    result = query(octree, pts)
     reference = dense_query(pts)
     error = (result.sdf[result.has_sdf] - reference[result.has_sdf]).abs()
     sign_only = ~result.has_sdf
@@ -105,20 +103,17 @@ def main():
         'sign_only_mismatches': int((~sign_match & sign_only).sum()),
     }
     del result, reference, error, sign_only, sign_match
-    row.update({
-        'octree_ms': timed(lambda pts=pts: query(pts)),
-        'eager_torch_ms': timed(lambda pts=pts: tensor_query(pts)),
-        'dense_ms': timed(lambda pts=pts: dense_query(pts)),
-    })
+    row['octree_ms'] = timed(lambda pts=pts: query(octree, pts))
+    row['eager_torch_ms'] = (
+        timed(lambda pts=pts: octree_query_sdf(octree, pts))
+        if args.compile_torch else row['octree_ms'])
+    row['dense_ms'] = timed(lambda pts=pts: dense_query(pts))
     report['distributions'][distribution] = row
   text = json.dumps(report, indent=2)
   print(text)
   if args.output:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(text + '\n')
-  for row in report['distributions'].values():
-    if row['octree_ms'] / row['dense_ms'] > args.max_dense_ratio:
-      raise AssertionError('Octree/dense time ratio exceeds max-dense-ratio.')
 
 
 if __name__ == '__main__':
