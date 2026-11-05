@@ -12,7 +12,7 @@ from time import perf_counter
 import numpy as np
 import torch
 
-from ocnn.octree import octree_marching_cubes
+from ocnn.sparse_mc import octree_marching_cubes
 from ocnn.octree.sdf_io import load_sdf_octree
 
 

@@ -10,7 +10,6 @@ from .points import Points, merge_points
 from .octree import Octree, merge_octrees, init_octree
 from .adaptive import adaptive_octree_sdf
 from .sdf import octree_query_sdf, SdfQueryResult
-from .marching_cubes import octree_marching_cubes, OctreeMesh
 
 __all__ = [
     'key2xyz',
@@ -23,8 +22,6 @@ __all__ = [
     'adaptive_octree_sdf',
     'octree_query_sdf',
     'SdfQueryResult',
-    'octree_marching_cubes',
-    'OctreeMesh',
 ]
 
 classes = __all__

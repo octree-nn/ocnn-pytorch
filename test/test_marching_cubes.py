@@ -3,7 +3,8 @@ from unittest.mock import patch
 
 import torch
 
-from ocnn.octree import Octree, octree_marching_cubes
+from ocnn.octree import Octree
+from ocnn.sparse_mc import octree_marching_cubes
 
 
 def make_tree(volume, device='cpu'):
