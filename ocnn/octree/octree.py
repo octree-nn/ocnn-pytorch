@@ -63,6 +63,7 @@ class Octree:
     self.neighs = [None] * num
     self.features = [None] * num
     self.fields = [None] * num
+    self._sdf_pruned = False
     self.normals = [None] * num
     self.points = [None] * num
     self.field_scale = 2 ** 16  # = 32767 / 0.5
@@ -319,6 +320,7 @@ class Octree:
       self.fields[d] = sdf.new_empty(self.nnum_nempty[d - 1], 27)  # !!! d - 1
       for i in range(27):
         self.fields[d][:, i] = sdf[b, x + rng[i][0], y + rng[i][1], z + rng[i][2]]
+    self._sdf_pruned = False
 
   def build_octree_from_keys(self, node_key: torch.Tensor, **kargs):
     r''' Builds an octree in a bottom-up manner from the input node keys, which
@@ -763,6 +765,7 @@ class Octree:
     octree.neighs = list_to_device(self.neighs)
     octree.features = list_to_device(self.features)
     octree.fields = list_to_device(self.fields)
+    octree._sdf_pruned = getattr(self, '_sdf_pruned', False)
     octree.normals = list_to_device(self.normals)
     octree.points = list_to_device(self.points)
 
@@ -863,6 +866,7 @@ class Octree:
 
     depth, full_depth = self.depth, self.full_depth
     assert full_depth <= start_depth and start_depth < depth
+    self._sdf_pruned = True
     # the original index of non-empty octree nodes
     idx = {d: self.nempty_index(d) for d in range(start_depth, depth + 1)}
 
