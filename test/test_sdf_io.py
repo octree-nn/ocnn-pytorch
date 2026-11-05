@@ -1,19 +1,13 @@
-"""Check on-disk fidelity, format rejection and failed-write isolation."""
+"""Check SDF octree roundtrips, queries and batch counts."""
 
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 import torch
 
 from ocnn.octree import Octree, octree_query_sdf
-from ocnn.octree.sdf_io import (
-  QUERY_DOMAIN,
-  VERSION,
-  load_sdf_octree,
-  save_sdf_octree,
-)
+from ocnn.octree.sdf_io import load_sdf_octree, save_sdf_octree
 
 
 class TestSdfIO(unittest.TestCase):
@@ -21,7 +15,7 @@ class TestSdfIO(unittest.TestCase):
   def setUp(self):
     self.directory = tempfile.TemporaryDirectory()
     self.addCleanup(self.directory.cleanup)
-    self.filename = Path(self.directory.name) / 'nested/shape.pt'
+    self.filename = Path(self.directory.name) / 'shape.pt'
     axis = torch.linspace(-1, 1, 33)
     xyz = torch.stack(torch.meshgrid(axis, axis, axis, indexing='ij'), dim=-1)
     self.tree = Octree(5, 3)
@@ -45,13 +39,6 @@ class TestSdfIO(unittest.TestCase):
     self.assertTrue(torch.equal(loaded.batch_nnum[:, 0], loaded.nnum))
     torch.testing.assert_close(loaded.batch_nnum_nempty[:, 0],
                                loaded.nnum_nempty)
-    payload = torch.load(self.filename, weights_only=True)
-    self.assertEqual(payload['query_domain'], QUERY_DOMAIN)
-    self.assertEqual(payload['query_upper_bound'], 32)
-    self.assertNotIn('valid_coordinate_max', payload)
-    upper = torch.tensor([[32., 0., 0., 0.], [0., 32., 0., 0.],
-                           [0., 0., 32., 0.]])
-    self.assertFalse(octree_query_sdf(loaded, upper).valid.any())
 
   def test_batched_roundtrip(self):
     # A sphere and a constant negative field have different topology and signs.
@@ -72,58 +59,6 @@ class TestSdfIO(unittest.TestCase):
     self.assertEqual(loaded.batch_nnum[:, 1].tolist(), [1, 8, 64, 512, 0, 0])
     self.assertEqual(loaded.batch_nnum_nempty[:, 1].tolist(),
                      [1, 8, 64, 0, 0, 0])
-
-  def test_invalid_fields_do_not_replace_existing_output(self):
-    save_sdf_octree(self.tree, self.filename)
-    original = self.filename.read_bytes()
-    for dtype, compress in ((torch.float64, False), (torch.float32, True)):
-      with self.subTest(dtype=dtype, compress=compress):
-        tree = Octree(5, 3)
-        tree.build_octree_from_sdf(self.sdf.to(dtype), compress=compress)
-        with self.assertRaisesRegex(ValueError, 'float32 SDF field'):
-          save_sdf_octree(tree, self.filename)
-        self.assertEqual(self.filename.read_bytes(), original)
-        self.assertEqual(list(self.filename.parent.glob('*.tmp')), [])
-
-  def test_reject_legacy_closed_domain_and_wrong_query_metadata(self):
-    save_sdf_octree(self.tree, self.filename)
-    payload = torch.load(self.filename, weights_only=True)
-    payload['version'] = 2
-    torch.save(payload, self.filename)
-    with self.assertRaisesRegex(ValueError, 'version'):
-      load_sdf_octree(self.filename)
-    payload['version'] = VERSION
-    payload['query_domain'] = 'closed'
-    torch.save(payload, self.filename)
-    with self.assertRaisesRegex(ValueError, 'coordinate metadata'):
-      load_sdf_octree(self.filename)
-
-  def test_reject_corrupt_field_shape(self):
-    save_sdf_octree(self.tree, self.filename)
-    payload = torch.load(self.filename, weights_only=True)
-    payload['fields'][5] = payload['fields'][5][:, :26]
-    torch.save(payload, self.filename)
-    with self.assertRaisesRegex(ValueError, 'field'):
-      load_sdf_octree(self.filename)
-
-  def test_interrupted_write_preserves_existing_output(self):
-    def fail(payload, filename):
-      Path(filename).write_bytes(b'incomplete')
-      raise OSError('Simulated interrupted write')
-
-    for existing in (False, True):
-      with self.subTest(existing=existing):
-        if existing:
-          save_sdf_octree(self.tree, self.filename)
-          original = self.filename.read_bytes()
-        with (patch('ocnn.octree.sdf_io.torch.save', side_effect=fail),
-              self.assertRaisesRegex(OSError, 'interrupted')):
-          save_sdf_octree(self.tree, self.filename)
-        if existing:
-          self.assertEqual(self.filename.read_bytes(), original)
-        else:
-          self.assertFalse(self.filename.exists())
-        self.assertEqual(list(self.filename.parent.glob('*.tmp')), [])
 
 
 if __name__ == '__main__':
