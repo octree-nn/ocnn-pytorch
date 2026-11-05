@@ -9,6 +9,7 @@ from .shuffled_key import key2xyz, xyz2key
 from .points import Points, merge_points
 from .octree import Octree, merge_octrees, init_octree
 from .adaptive import adaptive_octree_sdf
+from .sdf import octree_query_sdf, SdfQueryResult
 
 __all__ = [
     'key2xyz',
@@ -19,6 +20,8 @@ __all__ = [
     'merge_octrees',
     'init_octree',
     'adaptive_octree_sdf',
+    'octree_query_sdf',
+    'SdfQueryResult',
 ]
 
 classes = __all__

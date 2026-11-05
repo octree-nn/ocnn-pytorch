@@ -1,1 +1,2 @@
 recursive-exclude test *
+include ocnn/sparse_mc/cubvh-LICENSE.txt

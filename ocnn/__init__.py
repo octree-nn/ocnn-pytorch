@@ -6,6 +6,7 @@
 # --------------------------------------------------------
 
 from . import octree
+from . import sparse_mc
 from . import nn
 from . import modules
 from . import models
@@ -16,6 +17,7 @@ __version__ = '2.3.2'
 
 __all__ = [
     'octree',
+    'sparse_mc',
     'nn',
     'modules',
     'models',

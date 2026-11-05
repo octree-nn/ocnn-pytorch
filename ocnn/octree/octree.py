@@ -11,6 +11,7 @@ from typing import Union, List, Dict
 
 import ocnn
 from ocnn.octree.points import Points
+from ocnn.octree.sdf import _origin_column
 from ocnn.octree.shuffled_key import xyz2key, key2xyz
 from ocnn.utils import range_grid, scatter_add, cumsum, trunc_div
 
@@ -63,6 +64,7 @@ class Octree:
     self.neighs = [None] * num
     self.features = [None] * num
     self.fields = [None] * num
+    self._sdf_pruned = False
     self.normals = [None] * num
     self.points = [None] * num
     self.field_scale = 2 ** 16  # = 32767 / 0.5
@@ -261,7 +263,9 @@ class Octree:
     Args:
       sdf (torch.Tensor): The input SDF with shape :obj:`(B, X, Y, Z)`, where
           :obj:`B` is the batch size, and :obj:`X`, :obj:`Y`, and :obj:`Z` are
-          the dimensions of the SDF.
+          the dimensions of the SDF. Each spatial dimension must equal
+          ``2**depth + 1``: values are sampled at the corners of ``2**depth``
+          cells, including the upper boundary.
       compress (bool): If True, compresses the SDF values to int16 in range
           :obj:`[-32768, 32767]`. This is useful for saving memory, but it may
           cause precision loss. (default: False).
@@ -272,7 +276,8 @@ class Octree:
     assert sdf.ndim == 4, 'Input SDF must have shape (B, X, Y, Z)'
     B, X, Y, Z = sdf.shape
     assert B == self.batch_size, 'Inconsistent batch_size'
-    assert X == Y == Z == 2 ** self.depth, 'Inconsistent SDF dimensions'
+    size = 2 ** self.depth
+    assert X == Y == Z == size + 1, 'Expected 2**depth + 1 corner samples'
 
     # rescale field
     sdf = sdf.to(self.device)
@@ -281,29 +286,20 @@ class Octree:
 
     # calculate non-empty node keys
     node_keys = []
-    N = 2 ** (self.depth * 3)   # total number of sdf values
-    K = min(2 ** 21, N)         # process at most 2^21 nodes each time
-    T = (N + K - 1) // K        # number of iterations
-    sign = (sdf > 0).to(torch.int8) * 2 - 1  # convert sdf to {-1, 1}
-    rng = range_grid(0, 1, device=self.device)
+    positive = sdf > 0
     for bs in range(B):
-      for t in range(T):
-        start = t * K
-        end = min((t + 1) * K, N)
-        key = torch.arange(start, end, device=sdf.device, dtype=torch.int64)
-        key = key | (bs << 48)  # add batch id to the key
-
-        x, y, z, b = key2xyz(key, self.depth)
-        # use clip to handle the boundary case
-        x = x.clip(max=X - 2)
-        y = y.clip(max=Y - 2)
-        z = z.clip(max=Z - 2)
-
-        # change signs or not
-        split = sign[b, x, y, z]
-        for i in range(1, 8):
-          split += sign[b, x + rng[i][0], y + rng[i][1], z + rng[i][2]]
-        node_keys.append(key[split.abs() < 8])
+      # Contiguous corner slices avoid gathering all dense cells in Morton
+      # order. Only the much smaller set of intersecting cells needs keys.
+      origin = positive[bs, :size, :size, :size]
+      mixed = torch.zeros_like(origin)
+      for dx in (0, 1):
+        for dy in (0, 1):
+          for dz in (0, 1):
+            if dx or dy or dz:
+              mixed |= origin != positive[bs, dx:dx+size, dy:dy+size, dz:dz+size]
+      x, y, z = mixed.nonzero(as_tuple=True)
+      key = xyz2key(x, y, z, depth=self.depth) | (bs << 48)
+      node_keys.append(key.sort().values)
     node_key = torch.cat(node_keys)
 
     # build octree
@@ -319,6 +315,7 @@ class Octree:
       self.fields[d] = sdf.new_empty(self.nnum_nempty[d - 1], 27)  # !!! d - 1
       for i in range(27):
         self.fields[d][:, i] = sdf[b, x + rng[i][0], y + rng[i][1], z + rng[i][2]]
+    self._sdf_pruned = False
 
   def build_octree_from_keys(self, node_key: torch.Tensor, **kargs):
     r''' Builds an octree in a bottom-up manner from the input node keys, which
@@ -704,8 +701,11 @@ class Octree:
     return out
 
   def to_sdf(self):
-    r''' Converts the octree to a signed distance field (SDF). The SDF values
-    are stored in the :attr:`fields` property of the octree.
+    r''' Reconstructs a corner grid from an unpruned SDF octree.
+
+    Returns saved samples from :attr:`fields` and fills unsaved corners with
+    +1 or -1 according to their terminal node's sign. The output has shape
+    ``(batch_size, 2**depth + 1, 2**depth + 1, 2**depth + 1)``.
     '''
 
     def field_to_float(field: torch.Tensor):
@@ -714,9 +714,41 @@ class Octree:
       return field
 
     depth, full_depth = self.depth, self.full_depth
-    N = 2 ** depth
 
-    sdf = torch.ones((self.batch_size, N, N, N), device=self.device)
+    size = 2 ** depth
+    sdf = torch.empty((self.batch_size, size + 1, size + 1, size + 1),
+                      device=self.device)
+    interior = sdf[:, :size, :size, :size]
+    for d in range(full_depth, depth + 1):
+      # Coarse empty nodes and all allocated finest cells partition [0, N)^3.
+      # Fill their blocks through a strided view, without expanding per-corner
+      # coordinates or walking the tree separately for every output corner.
+      if d < depth:
+        index = (self.children[d] < 0).nonzero(as_tuple=True)[0]
+      else:
+        index = torch.arange(self.keys[d].numel(), device=self.device)
+      if index.numel() == 0:
+        continue
+      field = self.fields[d]
+      cells, width = 2 ** d, 2 ** (depth - d)
+      blocks = interior.view(self.batch_size, cells, width, cells, width,
+                             cells, width).permute(0, 1, 3, 5, 2, 4, 6)
+      # Bound coordinate/gather temporaries even for a nearly dense tree.
+      chunk_size = 262144
+      for start in range(0, index.numel(), chunk_size):
+        node = index[start:start + chunk_size]
+        x, y, z, b = key2xyz(self.keys[d][node], d)
+        values = (field[node] if d == full_depth else
+                  field[node // 8, _origin_column(node)])
+        sign = torch.where(values > 0, 1.0, -1.0)
+        blocks[b, x, y, z] = sign[:, None, None, None]
+
+    # Extend terminal signs to the upper faces, edges and corner. Surface
+    # samples on these boundaries are restored from fields below.
+    sdf[:, -1, :-1, :-1] = sdf[:, -2, :-1, :-1]
+    sdf[:, :, -1, :-1] = sdf[:, :, -2, :-1]
+    sdf[:, :, :, -1] = sdf[:, :, :, -2]
+
     x, y, z, b = self.xyzb(full_depth, nempty=False, normalize=True)
     sdf[b, x, y, z] = field_to_float(self.fields[full_depth])
 
@@ -763,6 +795,7 @@ class Octree:
     octree.neighs = list_to_device(self.neighs)
     octree.features = list_to_device(self.features)
     octree.fields = list_to_device(self.fields)
+    octree._sdf_pruned = getattr(self, '_sdf_pruned', False)
     octree.normals = list_to_device(self.normals)
     octree.points = list_to_device(self.points)
 
@@ -863,6 +896,7 @@ class Octree:
 
     depth, full_depth = self.depth, self.full_depth
     assert full_depth <= start_depth and start_depth < depth
+    self._sdf_pruned = True
     # the original index of non-empty octree nodes
     idx = {d: self.nempty_index(d) for d in range(start_depth, depth + 1)}
 
