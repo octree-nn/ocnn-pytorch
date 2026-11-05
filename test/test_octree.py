@@ -124,13 +124,13 @@ class TesOctree(unittest.TestCase):
 
   def test_build_octree_from_sdf(self):
     depth, full_depth = 6, 4
-    resolution = 2 ** depth
+    resolution = 2 ** depth + 1
 
     # Build a deterministic SDF of a sphere-like shape centered at the origin.
     grid = torch.linspace(-1.0, 1.0, resolution)
     x, y, z = torch.meshgrid(grid, grid, grid, indexing='ij')
     sdf = torch.sqrt(x * x + y * y + z * z) - 0.6
-    sdf = sdf.unsqueeze(0)  # (1, 64, 64, 64)
+    sdf = sdf.unsqueeze(0)  # (1, 65, 65, 65) corner samples
 
     octree = ocnn.octree.Octree(
         depth=depth, full_depth=full_depth, device='cpu')

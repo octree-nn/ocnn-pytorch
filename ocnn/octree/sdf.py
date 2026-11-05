@@ -13,6 +13,59 @@ class SdfQueryResult(NamedTuple):
   valid: torch.Tensor
 
 
+def _origin_column(index):
+  sibling = index % 8
+  return 9 * (sibling >> 2) + 3 * ((sibling >> 1) & 1) + (sibling & 1)
+
+
+def _interpolate(fields, index, local):
+  """Pair corners along z, y, x without a (Q, 8) tensor reduction."""
+  row, base = index // 8, _origin_column(index)
+  values = [fields[row, base + offset] for offset in (0, 1, 3, 4, 9, 10, 12, 13)]
+  x, y, z = local.unbind(dim=1)
+  for weight in (z, y, x):
+    values = [a * (1 - weight) + b * weight
+              for a, b in zip(values[::2], values[1::2])]
+  return values[0]
+
+
+def _query_corner_sign(octree: 'Octree', xyz, batch):
+  """Query integer corners in [0, N]^3 of an unpruned tree, without interpolation."""
+  depth, full_depth = octree.depth, octree.full_depth
+  cell = xyz.clamp(max=2 ** depth - 1)
+  coarse = cell >> (depth - full_depth)
+  idx = batch * (8 ** full_depth)
+  cx, cy, cz = coarse.unbind(dim=1)
+  for bit in range(full_depth):
+    idx = idx | (((cx >> bit) & 1) << (3 * bit + 2))
+    idx = idx | (((cy >> bit) & 1) << (3 * bit + 1))
+    idx = idx | (((cz >> bit) & 1) << (3 * bit))
+
+  positive = torch.zeros_like(batch, dtype=torch.bool)
+  active = torch.ones_like(positive)
+  for d in range(full_depth, depth):
+    if octree.children[d].numel() == 0:
+      break
+    idx = torch.where(active, idx, 0)
+    child = octree.children[d][idx].long()
+    if d == full_depth:
+      value = octree.fields[d][idx]
+    else:
+      value = octree.fields[d][idx // 8, _origin_column(idx)]
+    positive = torch.where(active & (child < 0), value > 0, positive)
+    active = active & (child >= 0)
+    bits = (cell >> (depth - d - 1)) & 1
+    idx = 8 * child + 4 * bits[:, 0] + 2 * bits[:, 1] + bits[:, 2]
+
+  if octree.fields[depth].numel() != 0:
+    idx = torch.where(active, idx, 0)
+    dx, dy, dz = (xyz - cell).unbind(dim=1)
+    column = _origin_column(idx) + 9 * dx + 3 * dy + dz
+    value = octree.fields[depth][idx // 8, column]
+    positive = torch.where(active, value > 0, positive)
+  return torch.where(positive, 1.0, -1.0)
+
+
 def octree_query_sdf(octree: 'Octree', pts: torch.Tensor) -> SdfQueryResult:
   r'''Queries an unpruned, unquantized SDF octree with batched points.
 
@@ -22,9 +75,10 @@ def octree_query_sdf(octree: 'Octree', pts: torch.Tensor) -> SdfQueryResult:
         supported: its terminal cells need not have a constant sign.
     pts (torch.Tensor): Floating-point tensor of shape ``(Q, 4)``, containing
         ``(x, y, z, batch)`` on the octree device. Coordinates are in the input
-        SDF's sample-index space, **not** world space. For an input of shape
-        ``(B, N, N, N)``, the valid domain is the closed box ``[0, N-1]^3``.
-        The maximum boundary uses the last real cell with local coordinate 1.
+        SDF's sample-index space, **not** world space. A depth-D tree has
+        ``N=2**D`` cells and input shape ``(B, N+1, N+1, N+1)``; its valid
+        domain is the half-open box ``[0, N)^3``. Each point belongs only to
+        the cell selected by ``floor``; neighboring cells are not queried.
 
   Returns:
     SdfQueryResult: Four tensors of shape ``(Q,)``. ``sdf`` contains trilinear
@@ -37,9 +91,7 @@ def octree_query_sdf(octree: 'Octree', pts: torch.Tensor) -> SdfQueryResult:
   Uses only PyTorch operations, with batched gathers and a depth loop. Reuse
   ``torch.compile(octree_query_sdf, fullgraph=True)`` for repeated CPU/CUDA
   queries; warm up before timing to exclude compilation. No custom kernel,
-  spatial search or dense reconstruction is needed. This function does not
-  repair the builder's missing upper-boundary samples; the supplied octree must
-  have been built successfully.
+  spatial search or dense reconstruction is needed.
   '''
 
   depth, full_depth = octree.depth, octree.full_depth
@@ -55,13 +107,12 @@ def octree_query_sdf(octree: 'Octree', pts: torch.Tensor) -> SdfQueryResult:
 
   size = 2 ** depth
   xyz, batch = pts[:, :3], pts[:, 3]
-  valid = (torch.isfinite(pts).all(dim=1) &
-           (xyz >= 0).all(dim=1) & (xyz <= size - 1).all(dim=1) &
+  valid = ((xyz >= 0).all(dim=1) & (xyz < size).all(dim=1) &
            (batch >= 0) & (batch < octree.batch_size) &
            (batch == batch.floor()))
   # Invalid lanes still participate in gathers, using safe placeholder indices.
   safe = torch.where(valid.unsqueeze(1), pts, torch.zeros_like(pts))
-  cell = safe[:, :3].floor().long().clamp(max=size - 2)
+  cell = safe[:, :3].floor().long()
   coarse = cell >> (depth - full_depth)
   idx = safe[:, 3].long() * (8 ** full_depth)
   # Small coarse grids need only a few bits; direct interleaving avoids three
@@ -88,10 +139,7 @@ def octree_query_sdf(octree: 'Octree', pts: torch.Tensor) -> SdfQueryResult:
     if d == full_depth:
       value = field[idx]
     else:
-      sibling = idx % 8
-      column = (9 * (sibling >> 2) +
-                3 * ((sibling >> 1) & 1) + (sibling & 1))
-      value = octree.fields[d][idx // 8, column]
+      value = octree.fields[d][idx // 8, _origin_column(idx)]
     node_sign = torch.where(value > 0, 1, -1).to(torch.int8)
     sign = torch.where(stop, node_sign, sign)
     active = active & (child >= 0)
@@ -103,30 +151,8 @@ def octree_query_sdf(octree: 'Octree', pts: torch.Tensor) -> SdfQueryResult:
   has_sdf = active
   if octree.fields[depth].numel() != 0:
     idx = torch.where(active, idx, torch.zeros_like(idx))
-    sibling = idx % 8
-    base = (9 * (sibling >> 2) +
-            3 * ((sibling >> 1) & 1) + (sibling & 1))
-    # Eight one-dimensional gathers avoid a (Q, 8) reduction. Each axis
-    # interpolation reuses the traversal result for the same query point.
-    local = safe[:, :3] - cell.to(pts.dtype)
-    x, y, z = local.unbind(dim=1)
-    row = idx // 8
-    fields = octree.fields[depth]
-    v000 = fields[row, base]
-    v001 = fields[row, base + 1]
-    v010 = fields[row, base + 3]
-    v011 = fields[row, base + 4]
-    v100 = fields[row, base + 9]
-    v101 = fields[row, base + 10]
-    v110 = fields[row, base + 12]
-    v111 = fields[row, base + 13]
-    z00 = v000 * (1 - z) + v001 * z
-    z01 = v010 * (1 - z) + v011 * z
-    z10 = v100 * (1 - z) + v101 * z
-    z11 = v110 * (1 - z) + v111 * z
-    y0 = z00 * (1 - y) + z01 * y
-    y1 = z10 * (1 - y) + z11 * y
-    value = y0 * (1 - x) + y1 * x
+    value = _interpolate(octree.fields[depth], idx,
+                         safe[:, :3] - cell.to(pts.dtype))
     sdf = torch.where(active, value, sdf)
     sign = torch.where(active, value.sign().to(torch.int8), sign)
 

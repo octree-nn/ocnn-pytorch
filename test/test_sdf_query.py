@@ -16,7 +16,7 @@ def dense_query(volume, pts):
 
 
 def sphere_volumes(depth, device='cpu'):
-  axis = torch.linspace(-1, 1, 2 ** depth, device=device)
+  axis = torch.linspace(-1, 1, 2 ** depth + 1, device=device)
   xyz = torch.stack(torch.meshgrid(axis, axis, axis, indexing='ij'), dim=-1)
   # The second object has an enclosed cavity, so an origin/coarse sign alone
   # cannot classify every point in an active region.
@@ -38,11 +38,13 @@ class TestSdfQuery(unittest.TestCase):
     pts = torch.rand(40000, 4, device=device)
     pts[:, :3] *= n - 1
     pts[:, 3] = torch.arange(pts.shape[0], device=device) % 2
-    # Exact sample positions and the closed-domain endpoints.
-    integer = torch.randint(n, (2000, 4), device=device).float()
+    # Sample-index N exists in the field but is not a legal query coordinate.
+    integer = torch.randint(n - 1, (2000, 4), device=device).float()
     integer[:, 3] %= 2
     endpoints = pts.new_tensor([[0, 0, 0, 0], [n-1, n-1, n-1, 1],
                                 [n-1, 0, n-1, 0], [31.5, 31.5, 31.5, 1]])
+    upper_inside = torch.nextafter(pts.new_tensor(n - 1), pts.new_tensor(0))
+    endpoints[:, :3] = torch.minimum(endpoints[:, :3], upper_inside)
     pts = torch.cat([pts, integer, endpoints])
     reference = dense_query(volume, pts)
     for full_depth in (2, 3, 4):
@@ -50,13 +52,11 @@ class TestSdfQuery(unittest.TestCase):
         octree = Octree(depth, full_depth, batch_size=2, device=device)
         octree.build_octree_from_sdf(volume)
         result = query(octree, pts)
-        tensor_result = octree_query_sdf(octree, pts)
-        torch.testing.assert_close(result, tensor_result, equal_nan=True)
         self.assertTrue(result.valid.all())
         self.assertTrue(result.has_sdf.any())
         self.assertTrue((~result.has_sdf).any())
         cells = pts.clone()
-        cells[:, :3] = pts[:, :3].floor().clamp(max=n - 2)
+        cells[:, :3] = pts[:, :3].floor()
         # Binary-search membership independently checks the gather traversal.
         expected_coverage = octree.search_xyzb(cells, depth, nempty=False) >= 0
         self.assertTrue(torch.equal(result.has_sdf, expected_coverage))
@@ -68,13 +68,55 @@ class TestSdfQuery(unittest.TestCase):
   def test_dense_agreement_cpu(self):
     self.compare_dense('cpu')
 
+  def test_uppermost_cells_and_corner_samples(self):
+    # Only cell X=31 intersects this plane. Clipping its origin to 30 would
+    # miss the entire surface; its right-hand corners must read sample X=32.
+    axis = torch.arange(33, dtype=torch.float32)
+    volume = (axis[:, None, None]-31.5).expand(33, 33, 33).contiguous()[None]
+    tree = Octree(5, 3)
+    tree.build_octree_from_sdf(volume)
+    x, _, _, _ = tree.xyzb(5, nempty=True)
+    self.assertTrue((x == 31).all())
+    upper_inside = torch.nextafter(torch.tensor(32.), torch.tensor(0.))
+    points = torch.tensor([[31., 31., 31., 0.], [31.5, 31., 31., 0.],
+                           [31., 31., 31., 0.], [31., 10.2, 12.3, 0.]])
+    points[2:, 0] = upper_inside
+    points[:3, 1:3] = upper_inside
+    result = octree_query_sdf(tree, points)
+    self.assertTrue(result.valid.all())
+    self.assertTrue(result.has_sdf.all())
+    torch.testing.assert_close(result.sdf, points[:, 0]-31.5)
+    torch.testing.assert_close(tree.to_sdf()[0, 32], volume[0, 32])
+    with self.assertRaisesRegex(AssertionError, 'corner samples'):
+      Octree(5, 3).build_octree_from_sdf(volume[:, :32, :32, :32])
+
+  def test_internal_faces_edges_and_vertices_have_one_owner(self):
+    axis = torch.arange(33, dtype=torch.float32)
+    x, y, z = torch.meshgrid(axis, axis, axis, indexing='ij')
+    volume = (16 - torch.maximum(x, torch.maximum(y, z)))[None]
+    tree = Octree(5, 3)
+    tree.build_octree_from_sdf(volume)
+    boundary = torch.tensor([[16., 5.25, 5.25, 0.],
+                             [16., 16., 5.25, 0.], [16., 16., 16., 0.]])
+    below = boundary.clone()
+    before = torch.nextafter(torch.tensor(16.), torch.tensor(0.))
+    below[:, :3] = torch.where(below[:, :3] == 16, before, below[:, :3])
+    result = octree_query_sdf(tree, torch.cat([boundary, below]))
+    self.assertTrue(result.valid.all())
+    # The neighboring lower cells have SDF data, but floor() assigns the exact
+    # face/edge/vertex to upper cells. Do not fall back to those neighbors.
+    self.assertFalse(result.has_sdf[:3].any())
+    self.assertTrue(torch.isnan(result.sdf[:3]).all())
+    self.assertTrue(result.has_sdf[3:].all())
+    torch.testing.assert_close(result.sdf[3:], 16 - below[:, :3].max(dim=1).values)
+
   @unittest.skipUnless(torch.cuda.is_available(), 'CUDA unavailable')
   def test_dense_agreement_cuda(self):
     self.compare_dense('cuda', compiled=True)
 
   def test_constant_fields_and_empty_queries(self):
     for value in (-0.2, 0.0, 0.2):
-      volume = torch.full((2, 32, 32, 32), value)
+      volume = torch.full((2, 33, 33, 33), value)
       octree = Octree(5, 2, batch_size=2)
       octree.build_octree_from_sdf(volume)
       pts = torch.tensor([[0., 0., 0., 0.], [31., 31., 31., 1.]])
@@ -87,8 +129,11 @@ class TestSdfQuery(unittest.TestCase):
 
   def test_invalid_points(self):
     octree = Octree(5, 2)
-    octree.build_octree_from_sdf(torch.ones(1, 32, 32, 32))
-    pts = torch.tensor([[-0.01, 0, 0, 0], [31.01, 0, 0, 0],
+    octree.build_octree_from_sdf(torch.ones(1, 33, 33, 33))
+    pts = torch.tensor([[-0.01, 0, 0, 0], [32.01, 0, 0, 0],
+                        [32, 0, 0, 0], [0, 32, 0, 0], [0, 0, 32, 0],
+                        [32, 32, 0, 0], [32, 0, 32, 0], [0, 32, 32, 0],
+                        [32, 32, 32, 0],
                         [0, 0, 0, -1], [0, 0, 0, 1], [0, 0, 0, 0.5],
                         [float('nan'), 0, 0, 0], [0, float('inf'), 0, 0]])
     result = octree_query_sdf(octree, pts)
@@ -129,17 +174,19 @@ class TestSdfQuery(unittest.TestCase):
     query = torch.compile(octree_query_sdf, fullgraph=True)
     for value in (-0.2, 0.0, 0.2):
       octree = Octree(5, 2, batch_size=2, device='cuda')
-      octree.build_octree_from_sdf(torch.full((2, 32, 32, 32), value,
+      octree.build_octree_from_sdf(torch.full((2, 33, 33, 33), value,
                                              device='cuda'))
       pts = torch.tensor([[0., 0., 0., 0.], [31., 31., 31., 1.],
                           [-1., 0., 0., 0.], [0., 0., 0., 0.5],
-                          [float('nan'), 0., 0., 0.]], device='cuda')
-      storage = torch.zeros(5, 8, device='cuda')
+                          [float('nan'), 0., 0., 0.], [32., 0., 0., 0.],
+                          [0., 32., 0., 0.], [0., 0., 32., 0.]], device='cuda')
+      storage = torch.zeros(pts.shape[0], 8, device='cuda')
       storage[:, ::2] = pts
       pts = storage[:, ::2]
       actual = query(octree, pts)
       expected = octree_query_sdf(octree, pts)
       torch.testing.assert_close(actual, expected, equal_nan=True)
+      self.assertFalse(actual.valid[-3:].any())
       empty = query(octree, pts[:0])
       self.assertEqual(empty.sdf.shape, (0,))
 
